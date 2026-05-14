@@ -1,0 +1,21 @@
+:root {
+  --primary: #1a7a72;
+  --primary-dark: #155f59;
+  --accent: #f5a623;
+  --accent-orange: #e87722;
+  --bg: #ffffff;
+  --chrome-bg: #eeeeee;
+  --surface: #ffffff;
+  --nav-text: #ffffff;
+  --tab-active-bg: #ffffff;
+  --tab-inactive-bg: #e2e2e2;
+  --text: #1a1a1a;
+  --text-muted: #666666;
+  --border: #cccccc;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --userbar-height: 34px;
+  --navbar-height: 48px;
+  --tab-height: 45px;
+  --card-radius: 8px;
+  --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}

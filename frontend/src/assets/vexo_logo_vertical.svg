@@ -1,0 +1,22 @@
+<svg viewBox="250 100 180 220" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Logotipo Vexo - ERP Logístico</title>
+  <desc>Logotipo vertical da empresa Vexo com ícone e texto ERP Logístico.</desc>
+
+  <g transform="translate(340, 168)">
+    <polygon points="0,-54 46.8,-27 46.8,27 0,54 -46.8,27 -46.8,-27" fill="#0F4C5C" opacity="0.13" />
+    <polygon points="0,-42 36.4,-21 36.4,21 0,42 -36.4,21 -36.4,-21" fill="#0F4C5C" />
+    <rect x="-18" y="-16" width="9" height="26" rx="2" fill="#ffffff" />
+    <rect x="-4.5" y="0" width="9" height="18" rx="2" fill="#FF8A00" />
+    <rect x="9" y="-16" width="9" height="26" rx="2" fill="#ffffff" />
+    <circle cx="-13.5" cy="-22" r="5" fill="#FF8A00" />
+    <circle cx="13.5" cy="-22" r="5" fill="#FF8A00" />
+    <circle cx="0" cy="24" r="5" fill="#ffffff" opacity="0.9" />
+  </g>
+
+  <text x="340" y="265" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="54" font-weight="700">
+    <tspan fill="#087E8B">V</tspan><tspan fill="#102A43">exo</tspan>
+  </text>
+
+  <line x1="270" y1="282" x2="410" y2="282" stroke="#FF8A00" stroke-width="1.5" opacity="0.6" />
+  <text x="340" y="303" text-anchor="middle" fill="#087E8B" font-family="Segoe UI, Arial, sans-serif" font-size="13" font-weight="400">ERP LOGÍSTICO</text>
+</svg>

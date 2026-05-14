@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vexo ERP - Tela Principal</title>
+  <style>
+    /* =============================================
+       DESIGN SYSTEM (extraído do PDF como JSON)
+       {
+         "colors": {
+           "primary": "#1a7a72",
+           "primaryDark": "#155f59",
+           "accent": "#f5a623",
+           "accentOrange": "#e87722",
+           "background": "#f0f0f0",
+           "surface": "#ffffff",
+           "navbarBg": "#1a7a72",
+           "navbarText": "#ffffff",
+           "tabActiveBg": "#ffffff",
+           "tabActiveBorder": "#1a7a72",
+           "tabInactiveBg": "#e8e8e8",
+           "tabInactiveText": "#555555",
+           "textPrimary": "#1a1a1a",
+           "textSecondary": "#555555",
+           "border": "#d0d0d0",
+           "cardBg": "#ffffff",
+           "cardBorder": "#cccccc",
+           "headerBar": "#f8f8f8",
+           "headerBorder": "#cccccc",
+           "logoTextTeal": "#1a7a72",
+           "logoBg": "#1a5f5a",
+           "logoAccent1": "#f5a623",
+           "logoAccent2": "#e87722",
+           "logoAccent3": "#ffffff"
+         },
+         "typography": {
+           "fontFamily": "'Segoe UI', system-ui, sans-serif",
+           "brandFont": "bold",
+           "navFontSize": "14px",
+           "tabFontSize": "13px",
+           "sectionTitleSize": "15px",
+           "headerInfoSize": "13px"
+         },
+         "spacing": {
+           "navbarHeight": "52px",
+           "tabBarHeight": "42px",
+           "contentPadding": "24px 32px",
+           "sectionGap": "32px",
+           "cardRadius": "8px",
+           "cardGap": "12px"
+         },
+         "components": {
+           "navbar": "teal background, white text, dropdown menus, logo left, user info right",
+           "tabs": "browser-style tabs with active/inactive states, close button on non-home tabs",
+           "quickAccessCards": "5 per row, tall rectangular cards with rounded corners, bordered",
+           "quickQueryCards": "5 per row, shorter cards, 2 rows, rounded corners, bordered",
+           "sidebar": "right side, white bg, Vexo logo centered with hexagon icon and brand text"
+         }
+       }
+    ============================================= */
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --primary: #1a7a72;
+      --primary-dark: #155f59;
+      --accent: #f5a623;
+      --accent-orange: #e87722;
+      --bg: #efefef;
+      --surface: #ffffff;
+      --nav-text: #ffffff;
+      --tab-active-bg: #ffffff;
+      --tab-inactive-bg: #e2e2e2;
+      --text: #1a1a1a;
+      --text-muted: #666666;
+      --border: #cccccc;
+      --card-radius: 8px;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+    }
+
+    /* ── TOP HEADER BAR ── */
+    .header-bar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      height: 52px;
+      gap: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 16px;
+    }
+
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+    }
+
+    .brand-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    /* ── NAVBAR ── */
+    .navbar {
+      background: var(--primary);
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      gap: 0;
+    }
+
+    .nav-logo {
+      width: 36px;
+      height: 36px;
+      margin-right: 8px;
+      flex-shrink: 0;
+    }
+
+    .nav-items {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      gap: 0;
+    }
+
+    .nav-item {
+      color: var(--nav-text);
+      font-size: 14px;
+      font-weight: 500;
+      padding: 0 16px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+      border: none;
+      background: none;
+      text-decoration: none;
+    }
+
+    .nav-item:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    .nav-item svg {
+      width: 13px;
+      height: 13px;
+      opacity: 0.85;
+    }
+
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-left: auto;
+    }
+
+    .nav-info {
+      color: var(--nav-text);
+      font-size: 13px;
+      padding: 0 14px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      border-left: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .nav-info svg {
+      width: 16px;
+      height: 16px;
+      opacity: 0.85;
+    }
+
+    .nav-logout {
+      color: var(--nav-text);
+      padding: 0 14px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      border-left: 1px solid rgba(255,255,255,0.2);
+      transition: background 0.15s;
+    }
+
+    .nav-logout:hover {
+      background: rgba(255,255,255,0.12);
+    }
+
+    .nav-logout svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* ── TAB BAR ── */
+    .tab-bar {
+      background: var(--bg);
+      display: flex;
+      align-items: flex-end;
+      padding: 8px 0 0 0;
+      border-bottom: 1px solid var(--border);
+      gap: 0;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 18px;
+      height: 36px;
+      font-size: 13px;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      margin-left: 6px;
+      white-space: nowrap;
+      transition: background 0.1s;
+    }
+
+    .tab.active {
+      background: var(--surface);
+      color: var(--text);
+      border-color: var(--border);
+      border-bottom-color: var(--surface);
+      margin-bottom: -1px;
+      z-index: 1;
+    }
+
+    .tab.inactive {
+      background: var(--tab-inactive-bg);
+      color: var(--text-muted);
+    }
+
+    .tab.inactive:hover {
+      background: #d8d8d8;
+    }
+
+    .tab-icon {
+      width: 14px;
+      height: 14px;
+      color: var(--primary);
+    }
+
+    .tab-close {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+
+    .tab-close:hover {
+      background: rgba(0,0,0,0.12);
+      color: var(--text);
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .main-layout {
+      display: flex;
+      min-height: calc(100vh - 52px - 45px);
+    }
+
+    .content-area {
+      flex: 1;
+      padding: 28px 36px;
+    }
+
+    .sidebar {
+      width: 300px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── SECTION ── */
+    .section {
+      margin-bottom: 36px;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+
+    .section-divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 18px;
+    }
+
+    /* ── CARDS ── */
+    .cards-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    .cards-grid-5 {
+      grid-template-columns: repeat(5, 1fr);
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--card-radius);
+      cursor: pointer;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .card:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border-color: #aaa;
+    }
+
+    .card-tall {
+      height: 140px;
+    }
+
+    .card-short {
+      height: 68px;
+    }
+
+    /* ── SIDEBAR LOGO ── */
+    .sidebar-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .hexagon-logo {
+      width: 160px;
+      height: 160px;
+    }
+
+    .vexo-brand-text {
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+
+    .erp-label {
+      font-size: 14px;
+      color: #888;
+      letter-spacing: 2px;
+      font-weight: 500;
+      border-top: 1px solid #ccc;
+      padding-top: 10px;
+      width: 100%;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar">
+    <!-- Hexagon Icon -->
+    <svg class="nav-logo" viewBox="0 0 36 36" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="18,2 33,10 33,26 18,34 3,26 3,10" fill="#155f59" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+      <!-- White bar left -->
+      <rect x="10" y="10" width="4" height="14" rx="2" fill="white"/>
+      <!-- White bar right -->
+      <rect x="22" y="10" width="4" height="14" rx="2" fill="white"/>
+      <!-- Orange bar center-bottom -->
+      <rect x="16" y="16" width="4" height="10" rx="2" fill="#f5a623"/>
+      <!-- Orange dot top center -->
+      <circle cx="18" cy="10" r="2.5" fill="#f5a623"/>
+      <!-- White dot bottom left -->
+      <circle cx="12" cy="26" r="2" fill="white"/>
+      <!-- White dot bottom right -->
+      <circle cx="24" cy="26" r="2" fill="white"/>
+    </svg>
+
+    <div class="nav-items">
+      <a class="nav-item" href="#">Base
+        <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+      </a>
+      <a class="nav-item" href="#">Recursos
+        <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+      </a>
+      <a class="nav-item" href="#">Operação
+        <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+      </a>
+      <a class="nav-item" href="#">Financeiro
+        <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+      </a>
+      <a class="nav-item" href="#">Fiscal
+        <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+      </a>
+      <a class="nav-item" href="#">Sistema
+        <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+      </a>
+    </div>
+
+    <div class="nav-right">
+      <!-- Company -->
+      <div class="nav-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
+        </svg>
+        JTD Transportes LTDA
+      </div>
+      <!-- User -->
+      <div class="nav-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        </svg>
+        134 - camila.aguiar
+      </div>
+      <!-- Validity -->
+      <div class="nav-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+        </svg>
+        Val. 04/06/2026
+      </div>
+      <!-- Logout -->
+      <div class="nav-logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      </div>
+    </div>
+  </nav>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <div class="tab active">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/>
+      </svg>
+      Tela Principal
+    </div>
+    <div class="tab inactive">
+      Cancelar CT-e
+      <span class="tab-close">✕</span>
+    </div>
+    <div class="tab inactive">
+      Consultar MDF-e
+      <span class="tab-close">✕</span>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-layout">
+    <div class="content-area">
+
+      <!-- Acesso Rápido -->
+      <div class="section">
+        <div class="section-title">Acesso rápido</div>
+        <div class="section-divider"></div>
+        <div class="cards-grid cards-grid-5">
+          <div class="card card-tall"></div>
+          <div class="card card-tall"></div>
+          <div class="card card-tall"></div>
+          <div class="card card-tall"></div>
+          <div class="card card-tall"></div>
+        </div>
+      </div>
+
+      <!-- Consultas Rápidas -->
+      <div class="section">
+        <div class="section-title">Consultas rápidas</div>
+        <div class="section-divider"></div>
+        <div class="cards-grid cards-grid-5" style="margin-bottom: 12px;">
+          <div class="card card-short"></div>
+          <div class="card card-short"></div>
+          <div class="card card-short"></div>
+          <div class="card card-short"></div>
+          <div class="card card-short"></div>
+        </div>
+        <div class="cards-grid cards-grid-5">
+          <div class="card card-short"></div>
+          <div class="card card-short"></div>
+          <div class="card card-short"></div>
+          <div class="card card-short"></div>
+          <div class="card card-short"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-inner">
+        <!-- Hexagon SVG logo -->
+        <svg class="hexagon-logo" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+          <!-- Outer light hexagon -->
+          <polygon points="80,8 148,44 148,116 80,152 12,116 12,44"
+            fill="#dde8e7" stroke="#c5d8d6" stroke-width="1"/>
+          <!-- Inner dark teal hexagon -->
+          <polygon points="80,22 134,52 134,108 80,138 26,108 26,52"
+            fill="#1a5f5a"/>
+          <!-- White bar left -->
+          <rect x="52" y="52" width="16" height="44" rx="8" fill="white"/>
+          <!-- White bar right -->
+          <rect x="92" y="52" width="16" height="44" rx="8" fill="white"/>
+          <!-- Orange bar center (shorter, bottom-aligned) -->
+          <rect x="72" y="72" width="16" height="34" rx="8" fill="#e87722"/>
+          <!-- Orange dot top center -->
+          <circle cx="80" cy="46" r="8" fill="#f5a623"/>
+          <!-- White dot bottom left -->
+          <circle cx="60" cy="106" r="6" fill="white"/>
+          <!-- White dot bottom right -->
+          <circle cx="100" cy="106" r="6" fill="white"/>
+        </svg>
+
+        <div class="vexo-brand-text">Vexo</div>
+        <div class="erp-label">ERP LOGÍSTICO</div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

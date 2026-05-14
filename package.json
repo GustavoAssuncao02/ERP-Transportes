@@ -1,0 +1,14 @@
+{
+  "name": "erp-transportes",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev:frontend",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "build": "npm --prefix frontend run build",
+    "start:backend": "npm --prefix backend run start",
+    "db:test": "npm --prefix backend run db:test"
+  }
+}

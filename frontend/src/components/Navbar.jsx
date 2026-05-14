@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, LogOut } from 'lucide-react';
-import vexoIconUrl from '../assets/vexo_icon_only.svg';
+import vexoIconUrl from '../assets/brand/vexo-icon-only.svg';
 import { navigationItems } from '../data/siteData.js';
 
 export default function Navbar() {

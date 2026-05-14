@@ -62,20 +62,9 @@
   background: var(--primary);
 }
 
-.hexagon-logo {
-  display: block;
-  flex-shrink: 0;
-}
-
-.hexagon-logo--compact,
 .nav-logo {
   width: 32px;
   height: 32px;
-}
-
-.hexagon-logo--large {
-  width: 160px;
-  height: 160px;
 }
 
 .nav-logo {

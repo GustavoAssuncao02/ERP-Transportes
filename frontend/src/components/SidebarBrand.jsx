@@ -1,4 +1,4 @@
-import vexoLogoVerticalUrl from '../assets/vexo_logo_vertical.svg';
+import vexoLogoVerticalUrl from '../assets/brand/vexo-logo-vertical.svg';
 
 export default function SidebarBrand() {
   return (

@@ -1,4 +1,4 @@
-import vexoLogoHorizontalUrl from '../assets/vexo_logo_horizontal.svg';
+import vexoLogoHorizontalUrl from '../assets/brand/vexo-logo-horizontal.svg';
 
 export default function LoginPage() {
   function handleSubmit(event) {

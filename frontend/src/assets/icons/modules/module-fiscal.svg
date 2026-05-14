@@ -1,0 +1,25 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Ícone fiscal">
+  <title>Ícone fiscal</title>
+
+  <!-- Documento fiscal -->
+  <path d="M112 48H328L424 144V424H112V48Z" fill="#000000"/>
+  <path d="M144 80H312V152H392V392H144V80Z" fill="#FFFFFF"/>
+  <path d="M328 48V136C328 144.8 335.2 152 344 152H424L328 48Z" fill="#000000"/>
+
+  <!-- Prédio fiscal / governo -->
+  <polygon points="192,144 256,104 320,144" fill="#000000"/>
+  <rect x="184" y="152" width="144" height="18" fill="#000000"/>
+  <rect x="196" y="180" width="24" height="64" fill="#000000"/>
+  <rect x="244" y="180" width="24" height="64" fill="#000000"/>
+  <rect x="292" y="180" width="24" height="64" fill="#000000"/>
+  <rect x="176" y="252" width="160" height="22" fill="#000000"/>
+
+  <!-- Linhas de nota/documento -->
+  <rect x="176" y="304" width="184" height="20" fill="#000000"/>
+  <rect x="176" y="344" width="120" height="20" fill="#000000"/>
+  <rect x="320" y="344" width="56" height="20" fill="#000000"/>
+
+  <!-- Selo de aprovação fiscal em formato angular -->
+  <polygon points="328,328 416,328 448,360 448,448 328,448" fill="#000000"/>
+  <polyline points="356,392 386,422 426,372" stroke="#FFFFFF" stroke-width="28" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

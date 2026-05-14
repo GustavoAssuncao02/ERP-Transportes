@@ -1,44 +1,23 @@
-<svg width="100%" viewBox="0 0 680 260" role="img" xmlns="http://www.w3.org/2000/svg" style="">
-  <title style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Logotipo Vexo Horizontal — ERP Logístico</title>
-  <desc style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">Versão horizontal do logotipo Vexo com ícone à esquerda e nome com tagline à direita</desc>
+<svg viewBox="160 72 330 120" role="img" xmlns="http://www.w3.org/2000/svg">
+  <title>Logotipo Vexo Horizontal - ERP Logístico</title>
+  <desc>Versão horizontal do logotipo Vexo com ícone à esquerda e nome com tagline à direita.</desc>
 
-  <rect width="680" height="260" fill="#ffffff" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-
-  
-
-  <!-- Icon centered vertically at y=130 -->
-  <g transform="translate(218, 130)" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto">
-
-    <!-- Outer hexagon ring -->
-    <polygon points="0,-54 46.8,-27 46.8,27 0,54 -46.8,27 -46.8,-27" fill="#0F4C5C" opacity="0.13" style="fill:rgb(15, 76, 92);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.13;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-
-    <!-- Inner hexagon fill -->
-    <polygon points="0,-42 36.4,-21 36.4,21 0,42 -36.4,21 -36.4,-21" fill="#0F4C5C" style="fill:rgb(15, 76, 92);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-
-    <!-- Left upward bar -->
-    <rect x="-18" y="-16" width="9" height="26" rx="2" fill="#ffffff" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-    <!-- Center connector -->
-    <rect x="-4.5" y="0" width="9" height="18" rx="2" fill="#FF8A00" style="fill:rgb(255, 138, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-    <!-- Right upward bar -->
-    <rect x="9" y="-16" width="9" height="26" rx="2" fill="#ffffff" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-
-    <!-- Top dot accents -->
-    <circle cx="-13.5" cy="-22" r="5" fill="#FF8A00" style="fill:rgb(255, 138, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-    <circle cx="13.5" cy="-22" r="5" fill="#FF8A00" style="fill:rgb(255, 138, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
-
-    <!-- Bottom merge dot -->
-    <circle cx="0" cy="24" r="5" fill="#ffffff" opacity="0.9" style="fill:rgb(255, 255, 255);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.9;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <g transform="translate(218, 130)">
+    <polygon points="0,-54 46.8,-27 46.8,27 0,54 -46.8,27 -46.8,-27" fill="#0F4C5C" opacity="0.13" />
+    <polygon points="0,-42 36.4,-21 36.4,21 0,42 -36.4,21 -36.4,-21" fill="#0F4C5C" />
+    <rect x="-18" y="-16" width="9" height="26" rx="2" fill="#ffffff" />
+    <rect x="-4.5" y="0" width="9" height="18" rx="2" fill="#FF8A00" />
+    <rect x="9" y="-16" width="9" height="26" rx="2" fill="#ffffff" />
+    <circle cx="-13.5" cy="-22" r="5" fill="#FF8A00" />
+    <circle cx="13.5" cy="-22" r="5" fill="#FF8A00" />
+    <circle cx="0" cy="24" r="5" fill="#ffffff" opacity="0.9" />
   </g>
 
-  <!-- Vertical divider -->
-  <line x1="286" y1="82" x2="286" y2="178" stroke="#0F4C5C" stroke-width="1" opacity="0.25" style="fill:rgb(0, 0, 0);stroke:rgb(15, 76, 92);color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:0.25;font-family:&quot;Anthropic Sans&quot;, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif;font-size:16px;font-weight:400;text-anchor:start;dominant-baseline:auto"/>
+  <line x1="286" y1="82" x2="286" y2="178" stroke="#0F4C5C" stroke-width="1" opacity="0.25" />
 
-  <!-- Brand name -->
-  <text x="306" y="154" text-anchor="start" style="fill:rgb(0, 0, 0);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Segoe UI&quot;, Arial, sans-serif;font-size:58px;font-weight:700;text-anchor:start;dominant-baseline:auto">
-    <tspan fill="#087E8B" style="fill:rgb(8, 126, 139);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Segoe UI&quot;, Arial, sans-serif;font-size:58px;font-weight:700;text-anchor:start;dominant-baseline:auto">V</tspan><tspan fill="#102A43" style="fill:rgb(16, 42, 67);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Segoe UI&quot;, Arial, sans-serif;font-size:58px;font-weight:700;text-anchor:start;dominant-baseline:auto">exo</tspan>
+  <text x="306" y="154" text-anchor="start" font-family="Segoe UI, Arial, sans-serif" font-size="58" font-weight="700">
+    <tspan fill="#087E8B">V</tspan><tspan fill="#102A43">exo</tspan>
   </text>
 
-  <!-- Tagline below name -->
-  <text x="310" y="178" text-anchor="start" style="fill:rgb(8, 126, 139);stroke:none;color:rgb(255, 255, 255);stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;opacity:1;font-family:&quot;Segoe UI&quot;, Arial, sans-serif;font-size:12px;font-weight:400;text-anchor:start;dominant-baseline:auto">ERP LOGÍSTICO</text>
-
+  <text x="310" y="178" text-anchor="start" fill="#087E8B" font-family="Segoe UI, Arial, sans-serif" font-size="12" font-weight="400">ERP LOGÍSTICO</text>
 </svg>

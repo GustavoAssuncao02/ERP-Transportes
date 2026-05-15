@@ -28,12 +28,6 @@
   box-shadow: 0 10px 16px rgba(0, 0, 0, 0.05);
 }
 
-.login-logo {
-  display: block;
-  width: min(220px, 68%);
-  height: auto;
-}
-
 .login-logo-reveal {
   position: relative;
   z-index: 0;
@@ -41,8 +35,29 @@
   height: 190px;
   flex: 0 0 auto;
   margin-right: -48px;
-  object-fit: contain;
   transform: translateY(-5px);
+}
+
+.login-animation-stack {
+  display: grid;
+  place-items: center;
+}
+
+.login-animation-frame {
+  display: block;
+  grid-area: 1 / 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.login-animation-frame--gif {
+  opacity: 1;
+  transition: opacity 180ms ease-out;
+}
+
+.login-animation-stack.is-frozen .login-animation-frame--gif {
+  opacity: 0;
 }
 
 .login-logo-separator {
@@ -57,11 +72,9 @@
 .login-wordmark-reveal {
   position: relative;
   z-index: 1;
-  display: block;
   width: 176px;
-  height: auto;
+  height: 107px;
   flex: 0 0 auto;
-  object-fit: contain;
 }
 
 .login-form {
@@ -166,6 +179,7 @@
 
   .login-wordmark-reveal {
     width: 150px;
+    height: 91px;
   }
 
   .login-form {

@@ -5,16 +5,18 @@ import vexoWordmarkRevealFinalUrl from '../assets/brand/animations/vexo_wordmark
 import vexoWordmarkRevealUrl from '../assets/brand/animations/vexo_wordmark_reveal.gif';
 
 export default function LoginPage() {
-  const [logoSource, setLogoSource] = useState(vexoRevealUrl);
-  const [wordmarkSource, setWordmarkSource] = useState(vexoWordmarkRevealUrl);
+  const [frozenAnimations, setFrozenAnimations] = useState({
+    logo: false,
+    wordmark: false,
+  });
   const freezeTimers = useRef({
     logo: null,
     wordmark: null,
   });
 
   useEffect(() => {
-    scheduleFreeze('logo', setLogoSource, vexoRevealFinalUrl, 3400);
-    scheduleFreeze('wordmark', setWordmarkSource, vexoWordmarkRevealFinalUrl, 2650);
+    scheduleFreeze('logo', 3300);
+    scheduleFreeze('wordmark', 2550);
 
     return () => {
       Object.values(freezeTimers.current).forEach((timer) => window.clearTimeout(timer));
@@ -25,11 +27,14 @@ export default function LoginPage() {
     };
   }, []);
 
-  function scheduleFreeze(key, setSource, finalSource, delay) {
+  function scheduleFreeze(key, delay) {
     if (freezeTimers.current[key]) return;
 
     freezeTimers.current[key] = window.setTimeout(() => {
-      setSource(finalSource);
+      setFrozenAnimations((current) => ({
+        ...current,
+        [key]: true,
+      }));
     }, delay);
   }
 
@@ -41,19 +46,25 @@ export default function LoginPage() {
     <main className="login-page">
       <section className="login-card" aria-labelledby="login-title">
         <div className="login-logo-area">
-          <img
-            className="login-logo login-logo-reveal"
-            src={logoSource}
-            alt="Vexo ERP Logistico"
-            onLoad={() => scheduleFreeze('logo', setLogoSource, vexoRevealFinalUrl, 3400)}
-          />
+          <div className={`login-logo-reveal login-animation-stack ${frozenAnimations.logo ? 'is-frozen' : ''}`}>
+            <img className="login-animation-frame" src={vexoRevealFinalUrl} alt="" aria-hidden="true" />
+            <img
+              className="login-animation-frame login-animation-frame--gif"
+              src={vexoRevealUrl}
+              alt="Vexo ERP Logistico"
+              onLoad={() => scheduleFreeze('logo', 3300)}
+            />
+          </div>
           <span className="login-logo-separator" aria-hidden="true" />
-          <img
-            className="login-wordmark-reveal"
-            src={wordmarkSource}
-            alt="Vexo"
-            onLoad={() => scheduleFreeze('wordmark', setWordmarkSource, vexoWordmarkRevealFinalUrl, 2650)}
-          />
+          <div className={`login-wordmark-reveal login-animation-stack ${frozenAnimations.wordmark ? 'is-frozen' : ''}`}>
+            <img className="login-animation-frame" src={vexoWordmarkRevealFinalUrl} alt="" aria-hidden="true" />
+            <img
+              className="login-animation-frame login-animation-frame--gif"
+              src={vexoWordmarkRevealUrl}
+              alt="Vexo"
+              onLoad={() => scheduleFreeze('wordmark', 2550)}
+            />
+          </div>
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>

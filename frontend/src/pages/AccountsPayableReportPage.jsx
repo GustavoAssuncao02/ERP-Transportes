@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   accountingTypeNames,
   businessUnits,
@@ -208,7 +209,7 @@ export default function AccountsPayableReportPage() {
   const [selectedTypes, setSelectedTypes] = useState(accountingTypeNames);
   const [selectedSuppliers, setSelectedSuppliers] = useState(supplierNames);
   const [selectedDocuments, setSelectedDocuments] = useState(documentNumbers);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useAutoClearMessage();
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [generateMenuOpen, setGenerateMenuOpen] = useState(false);
 

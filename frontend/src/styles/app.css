@@ -1677,6 +1677,7 @@
 .business-intelligence-page,
 .accounts-payable-schedule-page,
 .accounts-payable-deletion-page,
+.generate-manifest-page,
 .settlement-reversal-page {
   max-width: 1280px;
 }
@@ -2058,6 +2059,116 @@
 .reversal-table tbody tr:hover td:nth-child(8) {
   background: #eef5f4;
 }
+
+.manifest-form {
+  max-width: 1280px;
+}
+
+.manifest-cte-layout {
+  margin-top: 18px;
+  align-items: stretch;
+}
+
+.manifest-cte-layout > .registered-launches-panel,
+.manifest-cte-layout > .selection-panel {
+  display: flex;
+  margin-top: 0;
+  min-height: 356px;
+  flex-direction: column;
+  align-self: stretch;
+}
+
+.manifest-cte-layout > .registered-launches-panel .registered-launches-table-wrap,
+.manifest-cte-layout > .selection-panel .selected-list-box {
+  flex: 1;
+}
+
+.manifest-cte-table {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.manifest-cte-table th,
+.manifest-cte-table td {
+  overflow: hidden;
+  padding: 7px 6px;
+  text-overflow: ellipsis;
+}
+
+.manifest-cte-table td:first-child {
+  display: table-cell;
+}
+
+.manifest-cte-table td:first-child span {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.manifest-cte-table th:nth-child(1),
+.manifest-cte-table td:nth-child(1) {
+  width: 17%;
+}
+
+.manifest-cte-table th:nth-child(2),
+.manifest-cte-table td:nth-child(2) {
+  width: 20%;
+}
+
+.manifest-cte-table th:nth-child(3),
+.manifest-cte-table td:nth-child(3),
+.manifest-cte-table th:nth-child(4),
+.manifest-cte-table td:nth-child(4) {
+  width: 17%;
+}
+
+.manifest-cte-table th:nth-child(5),
+.manifest-cte-table td:nth-child(5),
+.manifest-cte-table th:nth-child(6),
+.manifest-cte-table td:nth-child(6) {
+  width: 12%;
+}
+
+.manifest-cte-table th:nth-child(7),
+.manifest-cte-table td:nth-child(7) {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  width: 46px;
+  min-width: 46px;
+  background: inherit;
+  text-align: center;
+  box-shadow: -1px 0 0 var(--border);
+}
+
+.manifest-cte-table th:nth-child(7) {
+  background: #f7f7f7;
+}
+
+.manifest-cte-table tbody tr:hover td:nth-child(7) {
+  background: #eef5f4;
+}
+
+.manifest-selected-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: #f8f8f8;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.manifest-details-grid {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
 
 .schedule-table th,
 .schedule-table td {

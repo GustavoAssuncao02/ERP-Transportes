@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { paymentBanks } from '../data/financeData.js';
 
 const businessUnits = [
@@ -192,7 +193,7 @@ export default function AccountsPayableSettlementPage() {
   const [settlementNote, setSettlementNote] = useState('');
   const [paymentType, setPaymentType] = useState('Total');
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useAutoClearMessage();
 
   const individualLaunches = useMemo(() => (
     pendingLaunches.filter((launch) => {

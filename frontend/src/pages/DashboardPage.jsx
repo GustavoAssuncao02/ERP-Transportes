@@ -5,6 +5,7 @@ import AccountsPayablePage from './AccountsPayablePage.jsx';
 import AccountsPayableReportPage from './AccountsPayableReportPage.jsx';
 import AccountsPayableSettlementPage from './AccountsPayableSettlementPage.jsx';
 import BusinessIntelligencePage from './BusinessIntelligencePage.jsx';
+import GenerateManifestPage from './GenerateManifestPage.jsx';
 import OneOffPaymentPage from './OneOffPaymentPage.jsx';
 import RegisteredLaunchesPage from './RegisteredLaunchesPage.jsx';
 import SettlementReversalPage from './SettlementReversalPage.jsx';
@@ -94,6 +95,10 @@ export default function DashboardPage() {
   function renderContent() {
     if (activeTabId === 'one-off-payment') {
       return <OneOffPaymentPage />;
+    }
+
+    if (activeTabId === 'generate-manifest') {
+      return <GenerateManifestPage />;
     }
 
     if (activeTabId === 'registered-launches') {

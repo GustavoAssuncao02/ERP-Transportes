@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   businessUnits,
   currency,
@@ -96,7 +97,7 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
   const [selectedDocuments, setSelectedDocuments] = useState(settledDocuments);
   const [launchSearch, setLaunchSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useAutoClearMessage();
 
   const filteredLaunches = useMemo(() => settledLaunches.filter((launch) => {
     const dateValue = launch[searchType];

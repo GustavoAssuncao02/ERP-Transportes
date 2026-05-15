@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import AttachmentPanel from '../components/AttachmentPanel.jsx';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   accountingTypes,
   businessUnits,
@@ -129,7 +130,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
   const [settlementNote, setSettlementNote] = useState('');
   const [paymentBank, setPaymentBank] = useState('');
   const [attachments, setAttachments] = useState([]);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useAutoClearMessage();
 
   const activeLookup = lookupType ? lookupConfig[lookupType] : null;
   const isSettledLaunch = loadedLaunchStatus === 'Baixado';

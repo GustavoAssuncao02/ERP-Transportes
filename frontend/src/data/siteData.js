@@ -10,6 +10,13 @@ export const navigationItems = [
   {
     id: 'operacao',
     label: 'Operacao',
+    children: [
+      {
+        id: 'gerar-manifesto',
+        label: 'Gerar Manifesto',
+        pageId: 'generate-manifest',
+      },
+    ],
   },
   {
     id: 'financeiro',

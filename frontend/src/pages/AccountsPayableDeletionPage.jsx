@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   businessUnits,
   currency,
@@ -88,7 +89,7 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
   const [selectedDocuments, setSelectedDocuments] = useState(documentOptions);
   const [launchSearch, setLaunchSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useAutoClearMessage();
 
   const filteredLaunches = useMemo(() => deletableLaunches.filter((launch) => {
     const dateValue = launch[searchType];

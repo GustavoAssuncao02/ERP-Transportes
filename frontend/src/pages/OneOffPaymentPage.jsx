@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import AttachmentPanel from '../components/AttachmentPanel.jsx';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 
 const units = [
   { code: '001', name: 'JTD Transportes LTDA' },
@@ -87,7 +88,7 @@ export default function OneOffPaymentPage() {
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
   const [supplierSearchBy, setSupplierSearchBy] = useState('name');
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useAutoClearMessage();
 
   const activeLookup = lookupType ? lookupConfig[lookupType] : null;
   const lookupItems = useMemo(() => {

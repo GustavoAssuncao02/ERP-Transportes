@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
 import { PieChart } from '../components/FinanceCharts.jsx';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   businessUnits,
   currency,
@@ -116,7 +117,7 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
   const [maxValue, setMaxValue] = useState('');
   const [launchSearch, setLaunchSearch] = useState('');
   const [scheduledIds, setScheduledIds] = useState(readScheduleIds);
-  const [status, setStatus] = useState('');
+  const [status, setStatus] = useAutoClearMessage();
 
   useEffect(() => {
     const validIds = scheduledIds.filter((id) => openLaunches.some((launch) => launch.id === id));

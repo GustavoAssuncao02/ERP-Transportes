@@ -1165,48 +1165,6 @@
       max-width: 1280px;
     }
 
-    .report-search-type {
-      margin-top: 18px;
-      overflow: hidden;
-      border: 1px solid #9fb7d8;
-      background: #ffffff;
-    }
-
-    .report-search-type h2 {
-      margin: 0;
-      padding: 6px 10px;
-      background: #d8e7fb;
-      color: #06464c;
-      font-size: 16px;
-      font-weight: 800;
-      text-align: center;
-    }
-
-    .search-type-table {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .search-type-row {
-      display: grid;
-      grid-template-columns: 24px 42px 1fr;
-      min-height: 21px;
-      align-items: center;
-      padding: 0 8px;
-      border-top: 1px dotted #9a9a9a;
-      cursor: pointer;
-      font-family: "Courier New", monospace;
-      font-size: 12px;
-    }
-
-    .search-type-row:nth-child(even) {
-      background: #f7f7f7;
-    }
-
-    .search-type-row.active {
-      background: #eef5f4;
-    }
-
     .report-grid {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1754,43 +1712,19 @@
                 <option selected>Ambos</option>
               </select>
             </div>
-          </div>
 
-          <section class="report-search-type">
-            <h2>Selecionar Tipo Pesquisa</h2>
-            <div class="search-type-table" id="reportSearchTypes">
-              <label class="search-type-row active">
-                <input type="radio" name="reportSearchType" value="A" checked>
-                <span>A</span>
-                <strong>Data Emiss&atilde;o</strong>
-              </label>
-              <label class="search-type-row">
-                <input type="radio" name="reportSearchType" value="B">
-                <span>B</span>
-                <strong>Data de Vencimento</strong>
-              </label>
-              <label class="search-type-row">
-                <input type="radio" name="reportSearchType" value="C">
-                <span>C</span>
-                <strong>Data de Cadastro</strong>
-              </label>
-              <label class="search-type-row">
-                <input type="radio" name="reportSearchType" value="D">
-                <span>D</span>
-                <strong>Data de Pagamento</strong>
-              </label>
-              <label class="search-type-row">
-                <input type="radio" name="reportSearchType" value="E">
-                <span>E</span>
-                <strong>Data de Apropria&ccedil;&atilde;o</strong>
-              </label>
-              <label class="search-type-row">
-                <input type="radio" name="reportSearchType" value="F">
-                <span>F</span>
-                <strong>Data de Previs&atilde;o de Pagamento</strong>
-              </label>
+            <div class="field span-2">
+              <label for="reportSearchType">Selecionar Tipo Pesquisa</label>
+              <select id="reportSearchType">
+                <option value="issueDate" selected>Data Emiss&atilde;o</option>
+                <option value="dueDate">Data de Vencimento</option>
+                <option value="createdDate">Data de Cadastro</option>
+                <option value="paymentDate">Data de Pagamento</option>
+                <option value="appropriationDate">Data de Apropria&ccedil;&atilde;o</option>
+                <option value="paymentForecastDate">Data de Previs&atilde;o de Pagamento</option>
+              </select>
             </div>
-          </section>
+          </div>
 
           <div class="report-grid">
             <section class="report-filter-box" data-report-filter>
@@ -2318,7 +2252,7 @@
     const reportPeriodStart = document.getElementById('reportPeriodStart');
     const reportPeriodEnd = document.getElementById('reportPeriodEnd');
     const reportStatus = document.getElementById('reportStatus');
-    const reportSearchTypes = document.getElementById('reportSearchTypes');
+    const reportSearchType = document.getElementById('reportSearchType');
     const reportSummary = document.getElementById('reportSummary');
     const reportSelectAll = document.getElementById('reportSelectAll');
     const reportStatusLine = document.getElementById('reportStatusLine');
@@ -2680,12 +2614,7 @@
     }
 
     function reportSearchTypeLabel() {
-      const checked = reportSearchTypes.querySelector('input:checked');
-      const row = checked ? checked.closest('.search-type-row') : null;
-      const code = row ? row.querySelector('span').textContent.trim() : '';
-      const label = row ? row.querySelector('strong').textContent.trim() : '';
-
-      return code && label ? `${code} - ${label}` : label;
+      return reportSearchType.options[reportSearchType.selectedIndex]?.textContent.trim() || '';
     }
 
     function filteredReportLaunches() {
@@ -2932,10 +2861,7 @@
       }
     });
 
-    reportSearchTypes.addEventListener('change', () => {
-      reportSearchTypes.querySelectorAll('.search-type-row').forEach((row) => {
-        row.classList.toggle('active', row.querySelector('input').checked);
-      });
+    reportSearchType.addEventListener('change', () => {
       hideReportGenerateActions();
     });
 

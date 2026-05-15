@@ -7,12 +7,12 @@ const businessUnits = [
 ];
 
 const searchTypes = [
-  { code: 'A', label: 'Data Emissão' },
-  { code: 'B', label: 'Data de Vencimento' },
-  { code: 'C', label: 'Data de Cadastro' },
-  { code: 'D', label: 'Data de Pagamento' },
-  { code: 'E', label: 'Data de Apropriação' },
-  { code: 'F', label: 'Data de Previsão de Pagamento' },
+  { value: 'issueDate', label: 'Data Emissão' },
+  { value: 'dueDate', label: 'Data de Vencimento' },
+  { value: 'createdDate', label: 'Data de Cadastro' },
+  { value: 'paymentDate', label: 'Data de Pagamento' },
+  { value: 'appropriationDate', label: 'Data de Apropriação' },
+  { value: 'paymentForecastDate', label: 'Data de Previsão de Pagamento' },
 ];
 
 const chargeTypes = [
@@ -231,7 +231,7 @@ function MultiCheckFilter({ title, options, selected, onChange, searchable = fal
 
 export default function AccountsPayableReportPage() {
   const [businessUnit, setBusinessUnit] = useState('');
-  const [searchType, setSearchType] = useState('A');
+  const [searchType, setSearchType] = useState('issueDate');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [status, setStatus] = useState('Ambos');
@@ -288,8 +288,8 @@ export default function AccountsPayableReportPage() {
   }
 
   function selectedSearchTypeLabel() {
-    const selectedType = searchTypes.find((type) => type.code === searchType);
-    return selectedType ? `${selectedType.code} - ${selectedType.label}` : searchType;
+    const selectedType = searchTypes.find((type) => type.value === searchType);
+    return selectedType ? selectedType.label : searchType;
   }
 
   function reportMetadata() {
@@ -470,29 +470,22 @@ export default function AccountsPayableReportPage() {
               <option>Ambos</option>
             </select>
           </label>
-        </div>
 
-        <section className="report-search-type" aria-labelledby="search-type-title">
-          <h2 id="search-type-title">Selecionar Tipo Pesquisa</h2>
-          <div className="search-type-table" role="radiogroup" aria-label="Tipo de pesquisa">
-            {searchTypes.map((type) => (
-              <label className={searchType === type.code ? 'search-type-row active' : 'search-type-row'} key={type.code}>
-                <input
-                  type="radio"
-                  name="searchType"
-                  value={type.code}
-                  checked={searchType === type.code}
-                  onChange={() => {
-                    setSearchType(type.code);
-                    markFiltersDirty();
-                  }}
-                />
-                <span>{type.code}</span>
-                <strong>{type.label}</strong>
-              </label>
-            ))}
-          </div>
-        </section>
+          <label className="field field--span-2">
+            <span>Selecionar Tipo Pesquisa</span>
+            <select
+              value={searchType}
+              onChange={(event) => {
+                setSearchType(event.target.value);
+                markFiltersDirty();
+              }}
+            >
+              {searchTypes.map((type) => (
+                <option value={type.value} key={type.value}>{type.label}</option>
+              ))}
+            </select>
+          </label>
+        </div>
 
         <div className="report-grid">
           <section className="report-filter-box charge-filter">

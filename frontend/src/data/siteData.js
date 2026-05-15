@@ -21,6 +21,11 @@ export const navigationItems = [
         pageId: 'one-off-payment',
       },
       {
+        id: 'consultar-lancamentos',
+        label: 'Consultar Lançamentos',
+        pageId: 'registered-launches',
+      },
+      {
         id: 'cadastro-contas-pagar',
         label: 'Cadastro de Contas a Pagar',
         pageId: 'accounts-payable',

@@ -3,6 +3,7 @@ import AccountsPayablePage from './AccountsPayablePage.jsx';
 import AccountsPayableReportPage from './AccountsPayableReportPage.jsx';
 import AccountsPayableSettlementPage from './AccountsPayableSettlementPage.jsx';
 import OneOffPaymentPage from './OneOffPaymentPage.jsx';
+import RegisteredLaunchesPage from './RegisteredLaunchesPage.jsx';
 import CardGrid from '../components/CardGrid.jsx';
 import DashboardSection from '../components/DashboardSection.jsx';
 import Navbar from '../components/Navbar.jsx';
@@ -64,6 +65,10 @@ export default function DashboardPage() {
   function renderContent() {
     if (activeTabId === 'one-off-payment') {
       return <OneOffPaymentPage />;
+    }
+
+    if (activeTabId === 'registered-launches') {
+      return <RegisteredLaunchesPage />;
     }
 
     if (activeTabId === 'accounts-payable') {

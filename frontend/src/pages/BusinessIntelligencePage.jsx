@@ -1,6 +1,32 @@
 import { useMemo, useState } from 'react';
 import { LineChart, PieChart } from '../components/FinanceCharts.jsx';
-import { currency, financeLaunches, todayValue } from '../data/financeData.js';
+import {
+  accountingTypeNames,
+  chargeTypes,
+  currency,
+  documentNumbers,
+  financeLaunches,
+  normalizeText,
+  paymentBanks,
+  supplierNames,
+  todayValue,
+} from '../data/financeData.js';
+
+const searchTypes = [
+  { label: 'Data Emissao', field: 'issueDate' },
+  { label: 'Data de Vencimento', field: 'dueDate' },
+  { label: 'Data de Cadastro', field: 'createdDate' },
+  { label: 'Data de Pagamento', field: 'paymentDate' },
+  { label: 'Data de Apropriacao', field: 'appropriationDate' },
+  { label: 'Data de Previsao de Pagamento', field: 'paymentForecastDate' },
+];
+
+const statusOptions = ['Aberto', 'Baixado'];
+const bankOptions = ['Sem banco', ...paymentBanks];
+
+function bankLabel(launch) {
+  return launch.paymentBank || 'Sem banco';
+}
 
 function groupByDate(launches, field) {
   const grouped = new Map();
@@ -52,6 +78,58 @@ function ChartButton({ title, subtitle, children, onClick }) {
   );
 }
 
+function MultiCheckField({ label, options, selected, onChange, placeholder }) {
+  const [query, setQuery] = useState('');
+  const allSelected = selected.length === options.length;
+  const visibleOptions = options.filter((option) => normalizeText(option).includes(normalizeText(query)));
+
+  function toggleAll() {
+    onChange(allSelected ? [] : options);
+  }
+
+  function toggleOption(option) {
+    if (selected.includes(option)) {
+      onChange(selected.filter((item) => item !== option));
+      return;
+    }
+
+    onChange([...selected, option]);
+  }
+
+  return (
+    <div className="field field--span-2 multi-check-field bi-filter-check-field">
+      <span>{label}</span>
+      <div className="multi-check-box">
+        <div className="multi-check-toolbar">
+          <input
+            type="search"
+            placeholder={placeholder}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <label>
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+            Todos
+          </label>
+        </div>
+        <div className="multi-check-list">
+          {visibleOptions.map((option) => (
+            <label className="multi-check-row" key={option}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() => toggleOption(option)}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opcao encontrada</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LaunchReport({ title, launches }) {
   const total = totalAmount(launches);
 
@@ -74,6 +152,8 @@ function LaunchReport({ title, launches }) {
               <th>Fornecedor</th>
               <th>Documento</th>
               <th>Tipo</th>
+              <th>Cobranca</th>
+              <th>Banco</th>
               <th>Vencimento</th>
               <th>Pagamento</th>
               <th>Valor</th>
@@ -88,6 +168,8 @@ function LaunchReport({ title, launches }) {
                 <td>{launch.supplier}</td>
                 <td>{launch.document}</td>
                 <td>{launch.type}</td>
+                <td>{launch.chargeType}</td>
+                <td>{bankLabel(launch)}</td>
                 <td>{launch.dueDate}</td>
                 <td>{launch.paymentDate || '-'}</td>
                 <td>{currency(launch.amount)}</td>
@@ -105,16 +187,51 @@ function LaunchReport({ title, launches }) {
 
 export default function BusinessIntelligencePage() {
   const today = todayValue();
-  const [report, setReport] = useState({ title: 'Lancamentos em aberto', launches: financeLaunches.filter((launch) => launch.status === 'Aberto') });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchType, setSearchType] = useState('dueDate');
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
+  const [selectedSuppliers, setSelectedSuppliers] = useState(supplierNames);
+  const [selectedStatuses, setSelectedStatuses] = useState(statusOptions);
+  const [selectedChargeTypes, setSelectedChargeTypes] = useState(chargeTypes);
+  const [selectedDocuments, setSelectedDocuments] = useState(documentNumbers);
+  const [selectedTypes, setSelectedTypes] = useState(accountingTypeNames);
+  const [selectedBanks, setSelectedBanks] = useState(bankOptions);
+  const [reportKey, setReportKey] = useState('open');
+
+  const filteredLaunches = useMemo(() => financeLaunches.filter((launch) => {
+    const dateValue = launch[searchType];
+    const startMatches = !periodStart || (dateValue && dateValue >= periodStart);
+    const endMatches = !periodEnd || (dateValue && dateValue <= periodEnd);
+    const supplierMatches = selectedSuppliers.includes(launch.supplier);
+    const statusMatches = selectedStatuses.includes(launch.status);
+    const chargeMatches = selectedChargeTypes.includes(launch.chargeType);
+    const documentMatches = selectedDocuments.includes(launch.document);
+    const typeMatches = selectedTypes.includes(launch.type);
+    const bankMatches = selectedBanks.includes(bankLabel(launch));
+
+    return startMatches && endMatches && supplierMatches && statusMatches && chargeMatches && documentMatches && typeMatches && bankMatches;
+  }), [
+    periodEnd,
+    periodStart,
+    searchType,
+    selectedBanks,
+    selectedChargeTypes,
+    selectedDocuments,
+    selectedStatuses,
+    selectedSuppliers,
+    selectedTypes,
+  ]);
 
   const data = useMemo(() => {
-    const open = financeLaunches.filter((launch) => launch.status === 'Aberto');
-    const paid = financeLaunches.filter((launch) => launch.status === 'Baixado');
+    const open = filteredLaunches.filter((launch) => launch.status === 'Aberto');
+    const paid = filteredLaunches.filter((launch) => launch.status === 'Baixado');
     const future = open.filter((launch) => launch.dueDate > today);
     const dueToday = open.filter((launch) => launch.dueDate === today);
     const overdue = open.filter((launch) => launch.dueDate < today);
 
     return {
+      all: filteredLaunches,
       open,
       paid,
       future,
@@ -127,7 +244,28 @@ export default function BusinessIntelligencePage() {
       paidPie: groupByType(paid),
       overduePie: groupByType(overdue),
     };
-  }, [today]);
+  }, [filteredLaunches, today]);
+
+  const reportMap = {
+    open: { title: 'Lancamentos em aberto', launches: data.open },
+    future: { title: 'Contas a pagar no futuro', launches: data.future },
+    paid: { title: 'Contas pagas', launches: data.paid },
+    dueToday: { title: 'Lancamentos a pagar hoje', launches: data.dueToday },
+    overdue: { title: 'Lancamentos vencidos', launches: data.overdue },
+  };
+  const selectedReport = reportMap[reportKey] || reportMap.open;
+
+  function clearFilters() {
+    setSearchType('dueDate');
+    setPeriodStart('');
+    setPeriodEnd('');
+    setSelectedSuppliers(supplierNames);
+    setSelectedStatuses(statusOptions);
+    setSelectedChargeTypes(chargeTypes);
+    setSelectedDocuments(documentNumbers);
+    setSelectedTypes(accountingTypeNames);
+    setSelectedBanks(bankOptions);
+  }
 
   return (
     <section className="business-intelligence-page">
@@ -138,19 +276,109 @@ export default function BusinessIntelligencePage() {
         </div>
       </header>
 
+      <section className={`bi-filter-panel ${filtersOpen ? 'bi-filter-panel--open' : ''}`}>
+        <button
+          type="button"
+          className="bi-filter-header"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen((current) => !current)}
+        >
+          <span>Filtros</span>
+          <strong>{filteredLaunches.length} titulo(s) considerados</strong>
+        </button>
+
+        {filtersOpen && (
+          <div className="bi-filter-body">
+            <div className="form-grid">
+              <label className="field">
+                <span>Tipo de data considerada</span>
+                <select value={searchType} onChange={(event) => setSearchType(event.target.value)}>
+                  {searchTypes.map((type) => (
+                    <option value={type.field} key={type.field}>{type.label}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="field">
+                <span>Periodo de</span>
+                <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} />
+              </label>
+
+              <label className="field">
+                <span>Ate</span>
+                <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} />
+              </label>
+
+              <div className="field registered-launches-actions">
+                <span>&nbsp;</span>
+                <button type="button" className="secondary-button" onClick={clearFilters}>Limpar filtros</button>
+              </div>
+
+              <MultiCheckField
+                label="Fornecedor"
+                options={supplierNames}
+                selected={selectedSuppliers}
+                onChange={setSelectedSuppliers}
+                placeholder="Pesquisar fornecedor"
+              />
+
+              <MultiCheckField
+                label="Situacao de Lancamento"
+                options={statusOptions}
+                selected={selectedStatuses}
+                onChange={setSelectedStatuses}
+                placeholder="Pesquisar situacao"
+              />
+
+              <MultiCheckField
+                label="Tipo de Cobranca"
+                options={chargeTypes}
+                selected={selectedChargeTypes}
+                onChange={setSelectedChargeTypes}
+                placeholder="Pesquisar tipo de cobranca"
+              />
+
+              <MultiCheckField
+                label="Selecionar Documento"
+                options={documentNumbers}
+                selected={selectedDocuments}
+                onChange={setSelectedDocuments}
+                placeholder="Pesquisar documento"
+              />
+
+              <MultiCheckField
+                label="Selecionar Tipo"
+                options={accountingTypeNames}
+                selected={selectedTypes}
+                onChange={setSelectedTypes}
+                placeholder="Pesquisar tipo contabil"
+              />
+
+              <MultiCheckField
+                label="Banco do Pagamento"
+                options={bankOptions}
+                selected={selectedBanks}
+                onChange={setSelectedBanks}
+                placeholder="Pesquisar banco"
+              />
+            </div>
+          </div>
+        )}
+      </section>
+
       <div className="bi-metrics-grid">
+        <MetricCard label="Lancamentos considerados" value={data.all.length} detail={currency(totalAmount(data.all))} />
         <MetricCard label="Lancamentos em aberto" value={data.open.length} detail={currency(totalAmount(data.open))} />
         <MetricCard label="Lancamentos baixados" value={data.paid.length} detail={currency(totalAmount(data.paid))} />
         <MetricCard label="Vencidos em aberto" value={data.overdue.length} detail={currency(totalAmount(data.overdue))} />
         <MetricCard label="Vencendo hoje" value={data.dueToday.length} detail={currency(totalAmount(data.dueToday))} />
-        <MetricCard label="Programaveis futuros" value={data.future.length} detail={currency(totalAmount(data.future))} />
       </div>
 
       <div className="bi-chart-grid">
         <ChartButton
           title="Contas a pagar no futuro"
           subtitle={currency(totalAmount(data.future))}
-          onClick={() => setReport({ title: 'Contas a pagar no futuro', launches: data.future })}
+          onClick={() => setReportKey('future')}
         >
           <LineChart data={data.futureLine} />
         </ChartButton>
@@ -158,7 +386,7 @@ export default function BusinessIntelligencePage() {
         <ChartButton
           title="Contas pagas"
           subtitle={currency(totalAmount(data.paid))}
-          onClick={() => setReport({ title: 'Contas pagas', launches: data.paid })}
+          onClick={() => setReportKey('paid')}
         >
           <LineChart data={data.paidLine} />
         </ChartButton>
@@ -166,7 +394,7 @@ export default function BusinessIntelligencePage() {
         <ChartButton
           title="A pagar hoje por tipo"
           subtitle={currency(totalAmount(data.dueToday))}
-          onClick={() => setReport({ title: 'Lancamentos a pagar hoje', launches: data.dueToday })}
+          onClick={() => setReportKey('dueToday')}
         >
           <PieChart data={data.dueTodayPie} />
         </ChartButton>
@@ -174,7 +402,7 @@ export default function BusinessIntelligencePage() {
         <ChartButton
           title="Futuros por tipo"
           subtitle={currency(totalAmount(data.future))}
-          onClick={() => setReport({ title: 'Lancamentos futuros', launches: data.future })}
+          onClick={() => setReportKey('future')}
         >
           <PieChart data={data.futurePie} />
         </ChartButton>
@@ -182,7 +410,7 @@ export default function BusinessIntelligencePage() {
         <ChartButton
           title="Baixados por tipo"
           subtitle={currency(totalAmount(data.paid))}
-          onClick={() => setReport({ title: 'Lancamentos baixados', launches: data.paid })}
+          onClick={() => setReportKey('paid')}
         >
           <PieChart data={data.paidPie} />
         </ChartButton>
@@ -190,13 +418,13 @@ export default function BusinessIntelligencePage() {
         <ChartButton
           title="Vencidos por tipo"
           subtitle={currency(totalAmount(data.overdue))}
-          onClick={() => setReport({ title: 'Lancamentos vencidos', launches: data.overdue })}
+          onClick={() => setReportKey('overdue')}
         >
           <PieChart data={data.overduePie} />
         </ChartButton>
       </div>
 
-      <LaunchReport title={report.title} launches={report.launches} />
+      <LaunchReport title={selectedReport.title} launches={selectedReport.launches} />
     </section>
   );
 }

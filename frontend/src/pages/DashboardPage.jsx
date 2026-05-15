@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import AccountsPayableSchedulePage from './AccountsPayableSchedulePage.jsx';
+import AccountsPayableDeletionPage from './AccountsPayableDeletionPage.jsx';
 import AccountsPayablePage from './AccountsPayablePage.jsx';
 import AccountsPayableReportPage from './AccountsPayableReportPage.jsx';
 import AccountsPayableSettlementPage from './AccountsPayableSettlementPage.jsx';
@@ -109,6 +110,10 @@ export default function DashboardPage() {
 
     if (activeTabId === 'accounts-payable-settlement') {
       return <AccountsPayableSettlementPage />;
+    }
+
+    if (activeTabId === 'accounts-payable-deletion') {
+      return <AccountsPayableDeletionPage onOpenLaunchDetails={openLaunchEditor} />;
     }
 
     if (activeTabId === 'accounts-payable-schedule') {

@@ -40,6 +40,11 @@ export const navigationItems = [
             pageId: 'accounts-payable',
           },
           {
+            id: 'exclusao-titulos-pagar',
+            label: 'Exclusao de Titulos a Pagar',
+            pageId: 'accounts-payable-deletion',
+          },
+          {
             id: 'relatorio-contas-pagar',
             label: 'Relatorio de Contas a Pagar',
             pageId: 'accounts-payable-report',

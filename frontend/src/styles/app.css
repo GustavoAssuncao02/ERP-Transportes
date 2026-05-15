@@ -1676,6 +1676,7 @@
 
 .business-intelligence-page,
 .accounts-payable-schedule-page,
+.accounts-payable-deletion-page,
 .settlement-reversal-page {
   max-width: 1280px;
 }
@@ -1685,6 +1686,66 @@
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.bi-filter-panel {
+  max-width: 1280px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.bi-filter-header {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 0;
+  background: #f8f8f8;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.bi-filter-header:hover,
+.bi-filter-header:focus-visible {
+  background: #eef5f4;
+  outline: none;
+}
+
+.bi-filter-header span {
+  color: #0070c0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.bi-filter-header strong {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bi-filter-body {
+  padding: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.bi-filter-check-field {
+  min-height: 196px;
+}
+
+.bi-filter-check-field .multi-check-box {
+  min-height: 164px;
+}
+
+.bi-filter-check-field .multi-check-list {
+  max-height: 122px;
 }
 
 .bi-metric {

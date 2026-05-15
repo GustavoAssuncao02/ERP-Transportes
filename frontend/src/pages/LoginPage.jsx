@@ -47,6 +47,7 @@ export default function LoginPage() {
             alt="Vexo ERP Logistico"
             onLoad={() => scheduleFreeze('logo', setLogoSource, vexoRevealFinalUrl, 3400)}
           />
+          <span className="login-logo-separator" aria-hidden="true" />
           <img
             className="login-wordmark-reveal"
             src={wordmarkSource}

@@ -16,16 +16,28 @@ export const navigationItems = [
     label: 'Financeiro',
     children: [
       {
-        id: 'cadastrar-titulo-pagar',
-        label: 'Cadastrar Título a pagar',
+        id: 'pagamento-avulso',
+        label: 'Pagamento Avulso',
+        pageId: 'one-off-payment',
       },
       {
-        id: 'relatorio-titulos-pagar',
-        label: 'Relatório de títulos a pagar',
+        id: 'cadastro-contas-pagar',
+        label: 'Cadastro de Contas a Pagar',
+        pageId: 'accounts-payable',
       },
       {
-        id: 'baixa-titulos-pagar',
-        label: 'Baixa de Títulos a pagar',
+        id: 'relatorio-contas-pagar',
+        label: 'Relatório de Contas a Pagar',
+        pageId: 'accounts-payable-report',
+      },
+      {
+        id: 'baixa-contas-pagar',
+        label: 'Baixa de Contas a Pagar',
+        pageId: 'accounts-payable-settlement',
+      },
+      {
+        id: 'business-intelligence',
+        label: 'Business Intelligence',
       },
     ],
   },
@@ -63,18 +75,6 @@ export const tabs = [
     label: 'Tela Principal',
     active: true,
     icon: 'home',
-  },
-  {
-    id: 'cancel-cte',
-    label: 'Cancelar CT-e',
-    active: false,
-    closable: true,
-  },
-  {
-    id: 'query-mdfe',
-    label: 'Consultar MDF-e',
-    active: false,
-    closable: true,
   },
 ];
 

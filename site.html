@@ -170,6 +170,56 @@
       opacity: 0.85;
     }
 
+    .nav-dropdown {
+      position: relative;
+      height: 52px;
+    }
+
+    .nav-trigger {
+      font-family: inherit;
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      top: 52px;
+      left: 0;
+      z-index: 20;
+      display: none;
+      min-width: 260px;
+      padding: 6px 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.16);
+    }
+
+    .nav-dropdown:hover .dropdown-menu,
+    .nav-dropdown:focus-within .dropdown-menu {
+      display: block;
+    }
+
+    .nav-dropdown.dropdown-closed .dropdown-menu {
+      display: none;
+    }
+
+    .dropdown-item {
+      width: 100%;
+      padding: 10px 14px;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .dropdown-item:hover,
+    .dropdown-item:focus {
+      background: #eef5f4;
+      color: var(--primary-dark);
+      outline: none;
+    }
+
     .nav-right {
       display: flex;
       align-items: center;
@@ -258,6 +308,14 @@
       background: #d8d8d8;
     }
 
+    .tab.dragging {
+      opacity: 0.55;
+    }
+
+    .tab.drag-over {
+      box-shadow: inset 0 -3px 0 var(--primary);
+    }
+
     .tab-icon {
       width: 14px;
       height: 14px;
@@ -271,10 +329,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 12px;
+      font-size: 0;
       color: var(--text-muted);
       cursor: pointer;
       transition: background 0.1s;
+    }
+
+    .tab-close::before {
+      content: "\00d7";
+      font-size: 12px;
     }
 
     .tab-close:hover {
@@ -301,6 +364,10 @@
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
+    }
+
+    .sidebar.sidebar-hidden {
+      display: none;
     }
 
     /* ── SECTION ── */
@@ -337,6 +404,8 @@
       border-radius: var(--card-radius);
       cursor: pointer;
       transition: box-shadow 0.15s, border-color 0.15s;
+      font: inherit;
+      text-align: left;
     }
 
     .card:hover {
@@ -350,6 +419,27 @@
 
     .card-short {
       height: 68px;
+    }
+
+    .quick-card {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 14px;
+    }
+
+    .quick-card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      line-height: 1.25;
+    }
+
+    .quick-card-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.3;
     }
 
     /* ── SIDEBAR LOGO ── */
@@ -382,6 +472,983 @@
       padding-top: 10px;
       width: 100%;
       text-align: center;
+    }
+
+    .app-page[hidden] {
+      display: none;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+      max-width: 1160px;
+    }
+
+    .page-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .page-kicker {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .finance-form {
+      max-width: 1160px;
+      padding: 22px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .app-page[data-page="accounts-payable"] .page-header,
+    .app-page[data-page="accounts-payable"] .finance-form {
+      max-width: none;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px 16px;
+    }
+
+    .field {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      gap: 6px;
+    }
+
+    .field[hidden] {
+      display: none;
+    }
+
+    .field.span-2 {
+      grid-column: span 2;
+    }
+
+    .field.span-4 {
+      grid-column: span 4;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 8px 10px;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      background: #fff;
+    }
+
+    .field textarea {
+      min-height: 78px;
+      resize: vertical;
+    }
+
+    .field input[readonly] {
+      background: #f5f5f5;
+      color: var(--text-muted);
+    }
+
+    .lookup-field {
+      display: flex;
+      gap: 6px;
+    }
+
+    .icon-button {
+      width: 36px;
+      height: 36px;
+      flex: 0 0 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #f8f8f8;
+      color: var(--primary);
+      cursor: pointer;
+    }
+
+    .icon-button:hover,
+    .icon-button:focus {
+      background: #eef5f4;
+      outline: none;
+    }
+
+    .icon-button svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .supplier-results {
+      position: absolute;
+      top: 63px;
+      left: 0;
+      right: 0;
+      z-index: 15;
+      display: none;
+      overflow: hidden;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+    }
+
+    .supplier-results.open {
+      display: block;
+    }
+
+    .supplier-row {
+      width: 100%;
+      padding: 9px 10px;
+      border: 0;
+      border-bottom: 1px solid #ececec;
+      background: #fff;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .supplier-row:last-child {
+      border-bottom: 0;
+    }
+
+    .supplier-row:hover,
+    .supplier-row:focus {
+      background: #eef5f4;
+      outline: none;
+    }
+
+    .lookup-modal[hidden] {
+      display: none;
+    }
+
+    .lookup-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 80;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .lookup-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(20, 31, 31, 0.35);
+    }
+
+    .lookup-modal-panel {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      width: min(760px, 100%);
+      max-height: min(680px, calc(100vh - 48px));
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: 0 18px 42px rgba(0,0,0,0.22);
+    }
+
+    .lookup-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      background: #f8f8f8;
+    }
+
+    .lookup-modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .modal-close-button {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #ffffff;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    .modal-close-button:hover,
+    .modal-close-button:focus {
+      background: #ededed;
+      color: var(--text);
+      outline: none;
+    }
+
+    .lookup-modal-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .lookup-mode {
+      display: inline-flex;
+      flex-shrink: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .lookup-mode[hidden] {
+      display: none;
+    }
+
+    .lookup-mode-button {
+      min-height: 34px;
+      padding: 0 14px;
+      border: 0;
+      border-right: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text-muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .lookup-mode-button:last-child {
+      border-right: 0;
+    }
+
+    .lookup-mode-button.active {
+      background: var(--primary);
+      color: #ffffff;
+    }
+
+    .lookup-search {
+      min-height: 36px;
+      min-width: 180px;
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .lookup-table-wrap {
+      overflow: auto;
+    }
+
+    .lookup-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .lookup-table th,
+    .lookup-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e5e5;
+      text-align: left;
+    }
+
+    .lookup-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #f7f7f7;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .lookup-table tbody tr {
+      cursor: pointer;
+    }
+
+    .lookup-table tbody tr:hover {
+      background: #eef5f4;
+    }
+
+    .lookup-empty {
+      padding: 18px;
+      color: var(--text-muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .installments-panel {
+      margin-top: 20px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+
+    .installments-title {
+      margin-bottom: 10px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .installments-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .installments-table th,
+    .installments-table td {
+      padding: 8px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+
+    .installments-table th {
+      background: #f7f7f7;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .installments-table input {
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 8px;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .form-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .primary-button,
+    .secondary-button {
+      min-height: 36px;
+      padding: 0 16px;
+      border-radius: 4px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .primary-button {
+      border: 1px solid var(--primary-dark);
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .primary-button:hover,
+    .primary-button:focus {
+      background: var(--primary-dark);
+      outline: none;
+    }
+
+    .secondary-button {
+      border: 1px solid var(--border);
+      background: #f8f8f8;
+      color: var(--text);
+    }
+
+    .secondary-button:hover,
+    .secondary-button:focus {
+      background: #ededed;
+      outline: none;
+    }
+
+    .status-line {
+      margin-left: auto;
+      color: var(--primary-dark);
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .settlement-form {
+      max-width: 1280px;
+    }
+
+    .settlement-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .selection-panel {
+      min-width: 0;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #ffffff;
+    }
+
+    .selection-panel-header {
+      display: flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: #f8f8f8;
+    }
+
+    .selection-panel-header h2 {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .settlement-search {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 12px;
+      padding: 0 10px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .settlement-search input {
+      min-height: 34px;
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      outline: 0;
+      font: inherit;
+      font-size: 13px;
+    }
+
+    .launch-list {
+      display: flex;
+      max-height: 318px;
+      flex-direction: column;
+      overflow: auto;
+    }
+
+    .launch-row,
+    .selected-launch-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(220px, 0.8fr) 36px;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 12px;
+      border-bottom: 1px solid #eeeeee;
+    }
+
+    .launch-row.selected {
+      background: #f4f4f4;
+      color: var(--text-muted);
+    }
+
+    .launch-row > div,
+    .selected-launch-row > div {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .launch-row strong,
+    .selected-launch-row strong {
+      font-size: 13px;
+    }
+
+    .launch-row span,
+    .selected-launch-row span {
+      min-width: 0;
+      overflow: hidden;
+      color: var(--text-muted);
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .launch-row > div:nth-child(2) {
+      align-items: flex-end;
+    }
+
+    .selected-list-box {
+      min-height: 248px;
+      max-height: 318px;
+      overflow: auto;
+      background: #ffffff;
+    }
+
+    .selected-launch-row {
+      grid-template-columns: minmax(0, 1fr) auto 28px;
+    }
+
+    .settlement-value-stack {
+      display: flex;
+      min-width: 150px;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 3px;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .settlement-value-stack strong {
+      color: var(--primary-dark);
+      font-size: 12px;
+    }
+
+    .mini-remove-button {
+      display: inline-flex;
+      width: 28px;
+      height: 28px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #ffffff;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .mini-remove-button:hover,
+    .mini-remove-button:focus {
+      background: #ededed;
+      color: var(--text);
+      outline: none;
+    }
+
+    .empty-list {
+      padding: 18px;
+      color: var(--text-muted);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .settlement-details-grid {
+      margin-top: 18px;
+    }
+
+    .settlement-mode-panel,
+    .settlement-selected-panel {
+      margin-top: 18px;
+    }
+
+    .batch-settlement-panel {
+      display: grid;
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .batch-top-grid,
+    .batch-filter-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px 16px;
+    }
+
+    .batch-filter-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .batch-filter-box {
+      border: 1px solid #9fb7d8;
+      background: #eaf3ff;
+    }
+
+    .batch-filter-line {
+      display: grid;
+      grid-template-columns: minmax(150px, auto) minmax(0, 1fr);
+      align-items: center;
+      gap: 8px;
+      padding: 6px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .batch-filter-line select {
+      min-height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: #ffffff;
+      font: inherit;
+      font-size: 12px;
+    }
+
+    .batch-filter-search {
+      padding: 0 6px 6px;
+    }
+
+    .batch-filter-search input {
+      width: 100%;
+      min-height: 30px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      background: #ffffff;
+      font: inherit;
+      font-size: 12px;
+      padding: 0 8px;
+    }
+
+    .batch-filter-search input:disabled {
+      background: #f3f3f3;
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    .batch-table-box {
+      height: 128px;
+      overflow: auto;
+      border-top: 1px solid #9fb7d8;
+      background: #ffffff;
+    }
+
+    .batch-table {
+      width: 100%;
+      min-width: 380px;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .batch-table th,
+    .batch-table td {
+      padding: 5px 6px;
+      border: 1px solid #cfd8e5;
+      text-align: left;
+    }
+
+    .batch-table th {
+      background: linear-gradient(#ffffff, #e8e8e8);
+      color: #000000;
+      font-weight: 700;
+    }
+
+    .batch-table input {
+      margin-right: 6px;
+    }
+
+    .batch-table .batch-empty-cell {
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+
+    .report-form {
+      max-width: 1280px;
+    }
+
+    .report-search-type {
+      margin-top: 18px;
+      overflow: hidden;
+      border: 1px solid #9fb7d8;
+      background: #ffffff;
+    }
+
+    .report-search-type h2 {
+      margin: 0;
+      padding: 6px 10px;
+      background: #d8e7fb;
+      color: #06464c;
+      font-size: 16px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .search-type-table {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-type-row {
+      display: grid;
+      grid-template-columns: 24px 42px 1fr;
+      min-height: 21px;
+      align-items: center;
+      padding: 0 8px;
+      border-top: 1px dotted #9a9a9a;
+      cursor: pointer;
+      font-family: "Courier New", monospace;
+      font-size: 12px;
+    }
+
+    .search-type-row:nth-child(even) {
+      background: #f7f7f7;
+    }
+
+    .search-type-row.active {
+      background: #eef5f4;
+    }
+
+    .report-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .report-filter-box {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #ffffff;
+    }
+
+    .report-filter-header {
+      display: flex;
+      min-height: 38px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      background: #f8f8f8;
+    }
+
+    .report-filter-header h2 {
+      margin: 0;
+      color: #0070c0;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .report-filter-header label {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .report-filter-search {
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      background: #ffffff;
+    }
+
+    .report-filter-search input {
+      width: 100%;
+      min-height: 32px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 8px;
+      color: var(--text);
+      font: inherit;
+      font-size: 12px;
+      background: #ffffff;
+    }
+
+    .report-check-list {
+      padding: 4px 0;
+    }
+
+    .report-check-list--scroll {
+      max-height: 176px;
+      overflow-y: auto;
+    }
+
+    .report-check-row {
+      display: flex;
+      min-height: 24px;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .report-check-row[hidden] {
+      display: none;
+    }
+
+    .report-check-row:nth-child(even) {
+      background: #f7f7f7;
+    }
+
+    .report-check-row:hover {
+      background: #eef5f4;
+    }
+
+    .report-check-row input {
+      width: 13px;
+      height: 13px;
+      accent-color: var(--primary);
+    }
+
+    .report-filter-empty {
+      padding: 12px 10px;
+      color: var(--text-muted);
+      font-size: 12px;
+      text-align: center;
+    }
+
+    .report-filter-empty[hidden] {
+      display: none;
+    }
+
+    .report-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .report-summary span {
+      padding: 5px 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #f8f8f8;
+    }
+
+    .report-generate-actions[hidden],
+    .report-generate-menu[hidden] {
+      display: none;
+    }
+
+    .report-split-button {
+      position: relative;
+      display: inline-flex;
+    }
+
+    .report-generate-main {
+      border-radius: 4px 0 0 4px;
+    }
+
+    .report-generate-toggle {
+      width: 34px;
+      padding: 0;
+      border-left-color: rgba(255,255,255,0.35);
+      border-radius: 0 4px 4px 0;
+    }
+
+    .report-generate-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      z-index: 30;
+      min-width: 150px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: #ffffff;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.14);
+    }
+
+    .report-generate-menu button {
+      width: 100%;
+      min-height: 34px;
+      padding: 0 12px;
+      border: 0;
+      background: #ffffff;
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      font-size: 13px;
+      text-align: left;
+    }
+
+    .report-generate-menu button:hover,
+    .report-generate-menu button:focus {
+      background: #eef5f4;
+      color: var(--primary-dark);
+      outline: none;
+    }
+
+    @media (max-width: 1100px) {
+      .cards-grid-5 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .sidebar {
+        display: none;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .navbar,
+      .nav-items,
+      .nav-right {
+        flex-wrap: wrap;
+        height: auto;
+      }
+
+      .nav-item,
+      .nav-info,
+      .nav-logout,
+      .nav-dropdown {
+        height: 44px;
+      }
+
+      .dropdown-menu {
+        top: 44px;
+      }
+
+      .content-area {
+        padding: 18px;
+      }
+
+      .cards-grid-5,
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field.span-2,
+      .field.span-4 {
+        grid-column: span 1;
+      }
+
+      .installments-table {
+        min-width: 560px;
+      }
+
+      .installments-panel {
+        overflow-x: auto;
+      }
+
+      .settlement-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .batch-top-grid,
+      .batch-filter-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .report-grid {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -416,9 +1483,18 @@
       <a class="nav-item" href="#">Operação
         <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
       </a>
-      <a class="nav-item" href="#">Financeiro
-        <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
-      </a>
+      <div class="nav-dropdown">
+        <button class="nav-item nav-trigger" type="button">Financeiro
+          <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item" type="button">Pagamento Avulso</button>
+          <button class="dropdown-item" type="button" data-open-tab="accounts-payable">Cadastro de Contas a Pagar</button>
+          <button class="dropdown-item" type="button" data-open-tab="accounts-payable-report">Relat&oacute;rio de Contas a Pagar</button>
+          <button class="dropdown-item" type="button" data-open-tab="accounts-payable-settlement">Baixa de Contas a Pagar</button>
+          <button class="dropdown-item" type="button">Business Intelligence</button>
+        </div>
+      </div>
       <a class="nav-item" href="#">Fiscal
         <svg viewBox="0 0 12 12" fill="currentColor"><path d="M6 8L1 3h10z"/></svg>
       </a>
@@ -460,32 +1536,28 @@
 
   <!-- TAB BAR -->
   <div class="tab-bar">
-    <div class="tab active">
+    <div class="tab active" data-tab="home" draggable="true">
       <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M3 12L12 3l9 9"/><path d="M9 21V12h6v9"/>
       </svg>
       Tela Principal
-    </div>
-    <div class="tab inactive">
-      Cancelar CT-e
-      <span class="tab-close">✕</span>
-    </div>
-    <div class="tab inactive">
-      Consultar MDF-e
-      <span class="tab-close">✕</span>
     </div>
   </div>
 
   <!-- MAIN -->
   <div class="main-layout">
     <div class="content-area">
+      <section class="app-page active" data-page="home">
 
       <!-- Acesso Rápido -->
       <div class="section">
         <div class="section-title">Acesso rápido</div>
         <div class="section-divider"></div>
         <div class="cards-grid cards-grid-5">
-          <div class="card card-tall"></div>
+          <button class="card card-tall quick-card" type="button" data-open-tab="accounts-payable">
+            <span class="quick-card-title">Cadastro de Contas a Pagar</span>
+            <span class="quick-card-subtitle">Financeiro</span>
+          </button>
           <div class="card card-tall"></div>
           <div class="card card-tall"></div>
           <div class="card card-tall"></div>
@@ -513,10 +1585,511 @@
         </div>
       </div>
 
+      </section>
+
+      <section class="app-page" data-page="accounts-payable" hidden>
+        <div class="page-header">
+          <div>
+            <div class="page-title">Cadastro de Contas a Pagar</div>
+            <div class="page-kicker">Lan&ccedil;amentos de contas a pagar</div>
+          </div>
+        </div>
+
+        <form class="finance-form" id="accountsPayableForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="companyUnit">Unidade</label>
+              <div class="lookup-field">
+                <input id="companyUnit" name="companyUnit" type="text" placeholder="C&oacute;digo da empresa" value="1" required>
+                <button class="icon-button" id="companyUnitSearch" type="button" aria-label="Pesquisar unidade" title="Pesquisar unidade" tabindex="-1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="launchNumber">N&uacute;mero do Lan&ccedil;amento</label>
+              <input id="launchNumber" name="launchNumber" type="text" placeholder="Gerado ao criar" readonly tabindex="-1">
+            </div>
+
+            <div class="field span-2">
+              <label for="supplier">Fornecedor</label>
+              <div class="lookup-field">
+                <input id="supplier" name="supplier" type="text" placeholder="C&oacute;digo ou nome" autocomplete="off" required>
+                <button class="icon-button" id="supplierSearch" type="button" aria-label="Pesquisar fornecedor" title="Pesquisar fornecedor" tabindex="-1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="accountingType">Tipo</label>
+              <div class="lookup-field">
+                <input id="accountingType" name="accountingType" type="text" placeholder="Classifica&ccedil;&atilde;o cont&aacute;bil" required>
+                <button class="icon-button" id="accountingTypeSearch" type="button" aria-label="Pesquisar tipo" title="Pesquisar tipo" tabindex="-1">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="chargeType">Tipo de cobran&ccedil;a</label>
+              <select id="chargeType" name="chargeType" required>
+                <option value="">Selecione</option>
+                <option>Boleto</option>
+                <option>Pix</option>
+                <option>Transfer&ecirc;ncia</option>
+                <option>Cart&atilde;o</option>
+                <option>Dinheiro</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="documentNumber">Documento</label>
+              <input id="documentNumber" name="documentNumber" type="text" placeholder="N&uacute;mero do documento" required>
+            </div>
+
+            <div class="field">
+              <label for="issueDate">Data de emiss&atilde;o</label>
+              <input id="issueDate" name="issueDate" type="date" required>
+            </div>
+
+            <div class="field">
+              <label for="dueDate">Data de vencimento</label>
+              <input id="dueDate" name="dueDate" type="date" required>
+            </div>
+
+            <div class="field">
+              <label for="launchValue">Valor do lan&ccedil;amento</label>
+              <input id="launchValue" name="launchValue" type="number" min="0" step="0.01" placeholder="0,00" required>
+            </div>
+
+            <div class="field">
+              <label for="installmentQuantity">Quantidade de parcelas</label>
+              <input id="installmentQuantity" name="installmentQuantity" type="number" min="1" step="1" value="1" required>
+            </div>
+
+            <div class="field">
+              <label for="installmentInterval">Intervalo entre parcelas</label>
+              <input id="installmentInterval" name="installmentInterval" type="number" min="0" step="1" value="30" required>
+            </div>
+
+            <div class="field">
+              <label for="installmentValue">Valor da parcela</label>
+              <input id="installmentValue" name="installmentValue" type="number" min="0" step="0.01" placeholder="0,00">
+            </div>
+
+            <div class="field span-4">
+              <label for="notes">Observa&ccedil;&atilde;o</label>
+              <textarea id="notes" name="notes" placeholder="Observa&ccedil;&atilde;o do lan&ccedil;amento"></textarea>
+            </div>
+          </div>
+
+          <div class="installments-panel">
+            <div class="installments-title">Parcelas</div>
+            <table class="installments-table">
+              <thead>
+                <tr>
+                  <th>N&uacute;mero</th>
+                  <th>Vencimento</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody id="installmentsBody"></tbody>
+            </table>
+          </div>
+
+          <div class="form-actions">
+            <button class="primary-button" type="submit">Criar lan&ccedil;amento</button>
+            <button class="secondary-button" type="reset">Limpar</button>
+            <span class="status-line" id="payableStatus" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="app-page" data-page="accounts-payable-report" hidden>
+        <div class="page-header">
+          <div>
+            <div class="page-title">Relat&oacute;rio de Contas a Pagar</div>
+            <div class="page-kicker">Filtros para consulta de lan&ccedil;amentos a pagar</div>
+          </div>
+        </div>
+
+        <form class="finance-form report-form" id="accountsPayableReportForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="reportBusinessUnit">Unidade</label>
+              <select id="reportBusinessUnit">
+                <option value="">Todas</option>
+                <option value="001">001 - JTD Transportes LTDA</option>
+                <option value="002">002 - JTD Log&iacute;stica Nordeste</option>
+                <option value="003">003 - JTD Armaz&eacute;ns Salvador</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="reportPeriodStart">Per&iacute;odo inicial</label>
+              <input id="reportPeriodStart" type="date">
+            </div>
+
+            <div class="field">
+              <label for="reportPeriodEnd">Per&iacute;odo final</label>
+              <input id="reportPeriodEnd" type="date">
+            </div>
+
+            <div class="field">
+              <label for="reportStatus">Situa&ccedil;&atilde;o do Lan&ccedil;amento</label>
+              <select id="reportStatus">
+                <option>Aberto</option>
+                <option>Baixado</option>
+                <option selected>Ambos</option>
+              </select>
+            </div>
+          </div>
+
+          <section class="report-search-type">
+            <h2>Selecionar Tipo Pesquisa</h2>
+            <div class="search-type-table" id="reportSearchTypes">
+              <label class="search-type-row active">
+                <input type="radio" name="reportSearchType" value="A" checked>
+                <span>A</span>
+                <strong>Data Emiss&atilde;o</strong>
+              </label>
+              <label class="search-type-row">
+                <input type="radio" name="reportSearchType" value="B">
+                <span>B</span>
+                <strong>Data de Vencimento</strong>
+              </label>
+              <label class="search-type-row">
+                <input type="radio" name="reportSearchType" value="C">
+                <span>C</span>
+                <strong>Data de Cadastro</strong>
+              </label>
+              <label class="search-type-row">
+                <input type="radio" name="reportSearchType" value="D">
+                <span>D</span>
+                <strong>Data de Pagamento</strong>
+              </label>
+              <label class="search-type-row">
+                <input type="radio" name="reportSearchType" value="E">
+                <span>E</span>
+                <strong>Data de Apropria&ccedil;&atilde;o</strong>
+              </label>
+              <label class="search-type-row">
+                <input type="radio" name="reportSearchType" value="F">
+                <span>F</span>
+                <strong>Data de Previs&atilde;o de Pagamento</strong>
+              </label>
+            </div>
+          </section>
+
+          <div class="report-grid">
+            <section class="report-filter-box" data-report-filter>
+              <div class="report-filter-header">
+                <h2>Tipo de Cobran&ccedil;a</h2>
+                <label><input type="checkbox" data-select-all checked> Todos</label>
+              </div>
+              <div class="report-check-list report-check-list--scroll">
+                <label class="report-check-row"><input type="checkbox" data-option checked> Carteira</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Banco</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Cheque Pr&eacute;-Datado</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Avista</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Sal&aacute;rio</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Empr&eacute;stimo</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Financiamento</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Imposto</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Boleto</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Pix</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Transfer&ecirc;ncia</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Cart&atilde;o</label>
+              </div>
+            </section>
+
+            <section class="report-filter-box" data-report-filter>
+              <div class="report-filter-header">
+                <h2>Selecionar Tipo</h2>
+                <label><input type="checkbox" data-select-all checked> Todos</label>
+              </div>
+              <div class="report-check-list">
+                <label class="report-check-row"><input type="checkbox" data-option checked> Servi&ccedil;os de transporte</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Combust&iacute;vel</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Manuten&ccedil;&atilde;o</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Ped&aacute;gio</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Administrativo</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Seguro</label>
+              </div>
+            </section>
+
+            <section class="report-filter-box" data-report-filter>
+              <div class="report-filter-header">
+                <h2>Selecionar Fornecedor</h2>
+                <label><input type="checkbox" data-select-all checked> Todos</label>
+              </div>
+              <div class="report-filter-search">
+                <input type="search" data-report-search placeholder="Pesquisar fornecedor" aria-label="Pesquisar fornecedor">
+              </div>
+              <div class="report-check-list report-check-list--scroll">
+                <label class="report-check-row"><input type="checkbox" data-option checked> Auto Posto Central LTDA</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Oficina S&atilde;o Jorge</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Seguradora Atl&acirc;ntica</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> Transportes Parceiros SA</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> JTD Log&iacute;stica Nordeste</label>
+                <div class="report-filter-empty" hidden>Nenhum fornecedor encontrado</div>
+              </div>
+            </section>
+
+            <section class="report-filter-box" data-report-filter>
+              <div class="report-filter-header">
+                <h2>Selecionar Documento</h2>
+                <label><input type="checkbox" data-select-all checked> Todos</label>
+              </div>
+              <div class="report-filter-search">
+                <input type="search" data-report-search placeholder="Pesquisar documento" aria-label="Pesquisar documento">
+              </div>
+              <div class="report-check-list report-check-list--scroll">
+                <label class="report-check-row"><input type="checkbox" data-option checked> NF-8742</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> OS-1180</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> AP-4409</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> FAT-3321</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> DUP-0091</label>
+                <label class="report-check-row"><input type="checkbox" data-option checked> REC-5530</label>
+                <div class="report-filter-empty" hidden>Nenhum documento encontrado</div>
+              </div>
+            </section>
+          </div>
+
+          <div class="report-summary" id="reportSummary"></div>
+
+          <div class="form-actions">
+            <button class="primary-button" type="submit">Aplicar filtros</button>
+            <button class="secondary-button" id="reportSelectAll" type="button">Selecionar todos</button>
+            <div class="report-generate-actions" id="reportGenerateActions" hidden>
+              <div class="report-split-button">
+                <button class="primary-button report-generate-main" id="reportGeneratePdf" type="button">Gerar Relat&oacute;rio</button>
+                <button class="primary-button report-generate-toggle" id="reportGenerateMenuToggle" type="button" aria-label="Op&ccedil;&otilde;es de gera&ccedil;&atilde;o" aria-expanded="false">&#9662;</button>
+                <div class="report-generate-menu" id="reportGenerateMenu" hidden>
+                  <button id="reportGenerateExcel" type="button">Gerar em Excel</button>
+                </div>
+              </div>
+            </div>
+            <span class="status-line" id="reportStatusLine" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+
+      <div class="lookup-modal" id="lookupModal" role="dialog" aria-modal="true" aria-labelledby="lookupModalTitle" hidden>
+        <div class="lookup-modal-backdrop" id="lookupModalBackdrop"></div>
+        <div class="lookup-modal-panel">
+          <div class="lookup-modal-header">
+            <div class="lookup-modal-title" id="lookupModalTitle">Pesquisar</div>
+            <button class="modal-close-button" id="lookupModalClose" type="button" aria-label="Fechar">&times;</button>
+          </div>
+
+          <div class="lookup-modal-toolbar">
+            <div class="lookup-mode" id="lookupMode" hidden>
+              <button class="lookup-mode-button active" type="button" data-search-mode="name">Nome</button>
+              <button class="lookup-mode-button" type="button" data-search-mode="cnpj">CNPJ</button>
+            </div>
+            <input class="lookup-search" id="lookupSearch" type="search" placeholder="Pesquisar">
+          </div>
+
+          <div class="lookup-table-wrap">
+            <table class="lookup-table">
+              <thead id="lookupTableHead"></thead>
+              <tbody id="lookupTableBody"></tbody>
+            </table>
+            <div class="lookup-empty" id="lookupEmpty" hidden>Nenhuma op&ccedil;&atilde;o encontrada</div>
+          </div>
+        </div>
+      </div>
+
+      <section class="app-page" data-page="accounts-payable-settlement" hidden>
+        <div class="page-header">
+          <div>
+            <div class="page-title">Baixa de Contas a Pagar</div>
+            <div class="page-kicker">Sele&ccedil;&atilde;o e baixa de lan&ccedil;amentos a pagar</div>
+          </div>
+        </div>
+
+        <form class="finance-form settlement-form" id="accountsPayableSettlementForm">
+          <div class="form-grid">
+            <div class="field">
+              <label for="settlementBusinessUnit">Unidade de Neg&oacute;cio</label>
+              <select id="settlementBusinessUnit">
+                <option value="">Todas</option>
+                <option value="001">001 - JTD Transportes LTDA</option>
+                <option value="002">002 - JTD Log&iacute;stica Nordeste</option>
+                <option value="003">003 - JTD Armaz&eacute;ns Salvador</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="settlementMode">Tipo de baixa</label>
+              <select id="settlementMode">
+                <option value="individual">Individual</option>
+                <option value="lote">Lote</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="settlementDate">Data de baixa</label>
+              <input id="settlementDate" type="date" required>
+            </div>
+          </div>
+
+          <section class="selection-panel settlement-mode-panel" id="individualSettlementPanel">
+            <div class="selection-panel-header">
+              <h2>Lan&ccedil;amentos programados para vencer na data de baixa</h2>
+            </div>
+
+            <div class="settlement-search">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="7"></circle>
+                <line x1="16.5" y1="16.5" x2="21" y2="21"></line>
+              </svg>
+              <input id="settlementSearch" type="search" placeholder="Pesquisar lan&ccedil;amento, fornecedor ou documento">
+            </div>
+
+            <div class="launch-list" id="availableLaunchesList"></div>
+          </section>
+
+          <section class="batch-settlement-panel" id="batchSettlementPanel" hidden>
+            <div class="batch-top-grid">
+              <div class="field">
+                <label for="batchPeriodStart">Per&iacute;odo inicial</label>
+                <input id="batchPeriodStart" type="date">
+              </div>
+
+              <div class="field">
+                <label for="batchPeriodEnd">Per&iacute;odo final</label>
+                <input id="batchPeriodEnd" type="date">
+              </div>
+
+              <div class="field">
+                <label for="batchMinAmount">Valor m&iacute;nimo</label>
+                <input id="batchMinAmount" type="number" min="0" step="0.01" placeholder="0,00">
+              </div>
+
+              <div class="field">
+                <label for="batchMaxAmount">Valor m&aacute;ximo</label>
+                <input id="batchMaxAmount" type="number" min="0" step="0.01" placeholder="0,00">
+              </div>
+            </div>
+
+            <div class="batch-filter-grid">
+              <div class="batch-filter-box">
+                <div class="batch-filter-line">
+                  <label for="batchSupplierMode">Selecionar Fornecedor</label>
+                  <select id="batchSupplierMode">
+                    <option value="todos">Todos</option>
+                    <option value="selecionar">Selecionar</option>
+                  </select>
+                </div>
+                <div class="batch-filter-search">
+                  <input id="batchSupplierSearch" type="search" placeholder="Pesquisar fornecedor" aria-label="Pesquisar fornecedor para marcar">
+                </div>
+                <div class="batch-table-box">
+                  <table class="batch-table">
+                    <thead>
+                      <tr>
+                        <th>Fornecedor</th>
+                        <th>Raz&atilde;o Social</th>
+                      </tr>
+                    </thead>
+                    <tbody id="batchSuppliersBody"></tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div class="batch-filter-box">
+                <div class="batch-filter-line">
+                  <label for="batchTypeMode">Selecionar Tipo de Lan&ccedil;amento</label>
+                  <select id="batchTypeMode">
+                    <option value="todos">Todos</option>
+                    <option value="selecionar">Selecionar</option>
+                  </select>
+                </div>
+                <div class="batch-filter-search">
+                  <input id="batchTypeSearch" type="search" placeholder="Pesquisar tipo de lan&ccedil;amento" aria-label="Pesquisar tipo de lan&ccedil;amento para marcar">
+                </div>
+                <div class="batch-table-box">
+                  <table class="batch-table">
+                    <thead>
+                      <tr>
+                        <th>Tipo</th>
+                        <th>Nome</th>
+                      </tr>
+                    </thead>
+                    <tbody id="batchTypesBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="selection-panel selected-panel settlement-selected-panel">
+            <div class="selection-panel-header">
+              <h2>Selecionados para baixa</h2>
+              <strong id="selectedTotal">R$ 0,00</strong>
+            </div>
+
+            <div class="selected-list-box" id="selectedLaunchesList"></div>
+          </section>
+
+          <div class="form-grid settlement-details-grid">
+
+            <div class="field">
+              <label for="settlementPaymentMethod">Forma de pagamento</label>
+              <select id="settlementPaymentMethod" required>
+                <option value="">Selecione</option>
+                <option>Boleto</option>
+                <option>Pix</option>
+                <option>Transfer&ecirc;ncia</option>
+                <option>Cart&atilde;o</option>
+                <option>Dinheiro</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="settlementPaymentType">Tipo de pagamento</label>
+              <select id="settlementPaymentType">
+                <option>Total</option>
+                <option>Desconto</option>
+                <option>Juros</option>
+              </select>
+            </div>
+
+            <div class="field" id="settlementAdjustmentField" hidden>
+              <label for="settlementAdjustmentValue" id="settlementAdjustmentLabel">Valor do desconto</label>
+              <input id="settlementAdjustmentValue" type="number" min="0.01" step="0.01" placeholder="0,00">
+            </div>
+
+            <div class="field span-4">
+              <label for="settlementNote">Observa&ccedil;&atilde;o de baixa</label>
+              <textarea id="settlementNote" placeholder="Observa&ccedil;&atilde;o da baixa"></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button class="primary-button" type="submit">Baixar lan&ccedil;amentos</button>
+            <button class="secondary-button" id="clearSettlementSelection" type="button">Limpar sele&ccedil;&atilde;o</button>
+            <span class="status-line" id="settlementStatus" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
     </div>
 
     <!-- SIDEBAR -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebarBrand">
       <div class="sidebar-inner">
         <!-- Hexagon SVG logo -->
         <svg class="hexagon-logo" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
@@ -545,6 +2118,1239 @@
       </div>
     </div>
   </div>
+
+  <script>
+    const tabBar = document.querySelector('.tab-bar');
+    const pages = document.querySelectorAll('.app-page');
+    const sidebarBrand = document.getElementById('sidebarBrand');
+    const tabTitles = {
+      'accounts-payable': 'Cadastro de Contas a Pagar',
+      'accounts-payable-report': 'Relat\u00f3rio de Contas a Pagar',
+      'accounts-payable-settlement': 'Baixa de Contas a Pagar'
+    };
+
+    function getPage(pageId) {
+      return document.querySelector(`.app-page[data-page="${pageId}"]`);
+    }
+
+    function getTab(pageId) {
+      return tabBar.querySelector(`.tab[data-tab="${pageId}"]`);
+    }
+
+    function createTab(pageId) {
+      const tab = document.createElement('div');
+      tab.className = 'tab inactive';
+      tab.dataset.tab = pageId;
+      tab.draggable = true;
+      tab.innerHTML = `${tabTitles[pageId]} <span class="tab-close">&times;</span>`;
+      tabBar.appendChild(tab);
+      return tab;
+    }
+
+    function activateTab(pageId) {
+      const page = getPage(pageId);
+      if (!page) return;
+
+      tabBar.querySelectorAll('.tab').forEach((tab) => {
+        const isActive = tab.dataset.tab === pageId;
+        tab.classList.toggle('active', isActive);
+        tab.classList.toggle('inactive', !isActive);
+      });
+
+      pages.forEach((item) => {
+        const isActive = item.dataset.page === pageId;
+        item.hidden = !isActive;
+        item.classList.toggle('active', isActive);
+      });
+
+      sidebarBrand.classList.toggle('sidebar-hidden', pageId !== 'home');
+    }
+
+    function openTab(pageId) {
+      if (!getPage(pageId)) return;
+      if (!getTab(pageId)) createTab(pageId);
+      activateTab(pageId);
+    }
+
+    document.querySelectorAll('[data-open-tab]').forEach((trigger) => {
+      trigger.addEventListener('click', () => {
+        openTab(trigger.dataset.openTab);
+        const dropdown = trigger.closest('.nav-dropdown');
+
+        if (dropdown) {
+          dropdown.classList.add('dropdown-closed');
+          trigger.blur();
+        }
+      });
+    });
+
+    document.querySelectorAll('.nav-dropdown').forEach((dropdown) => {
+      dropdown.addEventListener('mouseenter', () => dropdown.classList.remove('dropdown-closed'));
+      dropdown.addEventListener('focusin', () => dropdown.classList.remove('dropdown-closed'));
+    });
+
+    tabBar.addEventListener('click', (event) => {
+      const closeButton = event.target.closest('.tab-close');
+      const tab = event.target.closest('.tab');
+      if (!tab) return;
+
+      if (closeButton) {
+        const wasActive = tab.classList.contains('active');
+        tab.remove();
+        if (wasActive) activateTab('home');
+        return;
+      }
+
+      activateTab(tab.dataset.tab);
+    });
+
+    tabBar.addEventListener('dragstart', (event) => {
+      const tab = event.target.closest('.tab');
+      if (!tab) return;
+
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', tab.dataset.tab);
+      tab.classList.add('dragging');
+    });
+
+    tabBar.addEventListener('dragover', (event) => {
+      const tab = event.target.closest('.tab');
+      if (!tab) return;
+
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+
+      tabBar.querySelectorAll('.tab.drag-over').forEach((item) => {
+        if (item !== tab) item.classList.remove('drag-over');
+      });
+
+      if (!tab.classList.contains('dragging')) {
+        tab.classList.add('drag-over');
+      }
+    });
+
+    tabBar.addEventListener('dragleave', (event) => {
+      const tab = event.target.closest('.tab');
+      if (tab && !tab.contains(event.relatedTarget)) {
+        tab.classList.remove('drag-over');
+      }
+    });
+
+    tabBar.addEventListener('drop', (event) => {
+      const targetTab = event.target.closest('.tab');
+      const draggedTabId = event.dataTransfer.getData('text/plain');
+      const draggedTab = getTab(draggedTabId);
+
+      if (!targetTab || !draggedTab || targetTab === draggedTab) return;
+
+      event.preventDefault();
+
+      const rect = targetTab.getBoundingClientRect();
+      const shouldInsertAfter = event.clientX > rect.left + rect.width / 2;
+
+      if (shouldInsertAfter) {
+        targetTab.after(draggedTab);
+      } else {
+        targetTab.before(draggedTab);
+      }
+    });
+
+    tabBar.addEventListener('dragend', () => {
+      tabBar.querySelectorAll('.tab.dragging, .tab.drag-over').forEach((tab) => {
+        tab.classList.remove('dragging', 'drag-over');
+      });
+    });
+
+    const form = document.getElementById('accountsPayableForm');
+    const companyUnitInput = document.getElementById('companyUnit');
+    const companyUnitSearch = document.getElementById('companyUnitSearch');
+    const supplierInput = document.getElementById('supplier');
+    const supplierSearch = document.getElementById('supplierSearch');
+    const accountingTypeInput = document.getElementById('accountingType');
+    const accountingTypeSearch = document.getElementById('accountingTypeSearch');
+    const lookupModal = document.getElementById('lookupModal');
+    const lookupModalTitle = document.getElementById('lookupModalTitle');
+    const lookupModalBackdrop = document.getElementById('lookupModalBackdrop');
+    const lookupModalClose = document.getElementById('lookupModalClose');
+    const lookupMode = document.getElementById('lookupMode');
+    const lookupSearch = document.getElementById('lookupSearch');
+    const lookupTableHead = document.getElementById('lookupTableHead');
+    const lookupTableBody = document.getElementById('lookupTableBody');
+    const lookupEmpty = document.getElementById('lookupEmpty');
+    const launchNumber = document.getElementById('launchNumber');
+    const issueDate = document.getElementById('issueDate');
+    const dueDate = document.getElementById('dueDate');
+    const launchValue = document.getElementById('launchValue');
+    const installmentQuantity = document.getElementById('installmentQuantity');
+    const installmentInterval = document.getElementById('installmentInterval');
+    const installmentValue = document.getElementById('installmentValue');
+    const installmentsBody = document.getElementById('installmentsBody');
+    const payableStatus = document.getElementById('payableStatus');
+    const settlementForm = document.getElementById('accountsPayableSettlementForm');
+    const settlementBusinessUnit = document.getElementById('settlementBusinessUnit');
+    const settlementMode = document.getElementById('settlementMode');
+    const individualSettlementPanel = document.getElementById('individualSettlementPanel');
+    const batchSettlementPanel = document.getElementById('batchSettlementPanel');
+    const settlementSearch = document.getElementById('settlementSearch');
+    const batchPeriodStart = document.getElementById('batchPeriodStart');
+    const batchPeriodEnd = document.getElementById('batchPeriodEnd');
+    const batchMinAmount = document.getElementById('batchMinAmount');
+    const batchMaxAmount = document.getElementById('batchMaxAmount');
+    const batchSupplierMode = document.getElementById('batchSupplierMode');
+    const batchTypeMode = document.getElementById('batchTypeMode');
+    const batchSupplierSearch = document.getElementById('batchSupplierSearch');
+    const batchTypeSearch = document.getElementById('batchTypeSearch');
+    const batchSuppliersBody = document.getElementById('batchSuppliersBody');
+    const batchTypesBody = document.getElementById('batchTypesBody');
+    const availableLaunchesList = document.getElementById('availableLaunchesList');
+    const selectedLaunchesList = document.getElementById('selectedLaunchesList');
+    const selectedTotal = document.getElementById('selectedTotal');
+    const settlementDate = document.getElementById('settlementDate');
+    const settlementPaymentMethod = document.getElementById('settlementPaymentMethod');
+    const settlementPaymentType = document.getElementById('settlementPaymentType');
+    const settlementAdjustmentField = document.getElementById('settlementAdjustmentField');
+    const settlementAdjustmentLabel = document.getElementById('settlementAdjustmentLabel');
+    const settlementAdjustmentValue = document.getElementById('settlementAdjustmentValue');
+    const clearSettlementSelection = document.getElementById('clearSettlementSelection');
+    const settlementStatus = document.getElementById('settlementStatus');
+    const reportForm = document.getElementById('accountsPayableReportForm');
+    const reportBusinessUnit = document.getElementById('reportBusinessUnit');
+    const reportPeriodStart = document.getElementById('reportPeriodStart');
+    const reportPeriodEnd = document.getElementById('reportPeriodEnd');
+    const reportStatus = document.getElementById('reportStatus');
+    const reportSearchTypes = document.getElementById('reportSearchTypes');
+    const reportSummary = document.getElementById('reportSummary');
+    const reportSelectAll = document.getElementById('reportSelectAll');
+    const reportStatusLine = document.getElementById('reportStatusLine');
+    const reportGenerateActions = document.getElementById('reportGenerateActions');
+    const reportGeneratePdf = document.getElementById('reportGeneratePdf');
+    const reportGenerateMenuToggle = document.getElementById('reportGenerateMenuToggle');
+    const reportGenerateMenu = document.getElementById('reportGenerateMenu');
+    const reportGenerateExcel = document.getElementById('reportGenerateExcel');
+    const settlementLaunches = [
+      { id: 'CAP-202605-00001', unit: '001', supplier: 'Auto Posto Central LTDA', type: 'Combust\u00edvel', document: 'NF-8742', dueDate: previousDateInputValue(), amount: 1350.25, paymentMethod: 'Boleto' },
+      { id: 'CAP-202605-00002', unit: '001', supplier: 'Oficina S\u00e3o Jorge', type: 'Manuten\u00e7\u00e3o', document: 'OS-1180', dueDate: previousDateInputValue(), amount: 780.0, paymentMethod: 'Pix' },
+      { id: 'CAP-202605-00003', unit: '002', supplier: 'Seguradora Atl\u00e2ntica', type: 'Seguro', document: 'AP-4409', dueDate: '2026-06-02', amount: 2420.5, paymentMethod: 'Boleto' },
+      { id: 'CAP-202605-00004', unit: '003', supplier: 'Transportes Parceiros SA', type: 'Frete terceiro', document: 'FAT-3321', dueDate: '2026-06-10', amount: 990.9, paymentMethod: 'Transfer\u00eancia' },
+      { id: 'CAP-202605-00005', unit: '001', supplier: 'Banco Continental', type: 'Financiamento', document: 'FIN-1207', dueDate: '2026-05-28', amount: 3180.0, paymentMethod: 'Boleto' },
+      { id: 'CAP-202605-00006', unit: '002', supplier: 'Cart\u00f3rio Modelo', type: 'Administrativo', document: 'DOC-2201', dueDate: '2026-05-29', amount: 240.0, paymentMethod: 'Pix' }
+    ];
+    let selectedSettlementIds = [];
+    let selectedBatchSuppliers = [];
+    let selectedBatchTypes = [];
+    const lookupData = {
+      unit: {
+        title: 'Pesquisar unidade',
+        columns: ['C\u00f3digo', 'Unidade'],
+        items: [
+          { code: '001', name: 'JTD Transportes LTDA' },
+          { code: '002', name: 'JTD Log\u00edstica Nordeste' },
+          { code: '003', name: 'JTD Armaz\u00e9ns Salvador' }
+        ],
+        format: (item) => `${item.code} - ${item.name}`,
+        target: companyUnitInput
+      },
+      supplier: {
+        title: 'Pesquisar fornecedor',
+        columns: ['C\u00f3digo', 'Nome', 'CNPJ'],
+        items: [
+          { code: '1001', name: 'Auto Posto Central LTDA', cnpj: '12.345.678/0001-90' },
+          { code: '2042', name: 'Oficina S\u00e3o Jorge', cnpj: '23.456.789/0001-10' },
+          { code: '3110', name: 'Seguradora Atl\u00e2ntica', cnpj: '34.567.890/0001-22' },
+          { code: '4208', name: 'Transportes Parceiros SA', cnpj: '45.678.901/0001-33' }
+        ],
+        format: (item) => `${item.code} - ${item.name} - ${item.cnpj}`,
+        target: supplierInput
+      },
+      accountingType: {
+        title: 'Pesquisar tipo',
+        columns: ['C\u00f3digo', 'Classifica\u00e7\u00e3o cont\u00e1bil'],
+        items: [
+          { code: '01', name: 'Servi\u00e7os de transporte' },
+          { code: '02', name: 'Combust\u00edvel' },
+          { code: '03', name: 'Manuten\u00e7\u00e3o' },
+          { code: '04', name: 'Ped\u00e1gio' },
+          { code: '05', name: 'Administrativo' }
+        ],
+        format: (item) => `${item.code} - ${item.name}`,
+        target: accountingTypeInput
+      }
+    };
+    let currentLookupType = null;
+    let supplierSearchMode = 'name';
+
+    function toDateInputValue(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function previousDateInputValue() {
+      const date = new Date();
+      date.setDate(date.getDate() - 1);
+      return toDateInputValue(date);
+    }
+
+    function addDays(dateValue, days) {
+      if (!dateValue) return '';
+      const [year, month, day] = dateValue.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      date.setDate(date.getDate() + days);
+      return toDateInputValue(date);
+    }
+
+    function numberValue(input) {
+      return Number.parseFloat(String(input.value).replace(',', '.')) || 0;
+    }
+
+    function integerValue(input, fallback) {
+      const value = Number.parseInt(input.value, 10);
+      return Number.isFinite(value) && value > 0 ? value : fallback;
+    }
+
+    function splitAmount(total, count) {
+      const totalCents = Math.round(total * 100);
+      const baseCents = Math.floor(totalCents / count);
+      const remainder = totalCents - baseCents * count;
+
+      return Array.from({ length: count }, (_, index) => {
+        const cents = baseCents + (index < remainder ? 1 : 0);
+        return cents / 100;
+      });
+    }
+
+    function renderInstallments(values) {
+      const count = integerValue(installmentQuantity, 1);
+      const interval = Math.max(Number.parseInt(installmentInterval.value, 10) || 0, 0);
+      const amounts = values || splitAmount(numberValue(launchValue), count);
+
+      installmentsBody.innerHTML = amounts.map((amount, index) => {
+        const dateValue = addDays(dueDate.value, interval * index);
+        return `
+          <tr>
+            <td><input class="installment-number" type="number" min="1" step="1" value="${index + 1}"></td>
+            <td><input class="installment-date" type="date" value="${dateValue}"></td>
+            <td><input class="installment-value-row" type="number" min="0" step="0.01" value="${amount.toFixed(2)}"></td>
+          </tr>
+        `;
+      }).join('');
+
+      const average = count ? numberValue(launchValue) / count : 0;
+      installmentValue.value = average ? average.toFixed(2) : '';
+    }
+
+    function recalculateFromLaunch() {
+      renderInstallments();
+      payableStatus.textContent = '';
+    }
+
+    function recalculateFromInstallmentValue() {
+      const count = integerValue(installmentQuantity, 1);
+      const value = numberValue(installmentValue);
+      launchValue.value = value ? (value * count).toFixed(2) : '';
+      renderInstallments(Array.from({ length: count }, () => value));
+      payableStatus.textContent = '';
+    }
+
+    function recalculateFromRows() {
+      const values = Array.from(installmentsBody.querySelectorAll('.installment-value-row'))
+        .map((input) => numberValue(input));
+      const total = values.reduce((sum, value) => sum + value, 0);
+
+      launchValue.value = total ? total.toFixed(2) : '';
+      installmentValue.value = values.length && total ? (total / values.length).toFixed(2) : '';
+      payableStatus.textContent = '';
+    }
+
+    function nextLaunchNumber() {
+      const now = new Date();
+      const key = 'accountsPayableSequence';
+      let sequence = 1;
+
+      try {
+        sequence = Number.parseInt(localStorage.getItem(key) || '0', 10) + 1;
+        localStorage.setItem(key, String(sequence));
+      } catch (error) {
+        sequence = now.getTime() % 100000;
+      }
+
+      return `CAP-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(sequence).padStart(5, '0')}`;
+    }
+
+    function formatCurrency(value) {
+      return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    function getLookupCells(type, item) {
+      if (type === 'supplier') {
+        return [item.code, item.name, item.cnpj];
+      }
+
+      return [item.code, item.name];
+    }
+
+    function filteredLookupItems() {
+      const config = lookupData[currentLookupType];
+      const query = lookupSearch.value.trim().toLowerCase();
+
+      if (!config || !query) {
+        return config ? config.items : [];
+      }
+
+      return config.items.filter((item) => {
+        if (currentLookupType === 'supplier' && supplierSearchMode === 'cnpj') {
+          return item.cnpj.toLowerCase().includes(query);
+        }
+
+        return `${item.code} ${item.name}`.toLowerCase().includes(query);
+      });
+    }
+
+    function renderLookupTable() {
+      const config = lookupData[currentLookupType];
+      const items = filteredLookupItems();
+
+      lookupTableHead.innerHTML = `<tr>${config.columns.map((column) => `<th>${column}</th>`).join('')}</tr>`;
+      lookupTableBody.innerHTML = items.map((item, index) => `
+        <tr data-index="${index}">
+          ${getLookupCells(currentLookupType, item).map((cell) => `<td>${cell}</td>`).join('')}
+        </tr>
+      `).join('');
+      lookupEmpty.hidden = items.length > 0;
+    }
+
+    function openLookup(type) {
+      currentLookupType = type;
+      supplierSearchMode = 'name';
+      lookupModalTitle.textContent = lookupData[type].title;
+      lookupSearch.value = '';
+      lookupSearch.placeholder = 'Pesquisar';
+      lookupMode.hidden = type !== 'supplier';
+      lookupMode.querySelectorAll('.lookup-mode-button').forEach((button) => {
+        button.classList.toggle('active', button.dataset.searchMode === supplierSearchMode);
+      });
+      renderLookupTable();
+      lookupModal.hidden = false;
+      lookupSearch.focus();
+    }
+
+    function closeLookup() {
+      lookupModal.hidden = true;
+      currentLookupType = null;
+      lookupSearch.value = '';
+    }
+
+    companyUnitSearch.addEventListener('click', () => openLookup('unit'));
+    supplierSearch.addEventListener('click', () => openLookup('supplier'));
+    accountingTypeSearch.addEventListener('click', () => openLookup('accountingType'));
+
+    lookupSearch.addEventListener('input', renderLookupTable);
+
+    lookupMode.addEventListener('click', (event) => {
+      const button = event.target.closest('.lookup-mode-button');
+      if (!button) return;
+
+      supplierSearchMode = button.dataset.searchMode;
+      lookupSearch.placeholder = supplierSearchMode === 'cnpj' ? 'Pesquisar por CNPJ' : 'Pesquisar por nome';
+      lookupMode.querySelectorAll('.lookup-mode-button').forEach((item) => {
+        item.classList.toggle('active', item === button);
+      });
+      renderLookupTable();
+      lookupSearch.focus();
+    });
+
+    lookupTableBody.addEventListener('click', (event) => {
+      const row = event.target.closest('tr');
+      if (!row || !currentLookupType) return;
+
+      const selected = filteredLookupItems()[Number(row.dataset.index)];
+      const config = lookupData[currentLookupType];
+      config.target.value = config.format(selected);
+      closeLookup();
+    });
+
+    lookupModalClose.addEventListener('click', closeLookup);
+    lookupModalBackdrop.addEventListener('click', closeLookup);
+
+    function isFocusableElement(element) {
+      if (!element || element.disabled) return false;
+      if (element.getAttribute('tabindex') === '-1') return false;
+      if (element.getAttribute('aria-hidden') === 'true') return false;
+
+      const style = window.getComputedStyle(element);
+      return style.display !== 'none' && style.visibility !== 'hidden' && element.getClientRects().length > 0;
+    }
+
+    function focusSiblingField(currentElement, direction) {
+      const focusableElements = [...document.querySelectorAll([
+        'a[href]',
+        'button',
+        'input:not([type="hidden"])',
+        'select',
+        'textarea',
+        '[tabindex]:not([tabindex="-1"])'
+      ].join(','))].filter(isFocusableElement);
+      const currentIndex = focusableElements.indexOf(currentElement);
+      const nextElement = focusableElements[currentIndex + direction];
+
+      if (nextElement) {
+        nextElement.focus();
+      } else {
+        currentElement.blur();
+      }
+    }
+
+    function handleDateTabNavigation(event) {
+      const activeElement = document.activeElement;
+      if (event.key !== 'Tab' || activeElement?.type !== 'date') return;
+
+      event.preventDefault();
+      focusSiblingField(activeElement, event.shiftKey ? -1 : 1);
+    }
+
+    document.addEventListener('keydown', handleDateTabNavigation, true);
+
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !lookupModal.hidden) {
+        closeLookup();
+      }
+
+      if (event.key === 'Escape' && !reportGenerateMenu.hidden) {
+        closeReportGenerateMenu();
+      }
+    });
+
+    function updateReportFilterState(filterBox) {
+      const options = [...filterBox.querySelectorAll('[data-option]')];
+      const selectAll = filterBox.querySelector('[data-select-all]');
+      selectAll.checked = options.every((option) => option.checked);
+    }
+
+    function updateReportSummary() {
+      const counts = [...document.querySelectorAll('[data-report-filter]')].map((filterBox) => (
+        filterBox.querySelectorAll('[data-option]:checked').length
+      ));
+
+      reportSummary.innerHTML = `
+        <span>${counts[0]} cobran\u00e7a(s)</span>
+        <span>${counts[1]} tipo(s)</span>
+        <span>${counts[2]} fornecedor(es)</span>
+        <span>${counts[3]} documento(s)</span>
+      `;
+    }
+
+    function filterReportOptions(filterBox) {
+      const search = filterBox.querySelector('[data-report-search]');
+      if (!search) return;
+
+      const query = normalizeFilterText(search.value.trim());
+      const rows = [...filterBox.querySelectorAll('.report-check-row')];
+      const empty = filterBox.querySelector('.report-filter-empty');
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        const isVisible = normalizeFilterText(row.textContent).includes(query);
+        row.hidden = !isVisible;
+        if (isVisible) visibleCount += 1;
+      });
+
+      if (empty) {
+        empty.hidden = visibleCount > 0;
+      }
+    }
+
+    function closeReportGenerateMenu() {
+      reportGenerateMenu.hidden = true;
+      reportGenerateMenuToggle.setAttribute('aria-expanded', 'false');
+    }
+
+    function hideReportGenerateActions() {
+      reportGenerateActions.hidden = true;
+      closeReportGenerateMenu();
+    }
+
+    function reportFilterValues(index) {
+      const filterBox = document.querySelectorAll('[data-report-filter]')[index];
+      if (!filterBox) return [];
+
+      return [...filterBox.querySelectorAll('[data-option]:checked')].map((option) => (
+        option.parentElement.textContent.trim().replace(/\s+/g, ' ')
+      ));
+    }
+
+    function reportSearchTypeLabel() {
+      const checked = reportSearchTypes.querySelector('input:checked');
+      const row = checked ? checked.closest('.search-type-row') : null;
+      const code = row ? row.querySelector('span').textContent.trim() : '';
+      const label = row ? row.querySelector('strong').textContent.trim() : '';
+
+      return code && label ? `${code} - ${label}` : label;
+    }
+
+    function filteredReportLaunches() {
+      const chargeTypes = reportFilterValues(0);
+      const types = reportFilterValues(1);
+      const suppliers = reportFilterValues(2);
+      const documents = reportFilterValues(3);
+
+      return settlementLaunches.filter((launch) => {
+        const unitMatches = !reportBusinessUnit.value || launch.unit === reportBusinessUnit.value;
+        const startMatches = !reportPeriodStart.value || launch.dueDate >= reportPeriodStart.value;
+        const endMatches = !reportPeriodEnd.value || launch.dueDate <= reportPeriodEnd.value;
+        const chargeMatches = chargeTypes.length === 0 || chargeTypes.includes(launch.paymentMethod);
+        const typeMatches = types.length === 0 || types.includes(launch.type);
+        const supplierMatches = suppliers.length === 0 || suppliers.includes(launch.supplier);
+        const documentMatches = documents.length === 0 || documents.includes(launch.document);
+
+        return unitMatches && startMatches && endMatches && chargeMatches && typeMatches && supplierMatches && documentMatches;
+      });
+    }
+
+    function reportFilename(extension) {
+      const today = toDateInputValue(new Date());
+      return `relatorio-contas-a-pagar-${today}.${extension}`;
+    }
+
+    function htmlEscape(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function downloadBlob(content, filename, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+
+    function reportMetadata() {
+      return [
+        ['Unidade', reportBusinessUnit.value || 'Todas'],
+        ['Periodo inicial', reportPeriodStart.value || 'Todos'],
+        ['Periodo final', reportPeriodEnd.value || 'Todos'],
+        ['Situacao', reportStatus.value],
+        ['Tipo pesquisa', reportSearchTypeLabel()]
+      ];
+    }
+
+    function generateReportExcel() {
+      const rows = filteredReportLaunches();
+      const total = rows.reduce((sum, launch) => sum + launch.amount, 0);
+      const metadataRows = reportMetadata().map(([label, value]) => `
+        <tr><th>${htmlEscape(label)}</th><td>${htmlEscape(value)}</td></tr>
+      `).join('');
+      const tableRows = rows.map((launch) => `
+        <tr>
+          <td>${htmlEscape(launch.id)}</td>
+          <td>${htmlEscape(launch.unit)}</td>
+          <td>${htmlEscape(launch.supplier)}</td>
+          <td>${htmlEscape(launch.type)}</td>
+          <td>${htmlEscape(launch.document)}</td>
+          <td>${htmlEscape(launch.dueDate)}</td>
+          <td>${htmlEscape(launch.paymentMethod)}</td>
+          <td>${launch.amount.toFixed(2)}</td>
+        </tr>
+      `).join('');
+      const html = `
+        <html>
+          <head><meta charset="UTF-8"></head>
+          <body>
+            <h1>Relatorio de Contas a Pagar</h1>
+            <table border="1">${metadataRows}</table>
+            <br>
+            <table border="1">
+              <thead>
+                <tr>
+                  <th>Lancamento</th>
+                  <th>Unidade</th>
+                  <th>Fornecedor</th>
+                  <th>Tipo</th>
+                  <th>Documento</th>
+                  <th>Vencimento</th>
+                  <th>Pagamento</th>
+                  <th>Valor</th>
+                </tr>
+              </thead>
+              <tbody>${tableRows}</tbody>
+              <tfoot><tr><th colspan="7">Total</th><th>${total.toFixed(2)}</th></tr></tfoot>
+            </table>
+          </body>
+        </html>
+      `;
+
+      downloadBlob(html, reportFilename('xls'), 'application/vnd.ms-excel;charset=utf-8');
+      reportStatusLine.textContent = 'Relat\u00f3rio em Excel gerado';
+      closeReportGenerateMenu();
+    }
+
+    function pdfText(value) {
+      return String(value)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^\x20-\x7E]/g, ' ')
+        .replace(/[\\()]/g, '\\$&');
+    }
+
+    function fitPdfText(value, length) {
+      const text = String(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7E]/g, ' ');
+      if (text.length <= length) return text.padEnd(length, ' ');
+      return `${text.slice(0, Math.max(0, length - 1))}~`;
+    }
+
+    function reportPdfLines(rows) {
+      const total = rows.reduce((sum, launch) => sum + launch.amount, 0);
+      const lines = [
+        'Relatorio de Contas a Pagar',
+        `Gerado em ${toDateInputValue(new Date())}`,
+        ''
+      ];
+
+      reportMetadata().forEach(([label, value]) => {
+        lines.push(`${label}: ${value}`);
+      });
+
+      lines.push('');
+      lines.push('Lancamento          Unid Fornecedor                 Documento Tipo              Vencimento Pagamento       Valor');
+      lines.push('---------------------------------------------------------------------------------------------------------------');
+
+      if (!rows.length) {
+        lines.push('Nenhum lancamento encontrado para os filtros aplicados.');
+      }
+
+      rows.forEach((launch) => {
+        lines.push([
+          fitPdfText(launch.id, 18),
+          fitPdfText(launch.unit, 4),
+          fitPdfText(launch.supplier, 26),
+          fitPdfText(launch.document, 9),
+          fitPdfText(launch.type, 17),
+          fitPdfText(launch.dueDate, 10),
+          fitPdfText(launch.paymentMethod, 13),
+          fitPdfText(formatCurrency(launch.amount), 14)
+        ].join(' '));
+      });
+
+      lines.push('---------------------------------------------------------------------------------------------------------------');
+      lines.push(`Total: ${formatCurrency(total)}`);
+      return lines;
+    }
+
+    function createPdfContent(lines) {
+      const pageWidth = 842;
+      const pageHeight = 595;
+      const linesPerPage = 41;
+      const objects = [];
+      const pageRefs = [];
+      let objectNumber = 3;
+
+      objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+
+      for (let index = 0; index < lines.length; index += linesPerPage) {
+        const pageLines = lines.slice(index, index + linesPerPage);
+        const stream = [
+          'BT',
+          '/F1 10 Tf',
+          '18 562 Td',
+          ...pageLines.map((line, lineIndex) => `${lineIndex ? '0 -13 Td ' : ''}(${pdfText(line)}) Tj`),
+          'ET'
+        ].join('\n');
+        const contentObject = objectNumber++;
+        const pageObject = objectNumber++;
+
+        objects[contentObject] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+        objects[pageObject] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> >> >> /Contents ${contentObject} 0 R >>`;
+        pageRefs.push(`${pageObject} 0 R`);
+      }
+
+      objects[2] = `<< /Type /Pages /Kids [${pageRefs.join(' ')}] /Count ${pageRefs.length} >>`;
+
+      let pdf = '%PDF-1.4\n';
+      const offsets = [0];
+
+      for (let index = 1; index < objects.length; index += 1) {
+        offsets[index] = pdf.length;
+        pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
+      }
+
+      const xrefOffset = pdf.length;
+      pdf += `xref\n0 ${objects.length}\n`;
+      pdf += '0000000000 65535 f \n';
+
+      for (let index = 1; index < objects.length; index += 1) {
+        pdf += `${String(offsets[index]).padStart(10, '0')} 00000 n \n`;
+      }
+
+      pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+      return pdf;
+    }
+
+    function generateReportPdf() {
+      const rows = filteredReportLaunches();
+      const pdf = createPdfContent(reportPdfLines(rows));
+      downloadBlob(pdf, reportFilename('pdf'), 'application/pdf');
+      reportStatusLine.textContent = 'Relat\u00f3rio em PDF gerado';
+      closeReportGenerateMenu();
+    }
+
+    document.querySelectorAll('[data-report-filter]').forEach((filterBox) => {
+      const selectAll = filterBox.querySelector('[data-select-all]');
+      const options = [...filterBox.querySelectorAll('[data-option]')];
+      const search = filterBox.querySelector('[data-report-search]');
+
+      selectAll.addEventListener('change', () => {
+        options.forEach((option) => {
+          option.checked = selectAll.checked;
+        });
+        updateReportSummary();
+        hideReportGenerateActions();
+        reportStatusLine.textContent = '';
+      });
+
+      options.forEach((option) => {
+        option.addEventListener('change', () => {
+          updateReportFilterState(filterBox);
+          updateReportSummary();
+          hideReportGenerateActions();
+          reportStatusLine.textContent = '';
+        });
+      });
+
+      if (search) {
+        search.addEventListener('input', () => {
+          filterReportOptions(filterBox);
+        });
+      }
+    });
+
+    reportSearchTypes.addEventListener('change', () => {
+      reportSearchTypes.querySelectorAll('.search-type-row').forEach((row) => {
+        row.classList.toggle('active', row.querySelector('input').checked);
+      });
+      hideReportGenerateActions();
+    });
+
+    reportSelectAll.addEventListener('click', () => {
+      document.querySelectorAll('[data-report-filter]').forEach((filterBox) => {
+        filterBox.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+          checkbox.checked = true;
+        });
+      });
+      updateReportSummary();
+      hideReportGenerateActions();
+      reportStatusLine.textContent = '';
+    });
+
+    reportForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      reportStatusLine.textContent = 'Filtros aplicados para o relat\u00f3rio de contas a pagar';
+      reportGenerateActions.hidden = false;
+      closeReportGenerateMenu();
+    });
+
+    [reportBusinessUnit, reportPeriodStart, reportPeriodEnd, reportStatus].forEach((input) => {
+      input.addEventListener('input', () => {
+        hideReportGenerateActions();
+        reportStatusLine.textContent = '';
+      });
+      input.addEventListener('change', () => {
+        hideReportGenerateActions();
+        reportStatusLine.textContent = '';
+      });
+    });
+
+    reportGeneratePdf.addEventListener('click', generateReportPdf);
+
+    reportGenerateMenuToggle.addEventListener('click', (event) => {
+      event.stopPropagation();
+      const willOpen = reportGenerateMenu.hidden;
+      reportGenerateMenu.hidden = !willOpen;
+      reportGenerateMenuToggle.setAttribute('aria-expanded', String(willOpen));
+    });
+
+    reportGenerateExcel.addEventListener('click', generateReportExcel);
+
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('.report-split-button')) {
+        closeReportGenerateMenu();
+      }
+    });
+
+    function settlementNumberValue(input) {
+      return Number.parseFloat(String(input.value).replace(',', '.'));
+    }
+
+    function settlementAdjustmentNumber() {
+      return Number.parseFloat(String(settlementAdjustmentValue.value).replace(',', '.')) || 0;
+    }
+
+    function settlementNetAmount(launch, totalAmount, adjustmentValue) {
+      if (settlementPaymentType.value === 'Total' || !adjustmentValue || !totalAmount) return launch.amount;
+
+      const proportionalAdjustment = adjustmentValue * (launch.amount / totalAmount);
+      const netAmount = settlementPaymentType.value === 'Desconto'
+        ? launch.amount - proportionalAdjustment
+        : launch.amount + proportionalAdjustment;
+
+      return Math.max(netAmount, 0);
+    }
+
+    function normalizeFilterText(value) {
+      return String(value)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+    }
+
+    function filteredIndividualSettlementLaunches() {
+      const query = settlementSearch.value.trim().toLowerCase();
+
+      return settlementLaunches.filter((launch) => {
+        const unitMatches = !settlementBusinessUnit.value || launch.unit === settlementBusinessUnit.value;
+        const dateMatches = launch.dueDate === settlementDate.value;
+        const searchMatches = `${launch.id} ${launch.supplier} ${launch.document}`.toLowerCase().includes(query);
+
+        return unitMatches && dateMatches && searchMatches;
+      });
+    }
+
+    function filteredBatchSettlementLaunches() {
+      const minAmount = settlementNumberValue(batchMinAmount);
+      const maxAmount = settlementNumberValue(batchMaxAmount);
+
+      return settlementLaunches.filter((launch) => {
+        const unitMatches = !settlementBusinessUnit.value || launch.unit === settlementBusinessUnit.value;
+        const startMatches = !batchPeriodStart.value || launch.dueDate >= batchPeriodStart.value;
+        const endMatches = !batchPeriodEnd.value || launch.dueDate <= batchPeriodEnd.value;
+        const supplierMatches = batchSupplierMode.value === 'todos' || selectedBatchSuppliers.includes(launch.supplier);
+        const typeMatches = batchTypeMode.value === 'todos' || selectedBatchTypes.includes(launch.type);
+        const minMatches = Number.isNaN(minAmount) || launch.amount >= minAmount;
+        const maxMatches = Number.isNaN(maxAmount) || launch.amount <= maxAmount;
+
+        return unitMatches && startMatches && endMatches && supplierMatches && typeMatches && minMatches && maxMatches;
+      });
+    }
+
+    function selectedSettlementLaunches() {
+      if (settlementMode.value === 'lote') return filteredBatchSettlementLaunches();
+      return settlementLaunches.filter((launch) => selectedSettlementIds.includes(launch.id));
+    }
+
+    function renderBatchFilterTables() {
+      const suppliers = [...new Set(settlementLaunches.map((launch) => launch.supplier))];
+      const types = [...new Set(settlementLaunches.map((launch) => launch.type))];
+      const supplierDisabled = batchSupplierMode.value === 'todos';
+      const typeDisabled = batchTypeMode.value === 'todos';
+      const supplierQuery = normalizeFilterText(batchSupplierSearch.value.trim());
+      const typeQuery = normalizeFilterText(batchTypeSearch.value.trim());
+      const visibleSuppliers = suppliers.filter((supplier, index) => {
+        return normalizeFilterText(`${index + 1} ${supplier}`).includes(supplierQuery);
+      });
+      const visibleTypes = types.filter((type, index) => {
+        return normalizeFilterText(`${index + 1} ${type}`).includes(typeQuery);
+      });
+
+      batchSupplierSearch.disabled = supplierDisabled;
+      batchTypeSearch.disabled = typeDisabled;
+
+      batchSuppliersBody.innerHTML = visibleSuppliers.length ? visibleSuppliers.map((supplier) => {
+        const index = suppliers.indexOf(supplier);
+
+        return `
+        <tr>
+          <td>
+            <label>
+              <input type="checkbox" data-batch-supplier="${supplier}" ${supplierDisabled || selectedBatchSuppliers.includes(supplier) ? 'checked' : ''} ${supplierDisabled ? 'disabled' : ''}>
+              ${String(index + 1).padStart(3, '0')}
+            </label>
+          </td>
+          <td>${supplier}</td>
+        </tr>
+      `;
+      }).join('') : '<tr><td class="batch-empty-cell" colspan="2">Nenhum fornecedor encontrado</td></tr>';
+
+      batchTypesBody.innerHTML = visibleTypes.length ? visibleTypes.map((type) => {
+        const index = types.indexOf(type);
+
+        return `
+        <tr>
+          <td>
+            <label>
+              <input type="checkbox" data-batch-type="${type}" ${typeDisabled || selectedBatchTypes.includes(type) ? 'checked' : ''} ${typeDisabled ? 'disabled' : ''}>
+              ${String(index + 1).padStart(2, '0')}
+            </label>
+          </td>
+          <td>${type}</td>
+        </tr>
+      `;
+      }).join('') : '<tr><td class="batch-empty-cell" colspan="2">Nenhum tipo encontrado</td></tr>';
+    }
+
+    function updateSettlementPaymentMethod() {
+      const methods = [...new Set(selectedSettlementLaunches().map((launch) => launch.paymentMethod))];
+      const emptyOption = settlementPaymentMethod.querySelector('option[value=""]');
+
+      if (methods.length === 1) {
+        settlementPaymentMethod.value = methods[0];
+        emptyOption.textContent = 'Selecione';
+      } else {
+        settlementPaymentMethod.value = '';
+        emptyOption.textContent = methods.length > 1 ? 'Pendente de sele\u00e7\u00e3o' : 'Selecione';
+      }
+    }
+
+    function updateSettlementAdjustmentField() {
+      const needsAdjustment = settlementPaymentType.value === 'Desconto' || settlementPaymentType.value === 'Juros';
+      settlementAdjustmentField.hidden = !needsAdjustment;
+      settlementAdjustmentValue.required = needsAdjustment;
+
+      if (needsAdjustment) {
+        settlementAdjustmentLabel.textContent = settlementPaymentType.value === 'Desconto' ? 'Valor do desconto' : 'Valor dos juros';
+      } else {
+        settlementAdjustmentValue.value = '';
+      }
+    }
+
+    function renderSettlementLists() {
+      const isBatch = settlementMode.value === 'lote';
+      const filtered = filteredIndividualSettlementLaunches();
+      const selected = selectedSettlementLaunches();
+      const selectedAmount = selected.reduce((total, launch) => total + launch.amount, 0);
+      const adjustmentValue = settlementAdjustmentNumber();
+      const shouldShowNetAmount = settlementPaymentType.value !== 'Total' && adjustmentValue > 0;
+      const netSettlementTotal = settlementPaymentType.value === 'Desconto'
+        ? Math.max(selectedAmount - adjustmentValue, 0)
+        : selectedAmount + adjustmentValue;
+
+      individualSettlementPanel.hidden = isBatch;
+      batchSettlementPanel.hidden = !isBatch;
+      clearSettlementSelection.hidden = isBatch;
+      renderBatchFilterTables();
+
+      if (!isBatch) {
+        availableLaunchesList.innerHTML = filtered.length ? filtered.map((launch) => {
+          const isSelected = selectedSettlementIds.includes(launch.id);
+          return `
+            <div class="launch-row ${isSelected ? 'selected' : ''}">
+              <div>
+                <strong>${launch.id}</strong>
+                <span>${launch.supplier} &middot; ${launch.document} &middot; ${launch.type}</span>
+              </div>
+              <div>
+                <span>${launch.dueDate}</span>
+                <span>${formatCurrency(launch.amount)}</span>
+                <span>${launch.paymentMethod}</span>
+              </div>
+              <button class="icon-button" type="button" data-add-launch="${launch.id}" aria-label="Selecionar lan\u00e7amento" title="Selecionar lan\u00e7amento" ${isSelected ? 'disabled' : ''}>+</button>
+            </div>
+          `;
+        }).join('') : '<div class="empty-list">Nenhum lan\u00e7amento programado para vencer na data de baixa</div>';
+      }
+
+      selectedLaunchesList.innerHTML = selected.length ? selected.map((launch) => {
+        const netAmount = settlementNetAmount(launch, selectedAmount, adjustmentValue);
+        const proportionalAdjustment = Math.abs(launch.amount - netAmount);
+
+        return `
+        <div class="selected-launch-row">
+          <div>
+            <strong>${launch.id}</strong>
+            <span>${launch.supplier} &middot; ${launch.type}</span>
+          </div>
+          <div class="settlement-value-stack">
+            <span>T&iacute;tulo: ${formatCurrency(launch.amount)}</span>
+            ${shouldShowNetAmount ? `
+              <span>${settlementPaymentType.value}: ${formatCurrency(proportionalAdjustment)}</span>
+              <strong>Valor da baixa: ${formatCurrency(netAmount)}</strong>
+            ` : ''}
+          </div>
+          <button class="mini-remove-button" type="button" data-remove-launch="${launch.id}" aria-label="Remover lan\u00e7amento" ${isBatch ? 'hidden' : ''}>&times;</button>
+        </div>
+      `;
+      }).join('') : `<div class="empty-list">${isBatch ? 'Nenhum lan\u00e7amento encontrado para o lote' : 'Nenhum lan\u00e7amento selecionado'}</div>`;
+
+      selectedTotal.textContent = formatCurrency(shouldShowNetAmount ? netSettlementTotal : selectedAmount);
+      updateSettlementPaymentMethod();
+    }
+
+    function addSettlementLaunch(launchId) {
+      if (!selectedSettlementIds.includes(launchId)) {
+        selectedSettlementIds = [...selectedSettlementIds, launchId];
+      }
+
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    }
+
+    function removeSettlementLaunch(launchId) {
+      selectedSettlementIds = selectedSettlementIds.filter((id) => id !== launchId);
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    }
+
+    [
+      settlementBusinessUnit,
+      settlementMode,
+      settlementDate,
+      settlementSearch,
+      batchPeriodStart,
+      batchPeriodEnd,
+      batchMinAmount,
+      batchMaxAmount,
+      batchSupplierSearch,
+      batchTypeSearch
+    ].forEach((input) => {
+      input.addEventListener('input', renderSettlementLists);
+      input.addEventListener('change', renderSettlementLists);
+    });
+
+    batchSupplierMode.addEventListener('change', () => {
+      selectedBatchSuppliers = [];
+      batchSupplierSearch.value = '';
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    });
+
+    batchTypeMode.addEventListener('change', () => {
+      selectedBatchTypes = [];
+      batchTypeSearch.value = '';
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    });
+
+    settlementPaymentType.addEventListener('change', () => {
+      updateSettlementAdjustmentField();
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    });
+
+    settlementAdjustmentValue.addEventListener('input', () => {
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    });
+
+    availableLaunchesList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-add-launch]');
+      if (!button) return;
+      addSettlementLaunch(button.dataset.addLaunch);
+    });
+
+    selectedLaunchesList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-remove-launch]');
+      if (!button) return;
+      removeSettlementLaunch(button.dataset.removeLaunch);
+    });
+
+    batchSuppliersBody.addEventListener('change', (event) => {
+      const checkbox = event.target.closest('[data-batch-supplier]');
+      if (!checkbox) return;
+
+      if (checkbox.checked) {
+        selectedBatchSuppliers = [...new Set([...selectedBatchSuppliers, checkbox.dataset.batchSupplier])];
+      } else {
+        selectedBatchSuppliers = selectedBatchSuppliers.filter((supplier) => supplier !== checkbox.dataset.batchSupplier);
+      }
+
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    });
+
+    batchTypesBody.addEventListener('change', (event) => {
+      const checkbox = event.target.closest('[data-batch-type]');
+      if (!checkbox) return;
+
+      if (checkbox.checked) {
+        selectedBatchTypes = [...new Set([...selectedBatchTypes, checkbox.dataset.batchType])];
+      } else {
+        selectedBatchTypes = selectedBatchTypes.filter((type) => type !== checkbox.dataset.batchType);
+      }
+
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    });
+
+    clearSettlementSelection.addEventListener('click', () => {
+      selectedSettlementIds = [];
+      settlementStatus.textContent = '';
+      renderSettlementLists();
+    });
+
+    settlementForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const selectedCount = selectedSettlementLaunches().length;
+
+      if (!selectedCount) {
+        settlementStatus.textContent = 'Selecione ao menos um lan\u00e7amento para baixar';
+        return;
+      }
+
+      if (!settlementPaymentMethod.value) {
+        settlementStatus.textContent = 'Selecione a forma de pagamento da baixa';
+        return;
+      }
+
+      if (!settlementAdjustmentField.hidden && !settlementAdjustmentValue.value) {
+        settlementStatus.textContent = `Informe o ${settlementPaymentType.value === 'Desconto' ? 'valor do desconto' : 'valor dos juros'}`;
+        return;
+      }
+
+      settlementStatus.textContent = `${selectedCount} lan\u00e7amento(s) baixado(s) em ${settlementDate.value}`;
+    });
+
+    [launchValue, installmentQuantity, installmentInterval, dueDate].forEach((input) => {
+      input.addEventListener('input', recalculateFromLaunch);
+      input.addEventListener('change', recalculateFromLaunch);
+    });
+
+    installmentValue.addEventListener('input', recalculateFromInstallmentValue);
+    installmentsBody.addEventListener('input', (event) => {
+      if (event.target.classList.contains('installment-value-row')) {
+        recalculateFromRows();
+      }
+    });
+
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+
+      if (!launchNumber.value) {
+        launchNumber.value = nextLaunchNumber();
+      }
+
+      payableStatus.textContent = `Lan\u00e7amento ${launchNumber.value} criado`;
+    });
+
+    form.addEventListener('reset', () => {
+      setTimeout(() => {
+        launchNumber.value = '';
+        issueDate.value = toDateInputValue(new Date());
+        dueDate.value = '';
+        installmentQuantity.value = '1';
+        installmentInterval.value = '30';
+        installmentValue.value = '';
+        payableStatus.textContent = '';
+        renderInstallments([0]);
+      });
+    });
+
+    issueDate.value = toDateInputValue(new Date());
+    settlementDate.value = previousDateInputValue();
+    batchPeriodStart.value = previousDateInputValue();
+    batchPeriodEnd.value = previousDateInputValue();
+    renderInstallments([0]);
+    updateReportSummary();
+    updateSettlementAdjustmentField();
+    renderSettlementLists();
+  </script>
 
 </body>
 </html>

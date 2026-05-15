@@ -3,7 +3,7 @@ import { ChevronDown, LogOut } from 'lucide-react';
 import vexoIconUrl from '../assets/brand/vexo-icon-only.svg';
 import { navigationItems } from '../data/siteData.js';
 
-export default function Navbar() {
+export default function Navbar({ onNavigate }) {
   const [activeMenuId, setActiveMenuId] = useState(null);
 
   function handleMenuClick(item) {
@@ -53,7 +53,10 @@ export default function Navbar() {
                     className="nav-dropdown-item"
                     role="menuitem"
                     key={child.id}
-                    onClick={() => setActiveMenuId(null)}
+                    onClick={() => {
+                      setActiveMenuId(null);
+                      onNavigate?.(child);
+                    }}
                   >
                     {child.label}
                   </button>

@@ -9,7 +9,7 @@ export const navigationItems = [
   },
   {
     id: 'operacao',
-    label: 'Operação',
+    label: 'Operacao',
   },
   {
     id: 'financeiro',
@@ -22,28 +22,34 @@ export const navigationItems = [
       },
       {
         id: 'consultar-lancamentos',
-        label: 'Consultar Lançamentos',
+        label: 'Consultar Lancamentos',
         pageId: 'registered-launches',
       },
       {
-        id: 'programacao-conta-pagar',
-        label: 'Programacao de Conta a Pagar',
-        pageId: 'accounts-payable-schedule',
-      },
-      {
-        id: 'cadastro-contas-pagar',
-        label: 'Cadastro de Contas a Pagar',
-        pageId: 'accounts-payable',
-      },
-      {
-        id: 'relatorio-contas-pagar',
-        label: 'Relatório de Contas a Pagar',
-        pageId: 'accounts-payable-report',
-      },
-      {
-        id: 'baixa-contas-pagar',
-        label: 'Baixa de Contas a Pagar',
-        pageId: 'accounts-payable-settlement',
+        id: 'contas-a-pagar',
+        label: 'Contas a Pagar',
+        children: [
+          {
+            id: 'programacao-conta-pagar',
+            label: 'Programacao de Contas a Pagar',
+            pageId: 'accounts-payable-schedule',
+          },
+          {
+            id: 'cadastro-contas-pagar',
+            label: 'Cadastro de Contas a Pagar',
+            pageId: 'accounts-payable',
+          },
+          {
+            id: 'relatorio-contas-pagar',
+            label: 'Relatorio de Contas a Pagar',
+            pageId: 'accounts-payable-report',
+          },
+          {
+            id: 'baixa-contas-pagar',
+            label: 'Baixa de Contas a Pagar',
+            pageId: 'accounts-payable-settlement',
+          },
+        ],
       },
       {
         id: 'estorno-baixa',
@@ -94,12 +100,40 @@ export const tabs = [
   },
 ];
 
-export const quickAccessCards = Array.from({ length: 5 }, (_, index) => ({
-  id: `quick-access-${index + 1}`,
-  label: `Acesso rápido ${index + 1}`,
-}));
+export const quickAccessCards = [
+  {
+    id: 'quick-accounts-payable',
+    label: 'Cadastro de Contas a Pagar',
+    pageId: 'accounts-payable',
+    icon: 'finance',
+  },
+  {
+    id: 'quick-registered-launches',
+    label: 'Consultar Lancamentos',
+    pageId: 'registered-launches',
+    icon: 'finance',
+  },
+  {
+    id: 'quick-payable-schedule',
+    label: 'Programacao de Contas a Pagar',
+    pageId: 'accounts-payable-schedule',
+    icon: 'finance',
+  },
+  {
+    id: 'quick-payable-settlement',
+    label: 'Baixa de Contas a Pagar',
+    pageId: 'accounts-payable-settlement',
+    icon: 'finance',
+  },
+  {
+    id: 'quick-payable-report',
+    label: 'Relatorio de Contas a Pagar',
+    pageId: 'accounts-payable-report',
+    icon: 'finance',
+  },
+];
 
 export const quickQueryCards = Array.from({ length: 10 }, (_, index) => ({
   id: `quick-query-${index + 1}`,
-  label: `Consulta rápida ${index + 1}`,
+  label: `Consulta rapida ${index + 1}`,
 }));

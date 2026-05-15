@@ -210,7 +210,7 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
     <section className="accounts-payable-schedule-page">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Programacao de Conta a Pagar</h1>
+          <h1 className="page-title">Programacao de Contas a Pagar</h1>
           <p className="page-kicker">Organizacao diaria dos titulos em aberto para pagamento</p>
         </div>
       </header>

@@ -126,7 +126,7 @@ export default function DashboardPage() {
     return (
       <>
         <DashboardSection title="Acesso rápido">
-          <CardGrid cards={quickAccessCards} variant="tall" />
+          <CardGrid cards={quickAccessCards} variant="tall" onCardClick={openPage} />
         </DashboardSection>
 
         <DashboardSection title="Consultas rápidas">
@@ -158,3 +158,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

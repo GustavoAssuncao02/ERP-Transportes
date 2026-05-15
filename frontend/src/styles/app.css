@@ -136,6 +136,10 @@
   display: block;
 }
 
+.nav-dropdown-group {
+  position: relative;
+}
+
 .nav-dropdown-item {
   display: block;
   width: 100%;
@@ -149,11 +153,38 @@
   white-space: nowrap;
 }
 
+.nav-dropdown-item--parent {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
 .nav-dropdown-item:hover,
 .nav-dropdown-item:focus-visible {
   background: #edf5f4;
   color: var(--primary-dark);
   outline: none;
+}
+
+.nav-subdropdown {
+  position: absolute;
+  top: -6px;
+  left: 100%;
+  z-index: 25;
+  display: none;
+  width: max-content;
+  min-width: 280px;
+  padding: 6px 0;
+  border: 1px solid #c8d3d1;
+  background: var(--surface);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
+}
+
+.nav-subdropdown--open,
+.nav-dropdown-group:hover .nav-subdropdown,
+.nav-dropdown-group:focus-within .nav-subdropdown {
+  display: block;
 }
 
 .nav-right {
@@ -335,21 +366,45 @@
 }
 
 .dashboard-card {
-  display: block;
+  display: flex;
   width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
   background: var(--surface);
+  color: var(--text);
   cursor: pointer;
+  font: inherit;
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
 .dashboard-card--tall {
   height: 140px;
+  flex-direction: column;
 }
 
 .dashboard-card--short {
   height: 68px;
+}
+
+.dashboard-card-icon {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.dashboard-card-label {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  text-overflow: ellipsis;
 }
 
 .dashboard-card:hover,

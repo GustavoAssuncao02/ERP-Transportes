@@ -1,6 +1,38 @@
-import vexoLogoHorizontalUrl from '../assets/brand/vexo-logo-horizontal.svg';
+import { useEffect, useRef, useState } from 'react';
+import vexoRevealFinalUrl from '../assets/brand/animations/vexo_reveal_square_final.png';
+import vexoRevealUrl from '../assets/brand/animations/vexo_reveal_square.gif';
+import vexoWordmarkRevealFinalUrl from '../assets/brand/animations/vexo_wordmark_reveal_final.png';
+import vexoWordmarkRevealUrl from '../assets/brand/animations/vexo_wordmark_reveal.gif';
 
 export default function LoginPage() {
+  const [logoSource, setLogoSource] = useState(vexoRevealUrl);
+  const [wordmarkSource, setWordmarkSource] = useState(vexoWordmarkRevealUrl);
+  const freezeTimers = useRef({
+    logo: null,
+    wordmark: null,
+  });
+
+  useEffect(() => {
+    scheduleFreeze('logo', setLogoSource, vexoRevealFinalUrl, 3400);
+    scheduleFreeze('wordmark', setWordmarkSource, vexoWordmarkRevealFinalUrl, 2650);
+
+    return () => {
+      Object.values(freezeTimers.current).forEach((timer) => window.clearTimeout(timer));
+      freezeTimers.current = {
+        logo: null,
+        wordmark: null,
+      };
+    };
+  }, []);
+
+  function scheduleFreeze(key, setSource, finalSource, delay) {
+    if (freezeTimers.current[key]) return;
+
+    freezeTimers.current[key] = window.setTimeout(() => {
+      setSource(finalSource);
+    }, delay);
+  }
+
   function handleSubmit(event) {
     event.preventDefault();
   }
@@ -9,7 +41,18 @@ export default function LoginPage() {
     <main className="login-page">
       <section className="login-card" aria-labelledby="login-title">
         <div className="login-logo-area">
-          <img className="login-logo" src={vexoLogoHorizontalUrl} alt="Vexo ERP Logístico" />
+          <img
+            className="login-logo login-logo-reveal"
+            src={logoSource}
+            alt="Vexo ERP Logistico"
+            onLoad={() => scheduleFreeze('logo', setLogoSource, vexoRevealFinalUrl, 3400)}
+          />
+          <img
+            className="login-wordmark-reveal"
+            src={wordmarkSource}
+            alt="Vexo"
+            onLoad={() => scheduleFreeze('wordmark', setWordmarkSource, vexoWordmarkRevealFinalUrl, 2650)}
+          />
         </div>
 
         <form className="login-form" onSubmit={handleSubmit}>
@@ -17,7 +60,7 @@ export default function LoginPage() {
           <p>Entre com suas credenciais para acessar os recursos do sistema.</p>
 
           <label className="login-field">
-            <span>Usuário</span>
+            <span>Usuario</span>
             <input type="text" name="usuario" autoComplete="username" />
           </label>
 

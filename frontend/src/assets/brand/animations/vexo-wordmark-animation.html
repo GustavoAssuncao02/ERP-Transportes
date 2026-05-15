@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vexo — Logo Animation</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+  }
+
+  /* ── Root container: fades in as one unit ── */
+  .scene {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    opacity: 0;
+    animation: sceneFade 0.5s ease-out 0.1s forwards;
+  }
+
+  @keyframes sceneFade {
+    to { opacity: 1; }
+  }
+
+  /* ══════════════════════════════════
+     WORDMARK ROW  —  V · e · x · o
+  ══════════════════════════════════ */
+  .wordmark {
+    display: flex;
+    align-items: baseline;
+    gap: 0;
+    line-height: 1;
+  }
+
+  /* The teal V — reveals via clip-path sweep */
+  .letter-v {
+    font-family: 'Trebuchet MS', 'Gill Sans', 'Century Gothic', sans-serif;
+    font-size: 82px;
+    font-weight: 800;
+    color: #0F4C5C;
+    letter-spacing: -2px;
+    line-height: 0.9;
+    display: inline-block;
+    clip-path: inset(0 100% 0 0);
+    animation: sweepIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) 0.35s forwards;
+  }
+
+  @keyframes sweepIn {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0%   0 0); }
+  }
+
+  /* e x o — each letter rises and fades */
+  .letter {
+    font-family: 'Trebuchet MS', 'Gill Sans', 'Century Gothic', sans-serif;
+    font-size: 82px;
+    font-weight: 700;
+    color: #29BFB0;
+    line-height: 0.9;
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(10px);
+    letter-spacing: -1px;
+  }
+
+  .letter-e { animation: riseIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.78s forwards; }
+  .letter-x { animation: riseIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 0.94s forwards; }
+  .letter-o { animation: riseIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.10s forwards; }
+
+  @keyframes riseIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ══════════════════════════════════
+     RULE LINE
+  ══════════════════════════════════ */
+  .rule {
+    width: 0;
+    height: 0.5px;
+    background: rgba(41, 191, 176, 0.4);
+    margin: 7px auto 6px;
+    animation: ruleExpand 0.5s cubic-bezier(0.16, 1, 0.3, 1) 1.5s forwards;
+  }
+
+  @keyframes ruleExpand {
+    from { width: 0;   opacity: 0; }
+    to   { width: 100%; opacity: 1; }
+  }
+
+  /* ══════════════════════════════════
+     SUBTITLE  —  ERP Logístico
+  ══════════════════════════════════ */
+  .subtitle {
+    font-family: 'Trebuchet MS', 'Gill Sans', 'Century Gothic', sans-serif;
+    font-size: 12.5px;
+    font-weight: 400;
+    letter-spacing: 0.24em;
+    color: #29BFB0;
+    text-align: center;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateY(6px);
+    animation: subtitleIn 0.65s cubic-bezier(0.16, 1, 0.3, 1) 1.72s forwards;
+  }
+
+  @keyframes subtitleIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+<div class="scene">
+  <div class="wordmark">
+    <span class="letter-v">V</span><span class="letter letter-e">e</span><span class="letter letter-x">x</span><span class="letter letter-o">o</span>
+  </div>
+  <div class="rule"></div>
+  <span class="subtitle">ERP LOGÍSTICO</span>
+</div>
+</body>
+</html>

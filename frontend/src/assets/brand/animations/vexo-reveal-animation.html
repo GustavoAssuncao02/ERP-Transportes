@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vexo Logo Reveal</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    overflow: hidden;
+  }
+
+  /* 16:9 container */
+  .stage {
+    position: relative;
+    width: 100vw;
+    height: 56.25vw; /* 16:9 */
+    max-height: 100vh;
+    max-width: 177.78vh;
+    margin: auto;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+  }
+
+  svg#logo {
+    width: 22%;
+    height: auto;
+    overflow: visible;
+  }
+
+  /* ─── Hexagon outer ring ─── */
+  .hex-outer {
+    opacity: 0;
+    animation: fadeInHex 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards;
+  }
+
+  /* ─── Hexagon inner fill ─── */
+  .hex-inner {
+    opacity: 0;
+    animation: fadeInHex 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
+  }
+
+  @keyframes fadeInHex {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ─── White bars ─── */
+  .bar-left,
+  .bar-right {
+    opacity: 0;
+    transform: translateY(12px);
+    animation: riseIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .bar-left  { animation-delay: 0.55s; }
+  .bar-right { animation-delay: 0.68s; }
+
+  /* ─── Orange dots ─── */
+  .dot-left,
+  .dot-right {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: riseIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  .dot-left  { animation-delay: 1.05s; }
+  .dot-right { animation-delay: 1.18s; }
+
+  /* ─── Orange center bar ─── */
+  .bar-center {
+    opacity: 0;
+    transform: translateY(10px);
+    animation: riseIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) 1.50s forwards;
+  }
+
+  /* ─── Bottom dot ─── */
+  .dot-bottom {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: riseIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) 2.15s forwards;
+  }
+
+  @keyframes riseIn {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Override opacity for the hex-outer (which has native opacity 0.13) */
+  .hex-outer-final { opacity: 0.13 !important; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <svg id="logo" viewBox="0 0 310 310" xmlns="http://www.w3.org/2000/svg" role="img">
+
+    <g transform="translate(155, 155)">
+
+      <!-- Outer hexagon ring (light border) -->
+      <polygon
+        class="hex-outer"
+        points="0,-90 77.9,-45 77.9,45 0,90 -77.9,45 -77.9,-45"
+        fill="#0F4C5C"
+        style="opacity:0; animation: fadeInHexOuter 0.45s cubic-bezier(0.22,1,0.36,1) 0.05s forwards;"
+      />
+
+      <!-- Inner hexagon fill -->
+      <polygon
+        class="hex-inner"
+        points="0,-70 60.6,-35 60.6,35 0,70 -60.6,35 -60.6,-35"
+        fill="#0F4C5C"
+      />
+
+      <!-- Left white bar -->
+      <rect class="bar-left"  x="-30" y="-26" width="15" height="43" rx="3.5" fill="#ffffff"/>
+
+      <!-- Right white bar -->
+      <rect class="bar-right" x="15"  y="-26" width="15" height="43" rx="3.5" fill="#ffffff"/>
+
+      <!-- Left orange dot -->
+      <circle class="dot-left"  cx="-22.5" cy="-36" r="8.5" fill="#FF8A00"/>
+
+      <!-- Right orange dot -->
+      <circle class="dot-right" cx="22.5"  cy="-36" r="8.5" fill="#FF8A00"/>
+
+      <!-- Center orange bar -->
+      <rect class="bar-center" x="-7.5" y="0" width="15" height="30" rx="3.5" fill="#FF8A00"/>
+
+      <!-- Bottom light-gray circle -->
+      <circle class="dot-bottom" cx="0" cy="40" r="8.5" fill="#ffffff" opacity="0.9"/>
+
+    </g>
+  </svg>
+</div>
+
+<style>
+  /* The hex-outer polygon needs special handling because its final opacity is 0.13, not 1 */
+  @keyframes fadeInHexOuter {
+    from { opacity: 0; }
+    to   { opacity: 0.13; }
+  }
+
+  polygon.hex-outer {
+    opacity: 0;
+    animation: fadeInHexOuter 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.05s forwards !important;
+  }
+</style>
+</body>
+</html>

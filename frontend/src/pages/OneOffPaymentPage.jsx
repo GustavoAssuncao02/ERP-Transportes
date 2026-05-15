@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
+import AttachmentPanel from '../components/AttachmentPanel.jsx';
 
 const units = [
   { code: '001', name: 'JTD Transportes LTDA' },
@@ -82,6 +83,7 @@ export default function OneOffPaymentPage() {
   const [paymentDate, setPaymentDate] = useState(todayValue());
   const [paymentValue, setPaymentValue] = useState('');
   const [notes, setNotes] = useState('');
+  const [attachments, setAttachments] = useState([]);
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
   const [supplierSearchBy, setSupplierSearchBy] = useState('name');
@@ -129,7 +131,7 @@ export default function OneOffPaymentPage() {
     const generatedPaymentNumber = paymentNumber || nextPaymentNumber();
 
     setPaymentNumber(generatedPaymentNumber);
-    setStatus(`Pagamento avulso ${generatedPaymentNumber} lancado e baixado em ${paymentDate}`);
+    setStatus(`Pagamento avulso ${generatedPaymentNumber} lancado e baixado em ${paymentDate} com ${attachments.length} anexo(s)`);
   }
 
   function handleReset() {
@@ -142,7 +144,13 @@ export default function OneOffPaymentPage() {
     setPaymentDate(todayValue());
     setPaymentValue('');
     setNotes('');
+    setAttachments([]);
     closeLookup();
+    setStatus('');
+  }
+
+  function handleAddAttachments(files) {
+    setAttachments((current) => [...current, ...files]);
     setStatus('');
   }
 
@@ -281,6 +289,8 @@ export default function OneOffPaymentPage() {
             />
           </label>
         </div>
+
+        <AttachmentPanel attachments={attachments} onAddFiles={handleAddAttachments} />
 
         <div className="form-actions">
           <button type="submit" className="primary-button">Lançar Baixado</button>

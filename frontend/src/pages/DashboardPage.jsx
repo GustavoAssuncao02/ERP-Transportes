@@ -1,9 +1,12 @@
 import { useState } from 'react';
+import AccountsPayableSchedulePage from './AccountsPayableSchedulePage.jsx';
 import AccountsPayablePage from './AccountsPayablePage.jsx';
 import AccountsPayableReportPage from './AccountsPayableReportPage.jsx';
 import AccountsPayableSettlementPage from './AccountsPayableSettlementPage.jsx';
+import BusinessIntelligencePage from './BusinessIntelligencePage.jsx';
 import OneOffPaymentPage from './OneOffPaymentPage.jsx';
 import RegisteredLaunchesPage from './RegisteredLaunchesPage.jsx';
+import SettlementReversalPage from './SettlementReversalPage.jsx';
 import CardGrid from '../components/CardGrid.jsx';
 import DashboardSection from '../components/DashboardSection.jsx';
 import Navbar from '../components/Navbar.jsx';
@@ -15,6 +18,7 @@ import { quickAccessCards, quickQueryCards, tabs as initialTabs } from '../data/
 export default function DashboardPage() {
   const [openTabs, setOpenTabs] = useState(initialTabs);
   const [activeTabId, setActiveTabId] = useState('home');
+  const [editingLaunch, setEditingLaunch] = useState(null);
 
   function openPage(item) {
     if (!item.pageId) return;
@@ -33,7 +37,31 @@ export default function DashboardPage() {
         },
       ];
     });
+    if (item.pageId === 'accounts-payable') {
+      setEditingLaunch(null);
+    }
     setActiveTabId(item.pageId);
+  }
+
+  function openLaunchEditor(launch) {
+    const pageId = 'accounts-payable';
+
+    setOpenTabs((currentTabs) => {
+      if (currentTabs.some((tab) => tab.id === pageId)) {
+        return currentTabs;
+      }
+
+      return [
+        ...currentTabs,
+        {
+          id: pageId,
+          label: 'Cadastro de Contas a Pagar',
+          closable: true,
+        },
+      ];
+    });
+    setEditingLaunch(launch);
+    setActiveTabId(pageId);
   }
 
   function closeTab(tabId) {
@@ -68,11 +96,11 @@ export default function DashboardPage() {
     }
 
     if (activeTabId === 'registered-launches') {
-      return <RegisteredLaunchesPage />;
+      return <RegisteredLaunchesPage onEditLaunch={openLaunchEditor} />;
     }
 
     if (activeTabId === 'accounts-payable') {
-      return <AccountsPayablePage />;
+      return <AccountsPayablePage initialLaunch={editingLaunch} />;
     }
 
     if (activeTabId === 'accounts-payable-report') {
@@ -81,6 +109,18 @@ export default function DashboardPage() {
 
     if (activeTabId === 'accounts-payable-settlement') {
       return <AccountsPayableSettlementPage />;
+    }
+
+    if (activeTabId === 'accounts-payable-schedule') {
+      return <AccountsPayableSchedulePage onOpenLaunchDetails={openLaunchEditor} />;
+    }
+
+    if (activeTabId === 'business-intelligence') {
+      return <BusinessIntelligencePage />;
+    }
+
+    if (activeTabId === 'settlement-reversal') {
+      return <SettlementReversalPage onOpenLaunchDetails={openLaunchEditor} />;
     }
 
     return (

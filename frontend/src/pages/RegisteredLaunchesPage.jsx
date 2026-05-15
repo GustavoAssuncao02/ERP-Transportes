@@ -1,10 +1,14 @@
 import { useMemo, useState } from 'react';
-
-const businessUnits = [
-  { value: '001', label: '001 - JTD Transportes LTDA' },
-  { value: '002', label: '002 - JTD Logistica Nordeste' },
-  { value: '003', label: '003 - JTD Armazens Salvador' },
-];
+import {
+  accountingTypeNames,
+  businessUnits,
+  currency,
+  documentNumbers,
+  financeLaunches,
+  normalizeText,
+  paymentBanks,
+  supplierNames,
+} from '../data/financeData.js';
 
 const searchTypes = [
   { label: 'Data Emissao', field: 'issueDate' },
@@ -15,148 +19,113 @@ const searchTypes = [
   { label: 'Data de Previsao de Pagamento', field: 'paymentForecastDate' },
 ];
 
-const registeredLaunches = [
-  {
-    id: 'CAP-202605-00001',
-    unit: '001',
-    supplier: 'Auto Posto Central LTDA',
-    type: 'Combustivel',
-    document: 'NF-8742',
-    issueDate: '2026-05-10',
-    dueDate: '2026-05-14',
-    createdDate: '2026-05-10',
-    paymentDate: '',
-    appropriationDate: '2026-05-10',
-    paymentForecastDate: '2026-05-14',
-    amount: 1350.25,
-    status: 'Aberto',
-  },
-  {
-    id: 'CAP-202605-00002',
-    unit: '001',
-    supplier: 'Oficina Sao Jorge',
-    type: 'Manutencao',
-    document: 'OS-1180',
-    issueDate: '2026-05-11',
-    dueDate: '2026-05-14',
-    createdDate: '2026-05-11',
-    paymentDate: '',
-    appropriationDate: '2026-05-11',
-    paymentForecastDate: '2026-05-14',
-    amount: 780,
-    status: 'Aberto',
-  },
-  {
-    id: 'CAP-202605-00003',
-    unit: '002',
-    supplier: 'Seguradora Atlantica',
-    type: 'Seguro',
-    document: 'AP-4409',
-    issueDate: '2026-05-12',
-    dueDate: '2026-06-02',
-    createdDate: '2026-05-12',
-    paymentDate: '2026-05-30',
-    appropriationDate: '2026-05-12',
-    paymentForecastDate: '2026-06-02',
-    amount: 2420.5,
-    status: 'Baixado',
-  },
-  {
-    id: 'CAP-202605-00004',
-    unit: '003',
-    supplier: 'Transportes Parceiros SA',
-    type: 'Servicos de transporte',
-    document: 'FAT-3321',
-    issueDate: '2026-05-13',
-    dueDate: '2026-06-10',
-    createdDate: '2026-05-13',
-    paymentDate: '',
-    appropriationDate: '2026-05-13',
-    paymentForecastDate: '2026-06-10',
-    amount: 990.9,
-    status: 'Aberto',
-  },
-  {
-    id: 'CAP-202605-00005',
-    unit: '001',
-    supplier: 'JTD Logistica Nordeste',
-    type: 'Administrativo',
-    document: 'DUP-0091',
-    issueDate: '2026-05-15',
-    dueDate: '2026-05-28',
-    createdDate: '2026-05-15',
-    paymentDate: '',
-    appropriationDate: '2026-05-15',
-    paymentForecastDate: '2026-05-28',
-    amount: 3180,
-    status: 'Aberto',
-  },
-  {
-    id: 'PAV-202605-00001',
-    unit: '001',
-    supplier: 'Cartorio Modelo',
-    type: 'Administrativo',
-    document: 'DOC-2201',
-    issueDate: '2026-05-15',
-    dueDate: '2026-05-15',
-    createdDate: '2026-05-15',
-    paymentDate: '2026-05-15',
-    appropriationDate: '2026-05-15',
-    paymentForecastDate: '2026-05-15',
-    amount: 240,
-    status: 'Baixado',
-  },
-];
+const bankOptions = ['Sem banco', ...paymentBanks];
 
-function currency(value) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function normalizeText(value) {
-  return String(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+function bankLabel(launch) {
+  return launch.paymentBank || 'Sem banco';
 }
 
 function numberValue(value) {
   return Number.parseFloat(String(value).replace(',', '.'));
 }
 
-export default function RegisteredLaunchesPage() {
+function MultiCheckField({ label, options, selected, onChange, placeholder }) {
+  const [query, setQuery] = useState('');
+  const allSelected = selected.length === options.length;
+  const visibleOptions = options.filter((option) => normalizeText(option).includes(normalizeText(query)));
+
+  function toggleAll() {
+    onChange(allSelected ? [] : options);
+  }
+
+  function toggleOption(option) {
+    if (selected.includes(option)) {
+      onChange(selected.filter((item) => item !== option));
+      return;
+    }
+
+    onChange([...selected, option]);
+  }
+
+  return (
+    <div className="field field--span-4 multi-check-field">
+      <span>{label}</span>
+      <div className="multi-check-box">
+        <div className="multi-check-toolbar">
+          <input
+            type="search"
+            placeholder={placeholder}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <label>
+            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+            Todos
+          </label>
+        </div>
+        <div className="multi-check-list">
+          {visibleOptions.map((option) => (
+            <label className="multi-check-row" key={option}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() => toggleOption(option)}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opcao encontrada</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function RegisteredLaunchesPage({ onEditLaunch }) {
   const [businessUnit, setBusinessUnit] = useState('');
   const [searchType, setSearchType] = useState('issueDate');
-  const [supplierFilter, setSupplierFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Ambos');
+  const [selectedSuppliers, setSelectedSuppliers] = useState(supplierNames);
+  const [selectedTypes, setSelectedTypes] = useState(accountingTypeNames);
+  const [selectedDocuments, setSelectedDocuments] = useState(documentNumbers);
+  const [selectedBanks, setSelectedBanks] = useState(bankOptions);
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [minValue, setMinValue] = useState('');
   const [maxValue, setMaxValue] = useState('');
 
   const filteredLaunches = useMemo(() => {
-    const supplierQuery = normalizeText(supplierFilter.trim());
     const min = numberValue(minValue);
     const max = numberValue(maxValue);
     const selectedDateField = searchTypes.find((type) => type.field === searchType)?.field || 'issueDate';
 
-    return registeredLaunches.filter((launch) => {
+    return financeLaunches.filter((launch) => {
       const dateValue = launch[selectedDateField];
       const unitMatches = !businessUnit || launch.unit === businessUnit;
-      const supplierMatches = !supplierQuery || normalizeText(launch.supplier).includes(supplierQuery);
+      const statusMatches = statusFilter === 'Ambos' || launch.status === statusFilter;
+      const bankMatches = selectedBanks.includes(bankLabel(launch));
+      const supplierMatches = selectedSuppliers.includes(launch.supplier);
+      const typeMatches = selectedTypes.includes(launch.type);
+      const documentMatches = selectedDocuments.includes(launch.document);
       const startMatches = !dateStart || (dateValue && dateValue >= dateStart);
       const endMatches = !dateEnd || (dateValue && dateValue <= dateEnd);
       const minMatches = Number.isNaN(min) || launch.amount >= min;
       const maxMatches = Number.isNaN(max) || launch.amount <= max;
 
-      return unitMatches && supplierMatches && startMatches && endMatches && minMatches && maxMatches;
+      return unitMatches && statusMatches && bankMatches && supplierMatches && typeMatches && documentMatches && startMatches && endMatches && minMatches && maxMatches;
     });
-  }, [businessUnit, dateEnd, dateStart, maxValue, minValue, searchType, supplierFilter]);
+  }, [businessUnit, dateEnd, dateStart, maxValue, minValue, searchType, selectedBanks, selectedDocuments, selectedSuppliers, selectedTypes, statusFilter]);
 
   const filteredTotal = filteredLaunches.reduce((total, launch) => total + launch.amount, 0);
 
   function clearFilters() {
     setBusinessUnit('');
     setSearchType('issueDate');
-    setSupplierFilter('');
+    setStatusFilter('Ambos');
+    setSelectedSuppliers(supplierNames);
+    setSelectedTypes(accountingTypeNames);
+    setSelectedDocuments(documentNumbers);
+    setSelectedBanks(bankOptions);
     setDateStart('');
     setDateEnd('');
     setMinValue('');
@@ -184,22 +153,21 @@ export default function RegisteredLaunchesPage() {
             </select>
           </label>
 
-          <label className="field field--span-2">
-            <span>Fornecedor</span>
-            <input
-              type="search"
-              placeholder="Pesquisar fornecedor"
-              value={supplierFilter}
-              onChange={(event) => setSupplierFilter(event.target.value)}
-            />
-          </label>
-
           <label className="field">
             <span>Selecionar Tipo Pesquisa</span>
             <select value={searchType} onChange={(event) => setSearchType(event.target.value)}>
               {searchTypes.map((type) => (
                 <option value={type.field} key={type.field}>{type.label}</option>
               ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Situacao do Lancamento</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option>Ambos</option>
+              <option>Aberto</option>
+              <option>Baixado</option>
             </select>
           </label>
 
@@ -212,6 +180,38 @@ export default function RegisteredLaunchesPage() {
             <span>Data final</span>
             <input type="date" value={dateEnd} onChange={(event) => setDateEnd(event.target.value)} />
           </label>
+
+          <MultiCheckField
+            label="Fornecedor"
+            options={supplierNames}
+            selected={selectedSuppliers}
+            onChange={setSelectedSuppliers}
+            placeholder="Pesquisar fornecedor"
+          />
+
+          <MultiCheckField
+            label="Tipo"
+            options={accountingTypeNames}
+            selected={selectedTypes}
+            onChange={setSelectedTypes}
+            placeholder="Pesquisar tipo contabil"
+          />
+
+          <MultiCheckField
+            label="Banco do Pagamento"
+            options={bankOptions}
+            selected={selectedBanks}
+            onChange={setSelectedBanks}
+            placeholder="Pesquisar banco"
+          />
+
+          <MultiCheckField
+            label="Selecionar Documento"
+            options={documentNumbers}
+            selected={selectedDocuments}
+            onChange={setSelectedDocuments}
+            placeholder="Pesquisar documento"
+          />
 
           <label className="field">
             <span>Valor minimo</span>
@@ -261,6 +261,7 @@ export default function RegisteredLaunchesPage() {
                   <th>Fornecedor</th>
                   <th>Documento</th>
                   <th>Tipo</th>
+                  <th>Banco</th>
                   <th>Emissao</th>
                   <th>Vencimento</th>
                   <th>Valor</th>
@@ -269,12 +270,13 @@ export default function RegisteredLaunchesPage() {
               </thead>
               <tbody>
                 {filteredLaunches.map((launch) => (
-                  <tr key={launch.id}>
+                  <tr key={launch.id} onDoubleClick={() => onEditLaunch?.(launch)}>
                     <td><strong>{launch.id}</strong></td>
                     <td>{launch.unit}</td>
                     <td>{launch.supplier}</td>
                     <td>{launch.document}</td>
                     <td>{launch.type}</td>
+                    <td>{bankLabel(launch)}</td>
                     <td>{launch.issueDate}</td>
                     <td>{launch.dueDate}</td>
                     <td>{currency(launch.amount)}</td>

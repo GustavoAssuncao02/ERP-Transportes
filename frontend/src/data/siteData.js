@@ -26,6 +26,11 @@ export const navigationItems = [
         pageId: 'registered-launches',
       },
       {
+        id: 'programacao-conta-pagar',
+        label: 'Programacao de Conta a Pagar',
+        pageId: 'accounts-payable-schedule',
+      },
+      {
         id: 'cadastro-contas-pagar',
         label: 'Cadastro de Contas a Pagar',
         pageId: 'accounts-payable',
@@ -41,8 +46,14 @@ export const navigationItems = [
         pageId: 'accounts-payable-settlement',
       },
       {
+        id: 'estorno-baixa',
+        label: 'Estorno de Baixa',
+        pageId: 'settlement-reversal',
+      },
+      {
         id: 'business-intelligence',
         label: 'Business Intelligence',
+        pageId: 'business-intelligence',
       },
     ],
   },

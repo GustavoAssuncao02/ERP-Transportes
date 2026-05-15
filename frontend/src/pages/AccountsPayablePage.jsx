@@ -1,53 +1,41 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
+import AttachmentPanel from '../components/AttachmentPanel.jsx';
+import {
+  accountingTypes,
+  businessUnits,
+  chargeTypes,
+  findFinanceLaunchById,
+  formatAccountingType,
+  formatSupplier,
+  formatUnit,
+  suppliers,
+  todayValue,
+  toNumber,
+} from '../data/financeData.js';
 
-const units = [
-  { code: '001', name: 'JTD Transportes LTDA' },
-  { code: '002', name: 'JTD Logística Nordeste' },
-  { code: '003', name: 'JTD Armazéns Salvador' },
-];
-
-const defaultUnit = '1';
-
-const suppliers = [
-  { code: '1001', name: 'Auto Posto Central LTDA', cnpj: '12.345.678/0001-90' },
-  { code: '2042', name: 'Oficina São Jorge', cnpj: '23.456.789/0001-10' },
-  { code: '3110', name: 'Seguradora Atlântica', cnpj: '34.567.890/0001-22' },
-  { code: '4208', name: 'Transportes Parceiros SA', cnpj: '45.678.901/0001-33' },
-];
-
-const accountingTypes = [
-  { code: '01', name: 'Serviços de transporte' },
-  { code: '02', name: 'Combustível' },
-  { code: '03', name: 'Manutenção' },
-  { code: '04', name: 'Pedágio' },
-  { code: '05', name: 'Administrativo' },
-];
+const defaultUnit = businessUnits[0].label;
 
 const lookupConfig = {
   unit: {
     title: 'Pesquisar unidade',
-    columns: ['Código', 'Unidade'],
-    items: units,
-    format: (item) => `${item.code} - ${item.name}`,
+    columns: ['Codigo', 'Unidade'],
+    items: businessUnits,
+    format: (item) => item.label,
   },
   supplier: {
     title: 'Pesquisar fornecedor',
-    columns: ['Código', 'Nome', 'CNPJ'],
+    columns: ['Codigo', 'Nome', 'CNPJ'],
     items: suppliers,
     format: (item) => `${item.code} - ${item.name} - ${item.cnpj}`,
   },
   accountingType: {
     title: 'Pesquisar tipo',
-    columns: ['Código', 'Classificação contábil'],
+    columns: ['Codigo', 'Classificacao contabil'],
     items: accountingTypes,
     format: (item) => `${item.code} - ${item.name}`,
   },
 };
-
-function todayValue() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function toDateInputValue(date) {
   const year = date.getFullYear();
@@ -64,10 +52,6 @@ function addDays(dateValue, days) {
   date.setDate(date.getDate() + days);
 
   return toDateInputValue(date);
-}
-
-function toNumber(value) {
-  return Number.parseFloat(String(value).replace(',', '.')) || 0;
 }
 
 function toPositiveInteger(value, fallback = 1) {
@@ -122,11 +106,15 @@ function getLookupCells(type, item) {
   return [item.code, item.name];
 }
 
-export default function AccountsPayablePage() {
+export default function AccountsPayablePage({ initialLaunch = null }) {
   const [unit, setUnit] = useState(defaultUnit);
   const [launchNumber, setLaunchNumber] = useState('');
+  const [loadedLaunchId, setLoadedLaunchId] = useState('');
+  const [loadedLaunchStatus, setLoadedLaunchStatus] = useState('');
   const [supplier, setSupplier] = useState('');
   const [accountingType, setAccountingType] = useState('');
+  const [chargeType, setChargeType] = useState('');
+  const [documentNumber, setDocumentNumber] = useState('');
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
   const [supplierSearchBy, setSupplierSearchBy] = useState('name');
@@ -137,9 +125,14 @@ export default function AccountsPayablePage() {
   const [interval, setInterval] = useState('30');
   const [installmentValue, setInstallmentValue] = useState('');
   const [installments, setInstallments] = useState([{ number: 1, dueDate: '', value: '' }]);
+  const [notes, setNotes] = useState('');
+  const [settlementNote, setSettlementNote] = useState('');
+  const [paymentBank, setPaymentBank] = useState('');
+  const [attachments, setAttachments] = useState([]);
   const [status, setStatus] = useState('');
 
   const activeLookup = lookupType ? lookupConfig[lookupType] : null;
+  const isSettledLaunch = loadedLaunchStatus === 'Baixado';
   const lookupItems = useMemo(() => {
     if (!activeLookup) return [];
 
@@ -154,6 +147,39 @@ export default function AccountsPayablePage() {
       return `${item.code} ${item.name}`.toLowerCase().includes(query);
     });
   }, [activeLookup, lookupSearch, lookupType, supplierSearchBy]);
+
+  function populateFromLaunch(launch, message = `Lancamento ${launch.id} carregado para edicao`) {
+    const nextInstallments = launch.installments?.length
+      ? launch.installments
+      : [{ number: 1, dueDate: launch.dueDate, value: launch.amount.toFixed(2) }];
+
+    setUnit(formatUnit(launch.unit));
+    setLaunchNumber(launch.id);
+    setLoadedLaunchId(launch.id);
+    setLoadedLaunchStatus(launch.status || '');
+    setSupplier(formatSupplier(launch));
+    setAccountingType(formatAccountingType(launch));
+    setChargeType(launch.chargeType || '');
+    setDocumentNumber(launch.document || '');
+    setIssueDate(launch.issueDate || todayValue());
+    setDueDate(launch.dueDate || '');
+    setLaunchValue(launch.amount ? launch.amount.toFixed(2) : '');
+    setQuantity(String(nextInstallments.length || 1));
+    setInterval('30');
+    setInstallmentValue(nextInstallments.length ? (launch.amount / nextInstallments.length).toFixed(2) : '');
+    setInstallments(nextInstallments);
+    setNotes(launch.notes || '');
+    setSettlementNote(launch.settlementNote || '');
+    setPaymentBank(launch.paymentBank || '');
+    setAttachments(launch.attachments || []);
+    setStatus(message);
+  }
+
+  useEffect(() => {
+    if (initialLaunch?.id) {
+      populateFromLaunch(initialLaunch);
+    }
+  }, [initialLaunch?.id]);
 
   function refreshInstallments(next = {}) {
     const nextLaunchValue = next.launchValue ?? launchValue;
@@ -196,6 +222,20 @@ export default function AccountsPayablePage() {
     if (lookupType === 'accountingType') setAccountingType(value);
 
     closeLookup();
+  }
+
+  function handleLaunchNumberChange(value) {
+    setLaunchNumber(value);
+    const launch = findFinanceLaunchById(value);
+
+    if (launch) {
+      populateFromLaunch(launch);
+      return;
+    }
+
+    setLoadedLaunchId('');
+    setLoadedLaunchStatus('');
+    setStatus('');
   }
 
   function handleLaunchValueChange(value) {
@@ -241,15 +281,30 @@ export default function AccountsPayablePage() {
     event.preventDefault();
     const generatedLaunchNumber = launchNumber || nextLaunchNumber();
 
+    if (isSettledLaunch) {
+      setStatus(`Lancamento ${generatedLaunchNumber} baixado: somente novos documentos podem ser anexados`);
+      return;
+    }
+
     setLaunchNumber(generatedLaunchNumber);
-    setStatus(`Lançamento ${generatedLaunchNumber} criado`);
+    setLoadedLaunchId(generatedLaunchNumber);
+    setLoadedLaunchStatus('Aberto');
+    setStatus(
+      loadedLaunchId
+        ? `Lancamento ${generatedLaunchNumber} atualizado`
+        : `Lancamento ${generatedLaunchNumber} criado com ${attachments.length} anexo(s)`,
+    );
   }
 
   function handleReset() {
     setUnit(defaultUnit);
     setLaunchNumber('');
+    setLoadedLaunchId('');
+    setLoadedLaunchStatus('');
     setSupplier('');
     setAccountingType('');
+    setChargeType('');
+    setDocumentNumber('');
     closeLookup();
     setIssueDate(todayValue());
     setDueDate('');
@@ -258,6 +313,15 @@ export default function AccountsPayablePage() {
     setInterval('30');
     setInstallmentValue('');
     setInstallments([{ number: 1, dueDate: '', value: '' }]);
+    setNotes('');
+    setSettlementNote('');
+    setPaymentBank('');
+    setAttachments([]);
+    setStatus('');
+  }
+
+  function handleAddAttachments(files) {
+    setAttachments((current) => [...current, ...files]);
     setStatus('');
   }
 
@@ -266,20 +330,27 @@ export default function AccountsPayablePage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">Cadastro de Contas a Pagar</h1>
-          <p className="page-kicker">Lançamentos de contas a pagar</p>
+          <p className="page-kicker">Lancamentos de contas a pagar</p>
         </div>
       </header>
 
       <form className="finance-form" onSubmit={handleSubmit} onReset={handleReset}>
+        {isSettledLaunch && (
+          <div className="locked-record-notice">
+            Lancamento baixado: os dados ficam bloqueados para edicao, mas novos documentos podem ser anexados.
+          </div>
+        )}
+
         <div className="form-grid">
           <div className="field">
             <span>Unidade</span>
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Código da empresa"
+                placeholder="Codigo da empresa"
                 value={unit}
                 onChange={(event) => setUnit(event.target.value)}
+                readOnly={isSettledLaunch}
                 required
               />
               <button
@@ -288,6 +359,7 @@ export default function AccountsPayablePage() {
                 aria-label="Pesquisar unidade"
                 title="Pesquisar unidade"
                 tabIndex={-1}
+                disabled={isSettledLaunch}
                 onClick={() => openLookup('unit')}
               >
                 <Search size={17} strokeWidth={2.2} />
@@ -296,8 +368,13 @@ export default function AccountsPayablePage() {
           </div>
 
           <label className="field">
-            <span>Número do Lançamento</span>
-            <input type="text" placeholder="Gerado ao criar" value={launchNumber} readOnly tabIndex={-1} />
+            <span>Numero do Lancamento</span>
+            <input
+              type="text"
+              placeholder="Digite ou gere ao criar"
+              value={launchNumber}
+              onChange={(event) => handleLaunchNumberChange(event.target.value)}
+            />
           </label>
 
           <div className="field field--span-2">
@@ -305,9 +382,10 @@ export default function AccountsPayablePage() {
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Código ou nome"
+                placeholder="Codigo ou nome"
                 value={supplier}
                 onChange={(event) => setSupplier(event.target.value)}
+                readOnly={isSettledLaunch}
                 required
               />
               <button
@@ -316,6 +394,7 @@ export default function AccountsPayablePage() {
                 aria-label="Pesquisar fornecedor"
                 title="Pesquisar fornecedor"
                 tabIndex={-1}
+                disabled={isSettledLaunch}
                 onClick={() => openLookup('supplier')}
               >
                 <Search size={17} strokeWidth={2.2} />
@@ -328,9 +407,10 @@ export default function AccountsPayablePage() {
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Classificação contábil"
+                placeholder="Classificacao contabil"
                 value={accountingType}
                 onChange={(event) => setAccountingType(event.target.value)}
+                readOnly={isSettledLaunch}
                 required
               />
               <button
@@ -339,6 +419,7 @@ export default function AccountsPayablePage() {
                 aria-label="Pesquisar tipo"
                 title="Pesquisar tipo"
                 tabIndex={-1}
+                disabled={isSettledLaunch}
                 onClick={() => openLookup('accountingType')}
               >
                 <Search size={17} strokeWidth={2.2} />
@@ -347,34 +428,39 @@ export default function AccountsPayablePage() {
           </div>
 
           <label className="field">
-            <span>Tipo de cobrança</span>
-            <select required defaultValue="">
+            <span>Tipo de cobranca</span>
+            <select value={chargeType} onChange={(event) => setChargeType(event.target.value)} disabled={isSettledLaunch} required>
               <option value="">Selecione</option>
-              <option>Boleto</option>
-              <option>Pix</option>
-              <option>Transferência</option>
-              <option>Cartão</option>
-              <option>Dinheiro</option>
+              {chargeTypes.map((type) => (
+                <option value={type} key={type}>{type}</option>
+              ))}
             </select>
           </label>
 
           <label className="field">
             <span>Documento</span>
-            <input type="text" placeholder="Número do documento" required />
+            <input
+              type="text"
+              placeholder="Numero do documento"
+              value={documentNumber}
+              onChange={(event) => setDocumentNumber(event.target.value)}
+              readOnly={isSettledLaunch}
+              required
+            />
           </label>
 
           <label className="field">
-            <span>Data de emissão</span>
-            <input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} required />
+            <span>Data de emissao</span>
+            <input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} disabled={isSettledLaunch} required />
           </label>
 
           <label className="field">
             <span>Data de vencimento</span>
-            <input type="date" value={dueDate} onChange={(event) => handleDueDateChange(event.target.value)} required />
+            <input type="date" value={dueDate} onChange={(event) => handleDueDateChange(event.target.value)} disabled={isSettledLaunch} required />
           </label>
 
           <label className="field">
-            <span>Valor do lançamento</span>
+            <span>Valor do lancamento</span>
             <input
               type="number"
               min="0"
@@ -382,6 +468,7 @@ export default function AccountsPayablePage() {
               placeholder="0,00"
               value={launchValue}
               onChange={(event) => handleLaunchValueChange(event.target.value)}
+              readOnly={isSettledLaunch}
               required
             />
           </label>
@@ -394,6 +481,7 @@ export default function AccountsPayablePage() {
               step="1"
               value={quantity}
               onChange={(event) => handleQuantityChange(event.target.value)}
+              readOnly={isSettledLaunch}
               required
             />
           </label>
@@ -406,6 +494,7 @@ export default function AccountsPayablePage() {
               step="1"
               value={interval}
               onChange={(event) => handleIntervalChange(event.target.value)}
+              readOnly={isSettledLaunch}
               required
             />
           </label>
@@ -419,21 +508,47 @@ export default function AccountsPayablePage() {
               placeholder="0,00"
               value={installmentValue}
               onChange={(event) => handleInstallmentValueChange(event.target.value)}
+              readOnly={isSettledLaunch}
             />
           </label>
 
           <label className="field field--span-4">
-            <span>Observação</span>
-            <textarea placeholder="Observação do lançamento" />
+            <span>Observacao</span>
+            <textarea
+              placeholder="Observacao do lancamento"
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              readOnly={isSettledLaunch}
+            />
           </label>
+
+          {isSettledLaunch && (
+            <>
+              <label className="field">
+                <span>Banco do pagamento</span>
+                <input type="text" value={paymentBank} placeholder="Sem banco informado" readOnly />
+              </label>
+
+              <label className="field field--span-4">
+                <span>Observacao de baixa</span>
+                <textarea
+                  placeholder="Sem observacao de baixa"
+                  value={settlementNote}
+                  readOnly
+                />
+              </label>
+            </>
+          )}
         </div>
+
+        <AttachmentPanel attachments={attachments} onAddFiles={handleAddAttachments} />
 
         <div className="installments-panel">
           <h2 className="installments-title">Parcelas</h2>
           <table className="installments-table">
             <thead>
               <tr>
-                <th>Número</th>
+                <th>Numero</th>
                 <th>Vencimento</th>
                 <th>Valor</th>
               </tr>
@@ -448,6 +563,7 @@ export default function AccountsPayablePage() {
                       step="1"
                       value={installment.number}
                       onChange={(event) => handleInstallmentRowChange(index, 'number', event.target.value)}
+                      readOnly={isSettledLaunch}
                     />
                   </td>
                   <td>
@@ -455,6 +571,7 @@ export default function AccountsPayablePage() {
                       type="date"
                       value={installment.dueDate}
                       onChange={(event) => handleInstallmentRowChange(index, 'dueDate', event.target.value)}
+                      disabled={isSettledLaunch}
                     />
                   </td>
                   <td>
@@ -464,6 +581,7 @@ export default function AccountsPayablePage() {
                       step="0.01"
                       value={installment.value}
                       onChange={(event) => handleInstallmentRowChange(index, 'value', event.target.value)}
+                      readOnly={isSettledLaunch}
                     />
                   </td>
                 </tr>
@@ -473,7 +591,7 @@ export default function AccountsPayablePage() {
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="primary-button">Criar lançamento</button>
+          <button type="submit" className="primary-button">{isSettledLaunch ? 'Salvar anexos' : loadedLaunchId ? 'Salvar alteracoes' : 'Criar lancamento'}</button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{status}</span>
         </div>
@@ -539,7 +657,7 @@ export default function AccountsPayablePage() {
                   ))}
                 </tbody>
               </table>
-              {lookupItems.length === 0 && <div className="lookup-empty">Nenhuma opção encontrada</div>}
+              {lookupItems.length === 0 && <div className="lookup-empty">Nenhuma opcao encontrada</div>}
             </div>
           </div>
         </div>

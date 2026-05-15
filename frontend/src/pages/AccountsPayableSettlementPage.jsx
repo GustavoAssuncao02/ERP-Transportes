@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
+import { paymentBanks } from '../data/financeData.js';
 
 const businessUnits = [
   { code: '001', name: 'JTD Transportes LTDA' },
@@ -187,6 +188,7 @@ export default function AccountsPayableSettlementPage() {
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentBank, setPaymentBank] = useState('');
   const [settlementNote, setSettlementNote] = useState('');
   const [paymentType, setPaymentType] = useState('Total');
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
@@ -270,6 +272,11 @@ export default function AccountsPayableSettlementPage() {
 
     if (!paymentMethod) {
       setStatus('Selecione a forma de pagamento da baixa');
+      return;
+    }
+
+    if (!paymentBank) {
+      setStatus('Selecione o banco do pagamento');
       return;
     }
 
@@ -450,6 +457,16 @@ export default function AccountsPayableSettlementPage() {
               <option>Total</option>
               <option>Desconto</option>
               <option>Juros</option>
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Banco</span>
+            <select value={paymentBank} onChange={(event) => setPaymentBank(event.target.value)} required>
+              <option value="">Selecione</option>
+              {paymentBanks.map((bank) => (
+                <option value={bank} key={bank}>{bank}</option>
+              ))}
             </select>
           </label>
 

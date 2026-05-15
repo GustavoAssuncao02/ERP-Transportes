@@ -1,83 +1,35 @@
 import { useMemo, useState } from 'react';
-
-const businessUnits = [
-  { value: '001', label: '001 - JTD Transportes LTDA' },
-  { value: '002', label: '002 - JTD Logística Nordeste' },
-  { value: '003', label: '003 - JTD Armazéns Salvador' },
-];
+import {
+  accountingTypeNames,
+  businessUnits,
+  chargeTypes,
+  currency,
+  documentNumbers,
+  financeLaunches,
+  normalizeText,
+  paymentBanks,
+  supplierNames,
+  todayValue,
+} from '../data/financeData.js';
 
 const searchTypes = [
-  { value: 'issueDate', label: 'Data Emissão' },
+  { value: 'issueDate', label: 'Data Emissao' },
   { value: 'dueDate', label: 'Data de Vencimento' },
   { value: 'createdDate', label: 'Data de Cadastro' },
   { value: 'paymentDate', label: 'Data de Pagamento' },
-  { value: 'appropriationDate', label: 'Data de Apropriação' },
-  { value: 'paymentForecastDate', label: 'Data de Previsão de Pagamento' },
+  { value: 'appropriationDate', label: 'Data de Apropriacao' },
+  { value: 'paymentForecastDate', label: 'Data de Previsao de Pagamento' },
 ];
 
-const chargeTypes = [
-  'Carteira',
-  'Banco',
-  'Cheque Pré-Datado',
-  'Avista',
-  'Salário',
-  'Empréstimo',
-  'Financiamento',
-  'Imposto',
-  'Boleto',
-  'Pix',
-  'Transferência',
-  'Cartão',
-];
+const reportLaunches = financeLaunches.map((launch) => ({
+  ...launch,
+  paymentMethod: launch.chargeType,
+}));
 
-const accountingTypes = [
-  'Serviços de transporte',
-  'Combustível',
-  'Manutenção',
-  'Pedágio',
-  'Administrativo',
-  'Seguro',
-];
+const bankOptions = ['Sem banco', ...paymentBanks];
 
-const suppliers = [
-  'Auto Posto Central LTDA',
-  'Oficina São Jorge',
-  'Seguradora Atlântica',
-  'Transportes Parceiros SA',
-  'JTD Logística Nordeste',
-];
-
-const documents = [
-  'NF-8742',
-  'OS-1180',
-  'AP-4409',
-  'FAT-3321',
-  'DUP-0091',
-  'REC-5530',
-];
-
-const reportLaunches = [
-  { id: 'CAP-202605-00001', unit: '001', supplier: suppliers[0], type: accountingTypes[1], document: documents[0], dueDate: '2026-05-14', paymentMethod: chargeTypes[8], amount: 1350.25, status: 'Aberto' },
-  { id: 'CAP-202605-00002', unit: '001', supplier: suppliers[1], type: accountingTypes[2], document: documents[1], dueDate: '2026-05-14', paymentMethod: chargeTypes[9], amount: 780, status: 'Aberto' },
-  { id: 'CAP-202605-00003', unit: '002', supplier: suppliers[2], type: accountingTypes[5], document: documents[2], dueDate: '2026-06-02', paymentMethod: chargeTypes[8], amount: 2420.5, status: 'Baixado' },
-  { id: 'CAP-202605-00004', unit: '003', supplier: suppliers[3], type: accountingTypes[0], document: documents[3], dueDate: '2026-06-10', paymentMethod: chargeTypes[10], amount: 990.9, status: 'Aberto' },
-  { id: 'CAP-202605-00005', unit: '001', supplier: suppliers[4], type: accountingTypes[4], document: documents[4], dueDate: '2026-05-28', paymentMethod: chargeTypes[6], amount: 3180, status: 'Aberto' },
-  { id: 'CAP-202605-00006', unit: '002', supplier: suppliers[0], type: accountingTypes[3], document: documents[5], dueDate: '2026-05-29', paymentMethod: chargeTypes[11], amount: 240, status: 'Baixado' },
-];
-
-function normalizeText(value) {
-  return String(value)
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
-
-function currency(value) {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function todayValue() {
-  return new Date().toISOString().slice(0, 10);
+function bankLabel(launch) {
+  return launch.paymentBank || 'Sem banco';
 }
 
 function htmlEscape(value) {
@@ -171,6 +123,7 @@ function createPdfContent(lines) {
 
 function MultiCheckFilter({ title, options, selected, onChange, searchable = false, searchPlaceholder = 'Pesquisar' }) {
   const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
   const allSelected = selected.length === options.length;
   const visibleOptions = searchable
     ? options.filter((option) => normalizeText(option).includes(normalizeText(query)))
@@ -190,16 +143,29 @@ function MultiCheckFilter({ title, options, selected, onChange, searchable = fal
   }
 
   return (
-    <section className="report-filter-box">
+    <section className={`report-filter-box ${isOpen ? 'report-filter-box--open' : 'report-filter-box--closed'}`}>
       <div className="report-filter-header">
-        <h2>{title}</h2>
-        <label>
+        <button
+          type="button"
+          className="report-filter-title-button"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          {title}
+        </button>
+        <button
+          type="button"
+          className="report-filter-header-hitarea"
+          aria-label={`${isOpen ? 'Fechar' : 'Abrir'} ${title}`}
+          onClick={() => setIsOpen((current) => !current)}
+        />
+        <label onClick={(event) => event.stopPropagation()}>
           <input type="checkbox" checked={allSelected} onChange={toggleAll} />
           Todos
         </label>
       </div>
 
-      {searchable && (
+      {isOpen && searchable && (
         <div className="report-filter-search">
           <input
             type="search"
@@ -210,21 +176,23 @@ function MultiCheckFilter({ title, options, selected, onChange, searchable = fal
         </div>
       )}
 
-      <div className={searchable ? 'report-check-list report-check-list--scroll' : 'report-check-list'}>
-        {visibleOptions.map((option) => (
-          <label className="report-check-row" key={option}>
-            <input
-              type="checkbox"
-              checked={selected.includes(option)}
-              onChange={() => toggleOption(option)}
-            />
-            <span>{option}</span>
-          </label>
-        ))}
-        {searchable && visibleOptions.length === 0 && (
-          <div className="report-filter-empty">Nenhuma opção encontrada</div>
-        )}
-      </div>
+      {isOpen && (
+        <div className={searchable ? 'report-check-list report-check-list--scroll' : 'report-check-list'}>
+          {visibleOptions.map((option) => (
+            <label className="report-check-row" key={option}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() => toggleOption(option)}
+              />
+              <span>{option}</span>
+            </label>
+          ))}
+          {searchable && visibleOptions.length === 0 && (
+            <div className="report-filter-empty">Nenhuma opcao encontrada</div>
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -236,37 +204,43 @@ export default function AccountsPayableReportPage() {
   const [periodEnd, setPeriodEnd] = useState('');
   const [status, setStatus] = useState('Ambos');
   const [selectedChargeTypes, setSelectedChargeTypes] = useState(chargeTypes);
-  const [selectedTypes, setSelectedTypes] = useState(accountingTypes);
-  const [selectedSuppliers, setSelectedSuppliers] = useState(suppliers);
-  const [selectedDocuments, setSelectedDocuments] = useState(documents);
+  const [selectedBanks, setSelectedBanks] = useState(bankOptions);
+  const [selectedTypes, setSelectedTypes] = useState(accountingTypeNames);
+  const [selectedSuppliers, setSelectedSuppliers] = useState(supplierNames);
+  const [selectedDocuments, setSelectedDocuments] = useState(documentNumbers);
   const [message, setMessage] = useState('');
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [generateMenuOpen, setGenerateMenuOpen] = useState(false);
 
   const summary = useMemo(() => ({
     chargeTypes: selectedChargeTypes.length,
+    banks: selectedBanks.length,
     types: selectedTypes.length,
     suppliers: selectedSuppliers.length,
     documents: selectedDocuments.length,
-  }), [selectedChargeTypes, selectedTypes, selectedSuppliers, selectedDocuments]);
+  }), [selectedBanks, selectedChargeTypes, selectedTypes, selectedSuppliers, selectedDocuments]);
 
   const filteredLaunches = useMemo(() => reportLaunches.filter((launch) => {
+    const dateValue = launch[searchType];
     const unitMatches = !businessUnit || launch.unit === businessUnit;
-    const startMatches = !periodStart || launch.dueDate >= periodStart;
-    const endMatches = !periodEnd || launch.dueDate <= periodEnd;
+    const startMatches = !periodStart || (dateValue && dateValue >= periodStart);
+    const endMatches = !periodEnd || (dateValue && dateValue <= periodEnd);
     const statusMatches = status === 'Ambos' || launch.status === status;
     const chargeMatches = selectedChargeTypes.includes(launch.paymentMethod);
+    const bankMatches = selectedBanks.includes(bankLabel(launch));
     const typeMatches = selectedTypes.includes(launch.type);
     const supplierMatches = selectedSuppliers.includes(launch.supplier);
     const documentMatches = selectedDocuments.includes(launch.document);
 
-    return unitMatches && startMatches && endMatches && statusMatches && chargeMatches && typeMatches && supplierMatches && documentMatches;
+    return unitMatches && startMatches && endMatches && statusMatches && chargeMatches && bankMatches && typeMatches && supplierMatches && documentMatches;
   }), [
     businessUnit,
     periodStart,
     periodEnd,
+    searchType,
     status,
     selectedChargeTypes,
+    selectedBanks,
     selectedTypes,
     selectedSuppliers,
     selectedDocuments,
@@ -299,11 +273,17 @@ export default function AccountsPayableReportPage() {
       ['Periodo final', periodEnd || 'Todos'],
       ['Situacao', status],
       ['Tipo pesquisa', selectedSearchTypeLabel()],
+      ['Bancos selecionados', `${selectedBanks.length} de ${bankOptions.length}`],
     ];
   }
 
   function generateExcel() {
-    const total = filteredLaunches.reduce((sum, launch) => sum + launch.amount, 0);
+    const totals = filteredLaunches.reduce((acc, launch) => ({
+      amount: acc.amount + launch.amount,
+      interest: acc.interest + (launch.interestAmount || 0),
+      discount: acc.discount + (launch.discountAmount || 0),
+      final: acc.final + (launch.finalAmount || 0),
+    }), { amount: 0, interest: 0, discount: 0, final: 0 });
     const metadataRows = reportMetadata().map(([label, value]) => `
       <tr><th>${htmlEscape(label)}</th><td>${htmlEscape(value)}</td></tr>
     `).join('');
@@ -317,7 +297,11 @@ export default function AccountsPayableReportPage() {
         <td>${htmlEscape(launch.dueDate)}</td>
         <td>${htmlEscape(launch.status)}</td>
         <td>${htmlEscape(launch.paymentMethod)}</td>
+        <td>${htmlEscape(bankLabel(launch))}</td>
         <td>${launch.amount.toFixed(2)}</td>
+        <td>${(launch.interestAmount || 0).toFixed(2)}</td>
+        <td>${(launch.discountAmount || 0).toFixed(2)}</td>
+        <td>${(launch.finalAmount || 0).toFixed(2)}</td>
       </tr>
     `).join('');
     const content = `
@@ -338,11 +322,23 @@ export default function AccountsPayableReportPage() {
                 <th>Vencimento</th>
                 <th>Situacao</th>
                 <th>Cobranca</th>
+                <th>Banco</th>
                 <th>Valor</th>
+                <th>Juros</th>
+                <th>Desconto</th>
+                <th>Valor final</th>
               </tr>
             </thead>
             <tbody>${dataRows}</tbody>
-            <tfoot><tr><th colspan="8">Total</th><th>${total.toFixed(2)}</th></tr></tfoot>
+            <tfoot>
+              <tr>
+                <th colspan="9">Total</th>
+                <th>${totals.amount.toFixed(2)}</th>
+                <th>${totals.interest.toFixed(2)}</th>
+                <th>${totals.discount.toFixed(2)}</th>
+                <th>${totals.final.toFixed(2)}</th>
+              </tr>
+            </tfoot>
           </table>
         </body>
       </html>
@@ -350,11 +346,16 @@ export default function AccountsPayableReportPage() {
 
     downloadBlob(content, reportFilename('xls'), 'application/vnd.ms-excel;charset=utf-8');
     setGenerateMenuOpen(false);
-    setMessage('Relatório em Excel gerado');
+    setMessage('Relatorio em Excel gerado');
   }
 
   function reportPdfLines() {
-    const total = filteredLaunches.reduce((sum, launch) => sum + launch.amount, 0);
+    const totals = filteredLaunches.reduce((acc, launch) => ({
+      amount: acc.amount + launch.amount,
+      interest: acc.interest + (launch.interestAmount || 0),
+      discount: acc.discount + (launch.discountAmount || 0),
+      final: acc.final + (launch.finalAmount || 0),
+    }), { amount: 0, interest: 0, discount: 0, final: 0 });
     const lines = [
       'Relatorio de Contas a Pagar',
       `Gerado em ${todayValue()}`,
@@ -366,8 +367,8 @@ export default function AccountsPayableReportPage() {
     });
 
     lines.push('');
-    lines.push('Lancamento          Unid Fornecedor                 Documento Tipo              Vencimento Situacao Pagamento       Valor');
-    lines.push('------------------------------------------------------------------------------------------------------------------------');
+    lines.push('Lancamento       Unid Fornecedor      Documento Banco        Vencimento Sit    Valor        Juros    Desconto Valor final');
+    lines.push('------------------------------------------------------------------------------------------------------------------------------');
 
     if (!filteredLaunches.length) {
       lines.push('Nenhum lancamento encontrado para os filtros aplicados.');
@@ -375,42 +376,44 @@ export default function AccountsPayableReportPage() {
 
     filteredLaunches.forEach((launch) => {
       lines.push([
-        fitPdfText(launch.id, 18),
+        fitPdfText(launch.id, 16),
         fitPdfText(launch.unit, 4),
-        fitPdfText(launch.supplier, 26),
-        fitPdfText(launch.document, 9),
-        fitPdfText(launch.type, 17),
+        fitPdfText(launch.supplier, 15),
+        fitPdfText(launch.document, 8),
+        fitPdfText(bankLabel(launch), 11),
         fitPdfText(launch.dueDate, 10),
-        fitPdfText(launch.status, 7),
-        fitPdfText(launch.paymentMethod, 13),
-        fitPdfText(currency(launch.amount), 14),
+        fitPdfText(launch.status, 6),
+        fitPdfText(currency(launch.amount), 12),
+        fitPdfText(currency(launch.interestAmount || 0), 9),
+        fitPdfText(currency(launch.discountAmount || 0), 9),
+        fitPdfText(currency(launch.finalAmount || 0), 11),
       ].join(' '));
     });
 
-    lines.push('------------------------------------------------------------------------------------------------------------------------');
-    lines.push(`Total: ${currency(total)}`);
+    lines.push('------------------------------------------------------------------------------------------------------------------------------');
+    lines.push(`Total titulos: ${currency(totals.amount)} | Juros: ${currency(totals.interest)} | Desconto: ${currency(totals.discount)} | Valor final: ${currency(totals.final)}`);
     return lines;
   }
 
   function generatePdf() {
     downloadBlob(createPdfContent(reportPdfLines()), reportFilename('pdf'), 'application/pdf');
     setGenerateMenuOpen(false);
-    setMessage('Relatório em PDF gerado');
+    setMessage('Relatorio em PDF gerado');
   }
 
   function handleSubmit(event) {
     event.preventDefault();
     setFiltersApplied(true);
     setGenerateMenuOpen(false);
-    setMessage('Filtros aplicados para o relatório de contas a pagar');
+    setMessage('Filtros aplicados para o relatorio de contas a pagar');
   }
 
   return (
     <section className="accounts-payable-report-page">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Relatório de Contas a Pagar</h1>
-          <p className="page-kicker">Filtros para consulta de lançamentos a pagar</p>
+          <h1 className="page-title">Relatorio de Contas a Pagar</h1>
+          <p className="page-kicker">Filtros para consulta de lancamentos a pagar</p>
         </div>
       </header>
 
@@ -433,7 +436,7 @@ export default function AccountsPayableReportPage() {
           </label>
 
           <label className="field">
-            <span>Período inicial</span>
+            <span>Periodo inicial</span>
             <input
               type="date"
               value={periodStart}
@@ -445,7 +448,7 @@ export default function AccountsPayableReportPage() {
           </label>
 
           <label className="field">
-            <span>Período final</span>
+            <span>Periodo final</span>
             <input
               type="date"
               value={periodEnd}
@@ -457,7 +460,7 @@ export default function AccountsPayableReportPage() {
           </label>
 
           <label className="field">
-            <span>Situação do Lançamento</span>
+            <span>Situacao do Lancamento</span>
             <select
               value={status}
               onChange={(event) => {
@@ -488,44 +491,16 @@ export default function AccountsPayableReportPage() {
         </div>
 
         <div className="report-grid">
-          <section className="report-filter-box charge-filter">
-            <div className="report-filter-header">
-              <h2>Tipo de Cobrança</h2>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={selectedChargeTypes.length === chargeTypes.length}
-                  onChange={() => updateSelection(setSelectedChargeTypes, selectedChargeTypes.length === chargeTypes.length ? [] : chargeTypes)}
-                />
-                Todos
-              </label>
-            </div>
-            <div className="report-check-list report-check-list--scroll">
-              {chargeTypes.map((type) => (
-                <label className="report-check-row" key={type}>
-                  <input
-                    type="checkbox"
-                    checked={selectedChargeTypes.includes(type)}
-                    onChange={() => updateSelection(
-                      setSelectedChargeTypes,
-                      selectedChargeTypes.includes(type)
-                        ? selectedChargeTypes.filter((item) => item !== type)
-                        : [...selectedChargeTypes, type],
-                    )}
-                  />
-                  <span>{type}</span>
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <MultiCheckFilter title="Selecionar Tipo" options={accountingTypes} selected={selectedTypes} onChange={(next) => updateSelection(setSelectedTypes, next)} />
-          <MultiCheckFilter title="Selecionar Fornecedor" options={suppliers} selected={selectedSuppliers} onChange={(next) => updateSelection(setSelectedSuppliers, next)} searchable searchPlaceholder="Pesquisar fornecedor" />
-          <MultiCheckFilter title="Selecionar Documento" options={documents} selected={selectedDocuments} onChange={(next) => updateSelection(setSelectedDocuments, next)} searchable searchPlaceholder="Pesquisar documento" />
+          <MultiCheckFilter title="Tipo de Cobranca" options={chargeTypes} selected={selectedChargeTypes} onChange={(next) => updateSelection(setSelectedChargeTypes, next)} />
+          <MultiCheckFilter title="Selecionar Tipo" options={accountingTypeNames} selected={selectedTypes} onChange={(next) => updateSelection(setSelectedTypes, next)} />
+          <MultiCheckFilter title="Banco do Pagamento" options={bankOptions} selected={selectedBanks} onChange={(next) => updateSelection(setSelectedBanks, next)} searchable searchPlaceholder="Pesquisar banco" />
+          <MultiCheckFilter title="Selecionar Fornecedor" options={supplierNames} selected={selectedSuppliers} onChange={(next) => updateSelection(setSelectedSuppliers, next)} searchable searchPlaceholder="Pesquisar fornecedor" />
+          <MultiCheckFilter title="Selecionar Documento" options={documentNumbers} selected={selectedDocuments} onChange={(next) => updateSelection(setSelectedDocuments, next)} searchable searchPlaceholder="Pesquisar documento" />
         </div>
 
         <div className="report-summary">
-          <span>{summary.chargeTypes} cobrança(s)</span>
+          <span>{summary.chargeTypes} cobranca(s)</span>
+          <span>{summary.banks} banco(s)</span>
           <span>{summary.types} tipo(s)</span>
           <span>{summary.suppliers} fornecedor(es)</span>
           <span>{summary.documents} documento(s)</span>
@@ -538,9 +513,10 @@ export default function AccountsPayableReportPage() {
             className="secondary-button"
             onClick={() => {
               setSelectedChargeTypes(chargeTypes);
-              setSelectedTypes(accountingTypes);
-              setSelectedSuppliers(suppliers);
-              setSelectedDocuments(documents);
+              setSelectedBanks(bankOptions);
+              setSelectedTypes(accountingTypeNames);
+              setSelectedSuppliers(supplierNames);
+              setSelectedDocuments(documentNumbers);
               setFiltersApplied(false);
               setGenerateMenuOpen(false);
               setMessage('');
@@ -552,16 +528,16 @@ export default function AccountsPayableReportPage() {
             <div className="report-generate-actions">
               <div className="report-split-button">
                 <button type="button" className="primary-button report-generate-main" onClick={generatePdf}>
-                  Gerar Relatório
+                  Gerar Relatorio
                 </button>
                 <button
                   type="button"
                   className="primary-button report-generate-toggle"
-                  aria-label="Opções de geração"
+                  aria-label="Opcoes de geracao"
                   aria-expanded={generateMenuOpen}
                   onClick={() => setGenerateMenuOpen((current) => !current)}
                 >
-                  ▾
+                  v
                 </button>
                 {generateMenuOpen && (
                   <div className="report-generate-menu">

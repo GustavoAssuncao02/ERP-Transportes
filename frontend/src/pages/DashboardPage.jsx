@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import AccountsPayableSchedulePage from './AccountsPayableSchedulePage.jsx';
 import AccountsPayableDeletionPage from './AccountsPayableDeletionPage.jsx';
 import AccountsPayablePage from './AccountsPayablePage.jsx';
@@ -8,11 +8,13 @@ import BusinessIntelligencePage from './BusinessIntelligencePage.jsx';
 import CollectionOrderPage from './CollectionOrderPage.jsx';
 import DriverRegistrationPage from './DriverRegistrationPage.jsx';
 import GenerateManifestPage from './GenerateManifestPage.jsx';
+import HomeShortcutsPage from './HomeShortcutsPage.jsx';
 import IssueCtePage from './IssueCtePage.jsx';
 import OneOffPaymentPage from './OneOffPaymentPage.jsx';
 import RegisteredLaunchesPage from './RegisteredLaunchesPage.jsx';
 import SettlementReversalPage from './SettlementReversalPage.jsx';
 import SupplierRegistrationPage from './SupplierRegistrationPage.jsx';
+import SystemUpdatesPage from './SystemUpdatesPage.jsx';
 import UnitRegistrationPage from './UnitRegistrationPage.jsx';
 import VehicleRegistrationPage from './VehicleRegistrationPage.jsx';
 import CardGrid from '../components/CardGrid.jsx';
@@ -21,12 +23,19 @@ import Navbar from '../components/Navbar.jsx';
 import SidebarBrand from '../components/SidebarBrand.jsx';
 import TabBar from '../components/TabBar.jsx';
 import UserBar from '../components/UserBar.jsx';
-import { quickAccessCards, quickQueryCards, tabs as initialTabs } from '../data/siteData.js';
+import {
+  getHomeShortcutCards,
+  readHomeShortcutIds,
+  saveHomeShortcutIds,
+} from '../data/homeShortcuts.js';
+import { quickQueryCards, tabs as initialTabs } from '../data/siteData.js';
 
 export default function DashboardPage() {
   const [openTabs, setOpenTabs] = useState(initialTabs);
   const [activeTabId, setActiveTabId] = useState('home');
   const [editingLaunch, setEditingLaunch] = useState(null);
+  const [homeShortcutIds, setHomeShortcutIds] = useState(readHomeShortcutIds);
+  const homeShortcutCards = useMemo(() => getHomeShortcutCards(homeShortcutIds), [homeShortcutIds]);
 
   function openPage(item) {
     if (!item.pageId) return;
@@ -87,6 +96,12 @@ export default function DashboardPage() {
     });
     setActiveTabId('home');
     setEditingLaunch(null);
+  }
+
+  function saveHomeShortcuts(nextShortcutIds) {
+    const savedShortcutIds = saveHomeShortcutIds(nextShortcutIds);
+    setHomeShortcutIds(savedShortcutIds);
+    return savedShortcutIds;
   }
 
   function reorderTabs(draggedTabId, targetTabId, placement) {
@@ -172,10 +187,18 @@ export default function DashboardPage() {
       return <SettlementReversalPage onOpenLaunchDetails={openLaunchEditor} />;
     }
 
+    if (activeTabId === 'home-shortcuts') {
+      return <HomeShortcutsPage selectedShortcutIds={homeShortcutIds} onSave={saveHomeShortcuts} />;
+    }
+
+    if (activeTabId === 'system-updates') {
+      return <SystemUpdatesPage />;
+    }
+
     return (
       <>
         <DashboardSection title="Acesso rápido">
-          <CardGrid cards={quickAccessCards} variant="tall" onCardClick={openPage} />
+          <CardGrid cards={homeShortcutCards} variant="tall" onCardClick={openPage} />
         </DashboardSection>
 
         <DashboardSection title="Consultas rápidas">

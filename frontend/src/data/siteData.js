@@ -114,6 +114,18 @@ export const navigationItems = [
   {
     id: 'sistema',
     label: 'Sistema',
+    children: [
+      {
+        id: 'gerenciar-atalhos-inicio',
+        label: 'Gerenciar Atalhos de Início',
+        pageId: 'home-shortcuts',
+      },
+      {
+        id: 'ultimas-atualizacoes',
+        label: 'Últimas Atualizações',
+        pageId: 'system-updates',
+      },
+    ],
   },
 ];
 

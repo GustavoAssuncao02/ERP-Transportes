@@ -2277,6 +2277,167 @@
   border-top: 1px solid var(--border);
 }
 
+.home-shortcuts-page,
+.system-updates-page {
+  max-width: 1280px;
+}
+
+.shortcut-manager-layout {
+  display: grid;
+  max-width: 1280px;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.45fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.shortcut-manager-layout > .registered-launches-panel,
+.shortcut-manager-layout > .selection-panel {
+  margin-top: 0;
+}
+
+.shortcut-searchbar {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.shortcut-searchbar .lookup-field {
+  position: relative;
+}
+
+.shortcut-searchbar input {
+  padding-right: 36px;
+}
+
+.shortcut-search-icon {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  color: var(--text-muted);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.shortcut-options-table th:first-child,
+.shortcut-options-table td:first-child {
+  width: 70px;
+  text-align: center;
+}
+
+.shortcut-options-table input[type='checkbox'] {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--primary);
+}
+
+.shortcut-selected-list {
+  max-height: 472px;
+}
+
+.shortcut-selected-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.shortcut-selected-row > div:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.shortcut-selected-row strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-selected-row span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.shortcut-row-actions .icon-button {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+
+.shortcut-manager-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  background: #f8f8f8;
+}
+
+.shortcut-manager-status {
+  min-height: 34px;
+  padding: 0 12px 12px;
+  background: #f8f8f8;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.updates-panel {
+  max-width: 980px;
+}
+
+.updates-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.update-entry {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  padding: 16px;
+  border-bottom: 1px solid #eeeeee;
+}
+
+.update-entry:last-child {
+  border-bottom: 0;
+}
+
+.update-entry time {
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.update-entry h3 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+.update-entry ul {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .issue-cte-page,
 .collection-order-page,
 .registry-page {
@@ -2500,6 +2661,10 @@
   .schedule-layout {
     grid-template-columns: 1fr;
   }
+
+  .shortcut-manager-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -2557,6 +2722,11 @@
   .lookup-status {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .update-entry {
+    grid-template-columns: 1fr;
+    gap: 8px;
   }
 
   .sidebar-logo {

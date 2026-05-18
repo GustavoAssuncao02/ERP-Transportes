@@ -219,15 +219,50 @@
   align-items: flex-end;
   gap: 0;
   padding-top: 8px;
+  padding-bottom: 2px;
   overflow-x: auto;
   overflow-y: hidden;
   border-bottom: 1px solid var(--border);
   background: var(--chrome-bg);
   scrollbar-width: none;
+  scrollbar-color: transparent transparent;
 }
 
 .tab-bar::-webkit-scrollbar {
-  display: none;
+  height: 0;
+}
+
+.tab-bar:hover,
+.tab-bar:focus-within {
+  scrollbar-width: thin;
+  scrollbar-color: #8aa1a0 #e2e6e6;
+}
+
+.tab-bar:hover::-webkit-scrollbar,
+.tab-bar:focus-within::-webkit-scrollbar {
+  height: 9px;
+}
+
+.tab-bar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.tab-bar:hover::-webkit-scrollbar-track,
+.tab-bar:focus-within::-webkit-scrollbar-track {
+  background: #e2e6e6;
+}
+
+.tab-bar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  background-clip: padding-box;
+}
+
+.tab-bar:hover::-webkit-scrollbar-thumb,
+.tab-bar:focus-within::-webkit-scrollbar-thumb {
+  background: #8aa1a0;
+  background-clip: padding-box;
 }
 
 .tab {
@@ -315,7 +350,7 @@
   place-items: center;
   align-self: flex-start;
   margin: 4px 2px 0 auto;
-  border: 1px solid #d7342f;
+  border: 1px solid var(--border);
   background: var(--chrome-bg);
   color: #3f4c4c;
   cursor: pointer;
@@ -324,8 +359,8 @@
 
 .tab-close-all:hover,
 .tab-close-all:focus-visible {
-  background: #fff1f0;
-  color: #b3221f;
+  background: #d8d8d8;
+  color: var(--text);
   outline: none;
 }
 

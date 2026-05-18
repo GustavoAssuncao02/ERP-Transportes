@@ -3,6 +3,7 @@ import { onlyDigits } from './transportRegistry.js';
 
 export const unitStorageKey = 'managementUnits';
 export const supplierStorageKey = 'managementSuppliers';
+export const insuranceStorageKey = 'managementInsurances';
 
 export const defaultUnits = businessUnits.map((unit) => ({
   id: unit.code,
@@ -23,6 +24,19 @@ export const defaultSuppliers = suppliers.map((supplier) => ({
   address: '',
   active: true,
 }));
+
+export const defaultInsurances = [
+  {
+    id: 'INS-001',
+    companyName: 'Seguradora Atlantica',
+    cnpj: '34.567.890/0001-22',
+    policyNumber: 'AP-2026-00184',
+    endorsementNumber: '',
+    contact: '',
+    active: true,
+    defaultInsurance: true,
+  },
+];
 
 export function formatCnpj(value) {
   const digits = onlyDigits(value).slice(0, 14);
@@ -65,6 +79,16 @@ export function getRegisteredSuppliers() {
   return readRecords(supplierStorageKey, defaultSuppliers);
 }
 
+export function getRegisteredInsurances() {
+  return readRecords(insuranceStorageKey, defaultInsurances);
+}
+
+export function getDefaultInsurance() {
+  return getRegisteredInsurances().find((insurance) => insurance.active && insurance.defaultInsurance)
+    || getRegisteredInsurances().find((insurance) => insurance.active)
+    || null;
+}
+
 export function saveUnit(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const units = getRegisteredUnits();
@@ -105,6 +129,47 @@ export function saveSupplier(record) {
   return suppliersList;
 }
 
+export function saveInsurance(record) {
+  const cnpjDigits = onlyDigits(record.cnpj);
+  const insurances = getRegisteredInsurances();
+  const existingIndex = insurances.findIndex((insurance) => (
+    insurance.id === record.id
+    || (
+      cnpjDigits
+      && onlyDigits(insurance.cnpj) === cnpjDigits
+      && String(insurance.policyNumber || '').trim() === String(record.policyNumber || '').trim()
+    )
+  ));
+  const nextRecord = {
+    ...record,
+    id: record.id || `INS-${String(insurances.length + 1).padStart(3, '0')}`,
+    cnpj: formatCnpj(record.cnpj),
+    active: record.active !== false,
+    defaultInsurance: Boolean(record.defaultInsurance),
+  };
+  const nextInsurances = insurances.map((insurance, index) => {
+    if (existingIndex >= 0 && index === existingIndex) {
+      return nextRecord;
+    }
+
+    return nextRecord.defaultInsurance ? { ...insurance, defaultInsurance: false } : insurance;
+  });
+
+  if (existingIndex < 0) {
+    nextInsurances.push(nextRecord);
+  }
+
+  if (!nextInsurances.some((insurance) => insurance.active && insurance.defaultInsurance)) {
+    const fallbackIndex = nextInsurances.findIndex((insurance) => insurance.active);
+    if (fallbackIndex >= 0) {
+      nextInsurances[fallbackIndex] = { ...nextInsurances[fallbackIndex], defaultInsurance: true };
+    }
+  }
+
+  writeRecords(insuranceStorageKey, nextInsurances);
+  return nextInsurances;
+}
+
 export function deleteUnit(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const units = getRegisteredUnits();
@@ -143,4 +208,36 @@ export function deactivateSupplier(record) {
 
   writeRecords(supplierStorageKey, nextSuppliers);
   return nextSuppliers;
+}
+
+export function deleteInsurance(record) {
+  const insurances = getRegisteredInsurances();
+  const nextInsurances = insurances.filter((insurance) => insurance.id !== record.id);
+
+  if (!nextInsurances.some((insurance) => insurance.active && insurance.defaultInsurance)) {
+    const fallbackIndex = nextInsurances.findIndex((insurance) => insurance.active);
+    if (fallbackIndex >= 0) {
+      nextInsurances[fallbackIndex] = { ...nextInsurances[fallbackIndex], defaultInsurance: true };
+    }
+  }
+
+  writeRecords(insuranceStorageKey, nextInsurances);
+  return nextInsurances;
+}
+
+export function deactivateInsurance(record) {
+  const insurances = getRegisteredInsurances();
+  const nextInsurances = insurances.map((insurance) => (
+    insurance.id === record.id ? { ...insurance, active: false, defaultInsurance: false } : insurance
+  ));
+
+  if (!nextInsurances.some((insurance) => insurance.active && insurance.defaultInsurance)) {
+    const fallbackIndex = nextInsurances.findIndex((insurance) => insurance.active);
+    if (fallbackIndex >= 0) {
+      nextInsurances[fallbackIndex] = { ...nextInsurances[fallbackIndex], defaultInsurance: true };
+    }
+  }
+
+  writeRecords(insuranceStorageKey, nextInsurances);
+  return nextInsurances;
 }

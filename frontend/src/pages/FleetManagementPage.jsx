@@ -26,6 +26,12 @@ const mapStatusFilters = [
   { value: 'canceled', label: 'Cancelados' },
 ];
 
+const driverTypeFilters = [
+  { value: 'fleet', label: 'Motorista da frota' },
+  { value: 'third-party', label: 'Motorista terceiro' },
+  { value: 'both', label: 'Ambos' },
+];
+
 const brazilBounds = [
   [-34.2, -74.1],
   [5.4, -33.7],
@@ -267,6 +273,18 @@ function manifestDriverKey(manifest) {
   return onlyDigits(manifest.driverCpf) || normalizeText(manifest.driverName);
 }
 
+function driverRegistryKeys(driver) {
+  return [
+    onlyDigits(driver.cpf),
+    normalizeText(driver.name),
+  ].filter(Boolean);
+}
+
+function isFleetDriverManifest(manifest, registeredDriverKeys) {
+  return registeredDriverKeys.has(onlyDigits(manifest.driverCpf))
+    || registeredDriverKeys.has(normalizeText(manifest.driverName));
+}
+
 function parseCityLabel(city) {
   const parts = String(city || '').split(' - ');
   const uf = parts.length > 1 ? parts.pop().trim().toUpperCase() : '';
@@ -433,6 +451,7 @@ export default function FleetManagementPage({ onNavigate }) {
   const [originFilter, setOriginFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
   const [driverFilter, setDriverFilter] = useState('');
+  const [driverTypeFilter, setDriverTypeFilter] = useState('fleet');
   const [plateFilter, setPlateFilter] = useState('');
   const [mapDateFilter, setMapDateFilter] = useState('');
   const [mapStatusFilter, setMapStatusFilter] = useState('active');
@@ -447,6 +466,10 @@ export default function FleetManagementPage({ onNavigate }) {
   const vehicles = useMemo(() => getRegisteredVehicles(), []);
   const manifests = useMemo(() => getRegisteredManifests(), []);
   const drivers = useMemo(() => getRegisteredDrivers(), []);
+  const registeredDriverKeys = useMemo(
+    () => new Set(drivers.flatMap(driverRegistryKeys)),
+    [drivers],
+  );
 
   const transitManifests = useMemo(
     () => manifests.filter(activeManifest).sort(latestFirst),
@@ -559,6 +582,10 @@ export default function FleetManagementPage({ onNavigate }) {
         const originMatches = !originFilter || manifest.origin === originFilter;
         const destinationMatches = !destinationFilter || manifest.destination === destinationFilter;
         const driverMatches = !driverFilter || manifestDriverKey(manifest) === driverFilter;
+        const fleetDriver = isFleetDriverManifest(manifest, registeredDriverKeys);
+        const driverTypeMatches = driverTypeFilter === 'both'
+          || (driverTypeFilter === 'fleet' && fleetDriver)
+          || (driverTypeFilter === 'third-party' && !fleetDriver);
         const plateMatches = !plateFilter || plate === plateFilter;
         const dateMatches = !mapDateFilter || dateOnlyValue(manifest.createdAt) === mapDateFilter;
         const fleetStatusMatches = statusFilter === 'all'
@@ -579,6 +606,7 @@ export default function FleetManagementPage({ onNavigate }) {
           && originMatches
           && destinationMatches
           && driverMatches
+          && driverTypeMatches
           && plateMatches
           && dateMatches
           && fleetStatusMatches
@@ -588,6 +616,7 @@ export default function FleetManagementPage({ onNavigate }) {
   }, [
     destinationFilter,
     driverFilter,
+    driverTypeFilter,
     currentTransitManifestIds,
     filteredPlateSet,
     manifests,
@@ -596,6 +625,7 @@ export default function FleetManagementPage({ onNavigate }) {
     originFilter,
     plateFilter,
     query,
+    registeredDriverKeys,
     statusFilter,
   ]);
 
@@ -701,48 +731,56 @@ export default function FleetManagementPage({ onNavigate }) {
       .sort((left, right) => right.count - left.count || latestFirst(left.latestManifest, right.latestManifest));
   }, [cityGeoCache, filteredMapManifests]);
 
-  const endpointStats = useMemo(() => {
-    const points = new Map();
+  const mapTrips = useMemo(() => filteredMapManifests
+    .map((manifest) => {
+      const originPoint = resolveCityCoordinates(manifest.origin, cityGeoCache);
+      const destinationPoint = resolveCityCoordinates(manifest.destination, cityGeoCache);
+
+      if (!originPoint || !destinationPoint) return null;
+
+      return {
+        manifest,
+        originPoint,
+        destinationPoint,
+        approximate: Boolean(originPoint.approximate || destinationPoint.approximate),
+        canceled: !activeManifest(manifest),
+      };
+    })
+    .filter(Boolean), [cityGeoCache, filteredMapManifests]);
+
+  const selectedTrip = useMemo(() => {
+    const matchedTrip = mapTrips.find((trip) => trip.manifest.id === selectedManifestId);
+    return matchedTrip || mapTrips[0] || null;
+  }, [mapTrips, selectedManifestId]);
+
+  const operationalSummary = useMemo(() => {
+    const plates = new Set();
+    let fleetDrivers = 0;
+    let thirdPartyDrivers = 0;
 
     filteredMapManifests.forEach((manifest) => {
-      [
-        ['origin', 'originCount'],
-        ['destination', 'destinationCount'],
-      ].forEach(([field, countField]) => {
-        const label = manifest[field];
-        const key = cityKey(label);
-        const point = resolveCityCoordinates(label, cityGeoCache);
+      const plate = normalizePlate(manifest.truckPlate);
+      if (plate) plates.add(plate);
 
-        if (!key || !point) return;
-
-        const currentPoint = points.get(key) || {
-          key,
-          label,
-          point,
-          originCount: 0,
-          destinationCount: 0,
-          total: 0,
-        };
-
-        currentPoint[countField] += 1;
-        currentPoint.total += 1;
-        points.set(key, currentPoint);
-      });
+      if (isFleetDriverManifest(manifest, registeredDriverKeys)) {
+        fleetDrivers += 1;
+      } else {
+        thirdPartyDrivers += 1;
+      }
     });
 
-    return [...points.values()].sort((left, right) => right.total - left.total || left.label.localeCompare(right.label, 'pt-BR'));
-  }, [cityGeoCache, filteredMapManifests]);
+    return {
+      vehicles: plates.size,
+      fleetDrivers,
+      thirdPartyDrivers,
+      routes: routeGroups.length,
+    };
+  }, [filteredMapManifests, registeredDriverKeys, routeGroups.length]);
 
-  const topOrigins = useMemo(() => countByCity(filteredMapManifests, 'origin').slice(0, 4), [filteredMapManifests]);
-  const topDestinations = useMemo(() => countByCity(filteredMapManifests, 'destination').slice(0, 4), [filteredMapManifests]);
   const unmappedCities = useMemo(
     () => citiesToResolve.filter((city) => unresolvedCity(city, cityGeoCache)).slice(0, 4),
     [citiesToResolve, cityGeoCache],
   );
-
-  const selectedRoute = useMemo(() => (
-    routeGroups.find((route) => route.manifests.some((manifest) => manifest.id === selectedManifestId)) || routeGroups[0] || null
-  ), [routeGroups, selectedManifestId]);
 
   useEffect(() => {
     if (!filteredMapManifests.length) {
@@ -795,78 +833,72 @@ export default function FleetManagementPage({ onNavigate }) {
 
     const layer = L.layerGroup().addTo(map);
     const bounds = L.latLngBounds([]);
-    const selectedRouteKey = selectedRoute?.key || '';
+    const renderedTrips = [...mapTrips].sort((left, right) => {
+      const leftSelected = left.manifest.id === selectedManifestId ? 1 : 0;
+      const rightSelected = right.manifest.id === selectedManifestId ? 1 : 0;
+      return leftSelected - rightSelected;
+    });
 
-    routeGroups.forEach((route) => {
-      const selected = selectedRouteKey === route.key;
-      const inactiveOnly = route.activeCount === 0;
-      const routeColor = selected ? '#e87722' : inactiveOnly ? '#7b8794' : '#1a7a72';
-      const routeWeight = selected ? 5 : Math.min(7, 2.4 + (route.count * 0.85));
-      const latLngs = [pointToLatLng(route.originPoint), pointToLatLng(route.destinationPoint)];
+    renderedTrips.forEach((trip) => {
+      const selected = selectedManifestId === trip.manifest.id;
+      const routeColor = selected ? '#e87722' : trip.canceled ? '#7b8794' : '#1a7a72';
+      const routeWeight = selected ? 5 : 3;
+      const latLngs = [pointToLatLng(trip.originPoint), pointToLatLng(trip.destinationPoint)];
+      const selectTrip = () => setSelectedManifestId(trip.manifest.id);
       const tooltip = [
-        `${route.originLabel} -> ${route.destinationLabel}`,
-        `${route.count} manifesto(s)`,
-        route.approximate ? 'coordenada aproximada' : '',
+        `${trip.manifest.id}: ${trip.manifest.origin} -> ${trip.manifest.destination}`,
+        normalizePlate(trip.manifest.truckPlate),
+        getDriverName(trip.manifest, drivers),
+        trip.approximate ? 'coordenada aproximada' : '',
       ].filter(Boolean).join(' | ');
 
       const line = L.polyline(latLngs, {
         color: routeColor,
-        dashArray: inactiveOnly ? '8 8' : route.approximate ? '5 7' : null,
+        dashArray: trip.canceled ? '8 8' : trip.approximate ? '5 7' : null,
         opacity: selected ? 0.96 : 0.72,
         weight: routeWeight,
       }).addTo(layer);
 
       line.bindTooltip(tooltip, { sticky: true });
-      line.on('click', () => setSelectedManifestId(route.latestManifest.id));
+      line.on('click', selectTrip);
 
-      const arrow = L.marker(midpoint(route.originPoint, route.destinationPoint, 0.84), {
+      const arrow = L.marker(midpoint(trip.originPoint, trip.destinationPoint, 0.84), {
         icon: L.divIcon({
           className: selected ? 'fleet-map-arrow fleet-map-arrow--selected' : 'fleet-map-arrow',
-          html: `<span style="--route-angle:${routeBearing(route.originPoint, route.destinationPoint)}deg"></span>`,
+          html: `<span style="--route-angle:${routeBearing(trip.originPoint, trip.destinationPoint)}deg"></span>`,
           iconAnchor: [13, 13],
           iconSize: [26, 26],
         }),
       }).addTo(layer);
 
-      arrow.on('click', () => setSelectedManifestId(route.latestManifest.id));
+      arrow.bindTooltip(tooltip, { sticky: true });
+      arrow.on('click', selectTrip);
 
-      if (route.count > 1) {
-        L.marker(midpoint(route.originPoint, route.destinationPoint, 0.52), {
-          icon: L.divIcon({
-            className: selected ? 'fleet-map-count-badge fleet-map-count-badge--selected' : 'fleet-map-count-badge',
-            html: `<span>${route.count}</span>`,
-            iconAnchor: [13, 13],
-            iconSize: [26, 26],
-          }),
-        }).addTo(layer).on('click', () => setSelectedManifestId(route.latestManifest.id));
-      }
+      [
+        { point: trip.originPoint, type: 'origin', label: trip.manifest.origin },
+        { point: trip.destinationPoint, type: 'destination', label: trip.manifest.destination },
+      ].forEach((stop) => {
+        L.circleMarker(pointToLatLng(stop.point), {
+          color: '#ffffff',
+          fillColor: stop.type === 'origin' ? '#1a7a72' : '#e87722',
+          fillOpacity: selected ? 0.98 : 0.82,
+          opacity: 1,
+          radius: selected ? 8 : 6,
+          weight: selected ? 3 : 2,
+        })
+          .bindTooltip(`${stop.label} | ${trip.manifest.id}`, { sticky: true })
+          .on('click', selectTrip)
+          .addTo(layer);
+      });
 
       bounds.extend(latLngs[0]);
       bounds.extend(latLngs[1]);
     });
 
-    endpointStats.forEach((city) => {
-      const selected = selectedRoute
-        && (city.key === cityKey(selectedRoute.originLabel) || city.key === cityKey(selectedRoute.destinationLabel));
-      const dominantOrigin = city.originCount >= city.destinationCount;
-      const radius = Math.min(14, 5 + (Math.sqrt(city.total) * 2.2));
-
-      L.circleMarker(pointToLatLng(city.point), {
-        color: '#ffffff',
-        fillColor: dominantOrigin ? '#1a7a72' : '#e87722',
-        fillOpacity: selected ? 0.98 : 0.82,
-        opacity: 1,
-        radius: selected ? radius + 2 : radius,
-        weight: selected ? 3 : 2,
-      })
-        .bindTooltip(`${city.label} | saidas: ${city.originCount} | chegadas: ${city.destinationCount}`, { sticky: true })
-        .addTo(layer);
-    });
-
     routeLayerRef.current = layer;
 
-    const routeSignature = routeGroups
-      .map((route) => `${route.key}:${route.count}:${route.originPoint.lat}:${route.originPoint.lng}:${route.destinationPoint.lat}:${route.destinationPoint.lng}`)
+    const routeSignature = mapTrips
+      .map((trip) => `${trip.manifest.id}:${trip.originPoint.lat}:${trip.originPoint.lng}:${trip.destinationPoint.lat}:${trip.destinationPoint.lng}`)
       .join('|');
 
     if (routeSignature && bounds.isValid() && lastRouteSignatureRef.current !== routeSignature) {
@@ -883,7 +915,7 @@ export default function FleetManagementPage({ onNavigate }) {
     }
 
     window.setTimeout(() => map.invalidateSize(), 0);
-  }, [endpointStats, routeGroups, selectedRoute]);
+  }, [drivers, mapTrips, selectedManifestId]);
 
   const selectedManifest = manifests.find((manifest) => manifest.id === selectedManifestId) || null;
 
@@ -1167,7 +1199,7 @@ export default function FleetManagementPage({ onNavigate }) {
 
       <section className="registered-launches-panel fleet-map-panel" aria-labelledby="fleet-map-title">
         <div className="registered-launches-header">
-          <h2 id="fleet-map-title">Mapa de manifestos</h2>
+          <h2 id="fleet-map-title">Mapa operacional de rotas</h2>
           <div>
             <span>{filteredMapManifests.length} manifesto(s)</span>
           </div>
@@ -1178,6 +1210,15 @@ export default function FleetManagementPage({ onNavigate }) {
             <span>Status</span>
             <select value={mapStatusFilter} onChange={(event) => setMapStatusFilter(event.target.value)}>
               {mapStatusFilters.map((filter) => (
+                <option value={filter.value} key={filter.value}>{filter.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Tipo motorista</span>
+            <select value={driverTypeFilter} onChange={(event) => setDriverTypeFilter(event.target.value)}>
+              {driverTypeFilters.map((filter) => (
                 <option value={filter.value} key={filter.value}>{filter.label}</option>
               ))}
             </select>
@@ -1251,57 +1292,69 @@ export default function FleetManagementPage({ onNavigate }) {
           <aside className="fleet-map-summary">
             <div className="fleet-map-summary-title">
               <MapPinned size={19} strokeWidth={2.2} />
-              <strong>{selectedManifest?.id || selectedRoute?.latestManifest?.id || 'Nenhum manifesto destacado'}</strong>
+              <strong>{selectedManifest?.id || selectedTrip?.manifest?.id || 'Nenhum manifesto destacado'}</strong>
             </div>
             {selectedManifest ? (
               <>
                 <span>{`${selectedManifest.origin} -> ${selectedManifest.destination}`}</span>
                 <span>{selectedManifest.truckPlate} - {selectedManifest.truckModel}</span>
                 <span>{getDriverName(selectedManifest, drivers)}</span>
+                <span>{isFleetDriverManifest(selectedManifest, registeredDriverKeys) ? 'Motorista da frota' : 'Motorista terceiro'}</span>
                 <button type="button" className="secondary-button" onClick={() => openManifest(selectedManifest.id)}>Abrir manifesto</button>
               </>
             ) : (
               <span>Selecione uma rota no mapa</span>
             )}
 
-            {selectedRoute && (
+            {selectedTrip && (
               <div className="fleet-route-highlight">
-                <span>{`${selectedRoute.originLabel} -> ${selectedRoute.destinationLabel}`}</span>
-                <strong>{selectedRoute.count} manifesto(s)</strong>
-                <small>{`${selectedRoute.activeCount} ativo(s) / ${selectedRoute.canceledCount} cancelado(s)`}</small>
+                <h3>Viagem selecionada</h3>
+                <span>{`${selectedTrip.manifest.origin} -> ${selectedTrip.manifest.destination}`}</span>
+                <strong>{normalizePlate(selectedTrip.manifest.truckPlate) || '-'}</strong>
+                <small>{`${getDriverName(selectedTrip.manifest, drivers)} | ${formatDateTime(selectedTrip.manifest.createdAt) || 'Sem início'}`}</small>
               </div>
             )}
 
             <div className="fleet-map-insight-block">
-              <h3>Rotas mais frequentes</h3>
-              {routeGroups.slice(0, 5).map((route) => (
+              <h3>Viagens filtradas</h3>
+              {filteredMapManifests.slice(0, 8).map((manifest) => (
                 <button
                   type="button"
-                  className={selectedRoute?.key === route.key ? 'fleet-route-insight fleet-route-insight--active' : 'fleet-route-insight'}
-                  key={route.key}
-                  onClick={() => setSelectedManifestId(route.latestManifest.id)}
+                  className={selectedManifestId === manifest.id ? 'fleet-trip-card fleet-trip-card--active' : 'fleet-trip-card'}
+                  key={manifest.id}
+                  onClick={() => setSelectedManifestId(manifest.id)}
                 >
-                  <span>{`${route.originLabel} -> ${route.destinationLabel}`}</span>
-                  <strong>{route.count}</strong>
+                  <div>
+                    <strong>{manifest.id}</strong>
+                    <span>{`${manifest.origin} -> ${manifest.destination}`}</span>
+                  </div>
+                  <div>
+                    <strong>{normalizePlate(manifest.truckPlate) || '-'}</strong>
+                    <span>{isFleetDriverManifest(manifest, registeredDriverKeys) ? 'Frota' : 'Terceiro'}</span>
+                  </div>
                 </button>
               ))}
-              {!routeGroups.length && <span>Nenhuma rota encontrada</span>}
+              {!filteredMapManifests.length && <span>Nenhuma viagem encontrada</span>}
             </div>
 
             <div className="fleet-map-insight-block">
-              <h3>Principais pontos</h3>
-              <div className="fleet-point-columns">
+              <h3>Resumo da operação</h3>
+              <div className="fleet-operation-summary">
                 <div>
-                  <strong>Partidas</strong>
-                  {topOrigins.map((origin) => (
-                    <span key={`origin-${origin.label}`}>{`${origin.label} (${origin.count})`}</span>
-                  ))}
+                  <span>Veículos</span>
+                  <strong>{operationalSummary.vehicles}</strong>
                 </div>
                 <div>
-                  <strong>Chegadas</strong>
-                  {topDestinations.map((destination) => (
-                    <span key={`destination-${destination.label}`}>{`${destination.label} (${destination.count})`}</span>
-                  ))}
+                  <span>Rotas</span>
+                  <strong>{operationalSummary.routes}</strong>
+                </div>
+                <div>
+                  <span>Frotistas</span>
+                  <strong>{operationalSummary.fleetDrivers}</strong>
+                </div>
+                <div>
+                  <span>Terceiros</span>
+                  <strong>{operationalSummary.thirdPartyDrivers}</strong>
                 </div>
               </div>
             </div>

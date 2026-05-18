@@ -3,6 +3,7 @@ import { Plus, Search, Trash2, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, currency, normalizeText } from '../data/financeData.js';
 import { getManifestDeletionBlockers } from '../data/deletionRules.js';
+import { getDefaultInsurance } from '../data/managementRegistry.js';
 import {
   deactivateManifest,
   deleteManifest,
@@ -151,6 +152,16 @@ function pendingManifestNumber() {
   }
 }
 
+function defaultManifestInsurance() {
+  const insurance = getDefaultInsurance();
+
+  return {
+    hasInsurance: insurance ? 'Sim' : 'Não',
+    insuranceCompany: insurance?.companyName || '',
+    insurancePolicy: insurance?.policyNumber || '',
+  };
+}
+
 export default function GenerateManifestPage() {
   const [manifests, setManifests] = useState(getRegisteredManifests);
   const [ctes] = useState(getRegisteredCtes);
@@ -169,9 +180,9 @@ export default function GenerateManifestPage() {
   const [driverName, setDriverName] = useState('');
   const [cargoWeight, setCargoWeight] = useState('');
   const [cargoValue, setCargoValue] = useState('');
-  const [hasInsurance, setHasInsurance] = useState('Não');
-  const [insuranceCompany, setInsuranceCompany] = useState('');
-  const [insurancePolicy, setInsurancePolicy] = useState('');
+  const [hasInsurance, setHasInsurance] = useState(() => defaultManifestInsurance().hasInsurance);
+  const [insuranceCompany, setInsuranceCompany] = useState(() => defaultManifestInsurance().insuranceCompany);
+  const [insurancePolicy, setInsurancePolicy] = useState(() => defaultManifestInsurance().insurancePolicy);
   const [manifestStatus, setManifestStatus] = useState('Emitido');
   const [status, setStatus] = useAutoClearMessage();
 
@@ -311,6 +322,16 @@ export default function GenerateManifestPage() {
     setStatus('CT-e anexado ao manifesto');
   }
 
+  function handleInsuranceChange(value) {
+    setHasInsurance(value);
+
+    if (value === 'Sim' && (!insuranceCompany || !insurancePolicy)) {
+      const insurance = defaultManifestInsurance();
+      setInsuranceCompany((current) => current || insurance.insuranceCompany);
+      setInsurancePolicy((current) => current || insurance.insurancePolicy);
+    }
+  }
+
   function removeCte(cteId) {
     setSelectedCteIds((current) => current.filter((id) => id !== cteId));
     setStatus('CT-e removido do manifesto');
@@ -350,6 +371,8 @@ export default function GenerateManifestPage() {
   }
 
   function handleReset() {
+    const insurance = defaultManifestInsurance();
+
     setUnit('001');
     setManifestNumber('');
     setCteSearch('');
@@ -364,9 +387,9 @@ export default function GenerateManifestPage() {
     setDriverName('');
     setCargoWeight('');
     setCargoValue('');
-    setHasInsurance('Não');
-    setInsuranceCompany('');
-    setInsurancePolicy('');
+    setHasInsurance(insurance.hasInsurance);
+    setInsuranceCompany(insurance.insuranceCompany);
+    setInsurancePolicy(insurance.insurancePolicy);
     setManifestStatus('Emitido');
     setStatus('');
   }
@@ -501,7 +524,7 @@ export default function GenerateManifestPage() {
 
           <label className="field">
             <span>Seguro</span>
-            <select value={hasInsurance} onChange={(event) => setHasInsurance(event.target.value)}>
+            <select value={hasInsurance} onChange={(event) => handleInsuranceChange(event.target.value)}>
               <option>Não</option>
               <option>Sim</option>
             </select>

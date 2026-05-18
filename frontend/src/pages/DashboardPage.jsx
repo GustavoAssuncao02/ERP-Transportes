@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import AccountsPayableSchedulePage from './AccountsPayableSchedulePage.jsx';
 import AccountsPayableDeletionPage from './AccountsPayableDeletionPage.jsx';
 import AccountsPayablePage from './AccountsPayablePage.jsx';
@@ -14,6 +14,7 @@ import DriverRegistrationPage from './DriverRegistrationPage.jsx';
 import FleetManagementPage from './FleetManagementPage.jsx';
 import GenerateManifestPage from './GenerateManifestPage.jsx';
 import HomeShortcutsPage from './HomeShortcutsPage.jsx';
+import InsuranceRegistrationPage from './InsuranceRegistrationPage.jsx';
 import IssueCtePage from './IssueCtePage.jsx';
 import OneOffPaymentPage from './OneOffPaymentPage.jsx';
 import RegisteredLaunchesPage from './RegisteredLaunchesPage.jsx';
@@ -41,12 +42,46 @@ export default function DashboardPage() {
   const [editingLaunch, setEditingLaunch] = useState(null);
   const [homeShortcutIds, setHomeShortcutIds] = useState(readHomeShortcutIds);
   const contentAreaRef = useRef(null);
+  const scrollPositionsRef = useRef(new Map());
+  const resetScrollTabsRef = useRef(new Set(['home']));
   const homeShortcutCards = useMemo(() => getHomeShortcutCards(homeShortcutIds), [homeShortcutIds]);
 
-  useEffect(() => {
-    contentAreaRef.current?.scrollTo({ top: 0, left: 0 });
+  useLayoutEffect(() => {
+    const contentArea = contentAreaRef.current;
+    if (!contentArea) return;
+
+    const shouldReset = resetScrollTabsRef.current.delete(activeTabId);
+    const nextTop = shouldReset ? 0 : scrollPositionsRef.current.get(activeTabId) || 0;
+
+    contentArea.scrollTo({ top: nextTop, left: 0 });
     window.scrollTo({ top: 0, left: 0 });
   }, [activeTabId]);
+
+  function rememberActiveScroll() {
+    const contentArea = contentAreaRef.current;
+    if (!contentArea) return;
+
+    scrollPositionsRef.current.set(activeTabId, contentArea.scrollTop);
+  }
+
+  function selectTab(tabId, { resetScroll = false } = {}) {
+    if (!tabId) return;
+
+    if (tabId === activeTabId) {
+      if (resetScroll) {
+        contentAreaRef.current?.scrollTo({ top: 0, left: 0 });
+        scrollPositionsRef.current.set(tabId, 0);
+      }
+      return;
+    }
+
+    rememberActiveScroll();
+    if (resetScroll) {
+      resetScrollTabsRef.current.add(tabId);
+    }
+
+    setActiveTabId(tabId);
+  }
 
   function openPage(item) {
     if (!item.pageId) return;
@@ -68,7 +103,7 @@ export default function DashboardPage() {
     if (item.pageId === 'accounts-payable') {
       setEditingLaunch(null);
     }
-    setActiveTabId(item.pageId);
+    selectTab(item.pageId, { resetScroll: true });
   }
 
   function openLaunchEditor(launch) {
@@ -89,23 +124,25 @@ export default function DashboardPage() {
       ];
     });
     setEditingLaunch(launch);
-    setActiveTabId(pageId);
+    selectTab(pageId, { resetScroll: true });
   }
 
   function closeTab(tabId) {
+    scrollPositionsRef.current.delete(tabId);
     setOpenTabs((currentTabs) => currentTabs.filter((tab) => tab.id !== tabId));
 
     if (activeTabId === tabId) {
-      setActiveTabId('home');
+      selectTab('home');
     }
   }
 
   function closeAllTabs() {
+    scrollPositionsRef.current.clear();
     setOpenTabs((currentTabs) => {
       const fixedTabs = currentTabs.filter((tab) => !tab.closable);
       return fixedTabs.length ? fixedTabs : initialTabs;
     });
-    setActiveTabId('home');
+    selectTab('home', { resetScroll: true });
     setEditingLaunch(null);
   }
 
@@ -168,6 +205,10 @@ export default function DashboardPage() {
 
     if (activeTabId === 'supplier-registration') {
       return <SupplierRegistrationPage />;
+    }
+
+    if (activeTabId === 'insurance-registration') {
+      return <InsuranceRegistrationPage />;
     }
 
     if (activeTabId === 'unit-registration') {
@@ -246,7 +287,7 @@ export default function DashboardPage() {
       <TabBar
         tabs={openTabs}
         activeTabId={activeTabId}
-        onSelectTab={setActiveTabId}
+        onSelectTab={selectTab}
         onCloseTab={closeTab}
         onCloseAllTabs={closeAllTabs}
         onReorderTabs={reorderTabs}

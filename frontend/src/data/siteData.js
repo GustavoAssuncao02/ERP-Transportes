@@ -14,6 +14,11 @@ export const navigationItems = [
         pageId: 'supplier-registration',
       },
       {
+        id: 'seguros',
+        label: 'Seguros',
+        pageId: 'insurance-registration',
+      },
+      {
         id: 'cadastrar-veiculo',
         label: 'Cadastrar Veículo',
         pageId: 'vehicle-registration',

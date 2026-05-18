@@ -74,6 +74,24 @@ export function getSupplierDeletionBlockers(supplier) {
   return blockers;
 }
 
+export function getInsuranceDeletionBlockers(insurance) {
+  const blockers = [];
+  const companyCandidates = [insurance.companyName, insurance.name].filter(Boolean);
+  const policyCandidates = [insurance.policyNumber].filter(Boolean);
+
+  addBlocker(blockers, 'CT-e', getRegisteredCtes().some((cte) => (
+    matchesAny(cte.insuranceCompany, companyCandidates)
+    || matchesAny(cte.insurancePolicy, policyCandidates)
+  )));
+
+  addBlocker(blockers, 'manifestos', getRegisteredManifests().some((manifest) => (
+    matchesAny(manifest.insuranceCompany, companyCandidates)
+    || matchesAny(manifest.insurancePolicy, policyCandidates)
+  )));
+
+  return blockers;
+}
+
 export function getUnitDeletionBlockers(unit) {
   const blockers = [];
   const candidates = getUnitCandidates(unit);

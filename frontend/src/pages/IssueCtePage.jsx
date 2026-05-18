@@ -4,6 +4,7 @@ import AttachmentPanel from '../components/AttachmentPanel.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, currency, normalizeText } from '../data/financeData.js';
 import { getCteDeletionBlockers } from '../data/deletionRules.js';
+import { getDefaultInsurance } from '../data/managementRegistry.js';
 import {
   deactivateCte,
   deleteCte,
@@ -70,6 +71,16 @@ function newFiscalDocument() {
   };
 }
 
+function defaultCteInsurance() {
+  const insurance = getDefaultInsurance();
+
+  return {
+    company: insurance?.companyName || '',
+    policy: insurance?.policyNumber || '',
+    endorsement: insurance?.endorsementNumber || '',
+  };
+}
+
 export default function IssueCtePage({ onNavigate }) {
   const [ctes, setCtes] = useState(getRegisteredCtes);
   const [cteNumber, setCteNumber] = useState('');
@@ -86,9 +97,9 @@ export default function IssueCtePage({ onNavigate }) {
   const [cargoDocuments, setCargoDocuments] = useState([newFiscalDocument()]);
   const [cargoWeight, setCargoWeight] = useState('');
   const [cargoValue, setCargoValue] = useState('');
-  const [insuranceCompany, setInsuranceCompany] = useState('');
-  const [insurancePolicy, setInsurancePolicy] = useState('');
-  const [insuranceEndorsement, setInsuranceEndorsement] = useState('');
+  const [insuranceCompany, setInsuranceCompany] = useState(() => defaultCteInsurance().company);
+  const [insurancePolicy, setInsurancePolicy] = useState(() => defaultCteInsurance().policy);
+  const [insuranceEndorsement, setInsuranceEndorsement] = useState(() => defaultCteInsurance().endorsement);
   const [mdfeAccessKey, setMdfeAccessKey] = useState('');
   const [issueDateTime, setIssueDateTime] = useState(localDateTimeValue());
   const [qrCodeValue, setQrCodeValue] = useState('');
@@ -329,6 +340,8 @@ export default function IssueCtePage({ onNavigate }) {
   }
 
   function handleReset() {
+    const insurance = defaultCteInsurance();
+
     setCteNumber('');
     setCteLookupOpen(false);
     setCteSearch('');
@@ -342,9 +355,9 @@ export default function IssueCtePage({ onNavigate }) {
     setCargoDocuments([newFiscalDocument()]);
     setCargoWeight('');
     setCargoValue('');
-    setInsuranceCompany('');
-    setInsurancePolicy('');
-    setInsuranceEndorsement('');
+    setInsuranceCompany(insurance.company);
+    setInsurancePolicy(insurance.policy);
+    setInsuranceEndorsement(insurance.endorsement);
     setMdfeAccessKey('');
     setIssueDateTime(localDateTimeValue());
     setQrCodeValue('');

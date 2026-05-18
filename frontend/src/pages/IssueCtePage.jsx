@@ -1,8 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { FilePlus, Plus, Search, X } from 'lucide-react';
+import { FilePlus, Plus, Search, Trash2, X } from 'lucide-react';
 import AttachmentPanel from '../components/AttachmentPanel.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, currency, normalizeText } from '../data/financeData.js';
+import { getCteDeletionBlockers } from '../data/deletionRules.js';
+import {
+  deactivateCte,
+  deleteCte,
+  getRegisteredCtes,
+  saveCte,
+} from '../data/operationRegistry.js';
 import {
   findDriverByCpf,
   findVehicleByPlate,
@@ -64,6 +71,10 @@ function newFiscalDocument() {
 }
 
 export default function IssueCtePage({ onNavigate }) {
+  const [ctes, setCtes] = useState(getRegisteredCtes);
+  const [cteNumber, setCteNumber] = useState('');
+  const [cteLookupOpen, setCteLookupOpen] = useState(false);
+  const [cteSearch, setCteSearch] = useState('');
   const [unit, setUnit] = useState('001');
   const [cities, setCities] = useState(fallbackCities);
   const [origin, setOrigin] = useState('');
@@ -82,6 +93,7 @@ export default function IssueCtePage({ onNavigate }) {
   const [issueDateTime, setIssueDateTime] = useState(localDateTimeValue());
   const [qrCodeValue, setQrCodeValue] = useState('');
   const [damdfeAttachments, setDamdfeAttachments] = useState([]);
+  const [cteStatus, setCteStatus] = useState('Aberto');
   const [status, setStatus] = useAutoClearMessage();
 
   useEffect(() => {
@@ -136,6 +148,15 @@ export default function IssueCtePage({ onNavigate }) {
       normalizeText(`${driverOption.name} ${formatCpf(driverOption.cpf)} ${driverOption.cnh} ${driverOption.phone} ${driverOption.status}`).includes(query)
     ));
   }, [driverOptions, driverSearch]);
+  const filteredCtes = useMemo(() => {
+    const query = normalizeText(cteSearch);
+    const sortedCtes = [...ctes].sort((left, right) => right.id.localeCompare(left.id, 'pt-BR'));
+    if (!query) return sortedCtes;
+
+    return sortedCtes.filter((cte) => (
+      normalizeText(`${cte.id} ${cte.number} ${cte.issuer} ${cte.origin} ${cte.destination} ${cte.driverName} ${cte.vehiclePlate} ${cte.status}`).includes(query)
+    ));
+  }, [cteSearch, ctes]);
 
   function openVehicleRegistration() {
     try {
@@ -199,6 +220,55 @@ export default function IssueCtePage({ onNavigate }) {
     closeDriverLookup();
   }
 
+  function loadCte(cte) {
+    setCteNumber(cte.id || '');
+    setUnit(cte.unit || '001');
+    setOrigin(cte.origin || '');
+    setDestination(cte.destination || '');
+    setTruckPlate(normalizePlate(cte.vehiclePlate || cte.truckPlate || ''));
+    setDriverCpf(formatCpf(cte.driverCpf || ''));
+    setCargoDocuments(cte.cargoDocuments?.length ? cte.cargoDocuments : [{ ...newFiscalDocument(), number: cte.linkedInvoice || cte.number || cte.id }]);
+    setCargoWeight(String(cte.cargoWeight || ''));
+    setCargoValue(String(cte.cargoValue || ''));
+    setInsuranceCompany(cte.insuranceCompany || '');
+    setInsurancePolicy(cte.insurancePolicy || '');
+    setInsuranceEndorsement(cte.insuranceEndorsement || '');
+    setMdfeAccessKey(cte.mdfeAccessKey || '');
+    setIssueDateTime(cte.issueDateTime || localDateTimeValue());
+    setQrCodeValue(cte.qrCodeValue || '');
+    setDamdfeAttachments(cte.damdfeAttachments || []);
+    setCteStatus(cte.status || 'Aberto');
+    setStatus(`CT-e ${cte.id} carregado para edicao`);
+  }
+
+  function handleCteNumberChange(value) {
+    const nextNumber = value.toUpperCase();
+    setCteNumber(nextNumber);
+
+    const existingCte = ctes.find((cte) => normalizeText(cte.id) === normalizeText(nextNumber));
+    if (existingCte) {
+      loadCte(existingCte);
+      return;
+    }
+
+    setStatus('');
+  }
+
+  function openCteLookup() {
+    setCteLookupOpen(true);
+    setCteSearch('');
+  }
+
+  function closeCteLookup() {
+    setCteLookupOpen(false);
+    setCteSearch('');
+  }
+
+  function selectCte(cte) {
+    loadCte(cte);
+    closeCteLookup();
+  }
+
   function handleVehicleLookup() {
     if (!plateIsComplete) {
       setStatus('Informe a placa completa do veículo');
@@ -226,11 +296,42 @@ export default function IssueCtePage({ onNavigate }) {
       return;
     }
 
-    const cteNumber = nextCteNumber();
-    setStatus(`CT-e ${cteNumber} emitido com ${filledFiscalDocuments.length} documento(s) fiscal(is)`);
+    const generatedCteNumber = cteNumber.trim().toUpperCase() || nextCteNumber();
+    const selectedUnit = businessUnits.find((businessUnit) => businessUnit.value === unit);
+    const nextCte = {
+      id: generatedCteNumber,
+      number: generatedCteNumber,
+      unit,
+      issuer: selectedUnit?.name || unit,
+      origin,
+      destination,
+      cargoDocuments,
+      cargoWeight,
+      cargoValue,
+      insuranceCompany,
+      insurancePolicy,
+      insuranceEndorsement,
+      mdfeAccessKey,
+      issueDateTime,
+      qrCodeValue,
+      damdfeAttachments,
+      status: cteStatus,
+      vehiclePlate: normalizePlate(truckPlate),
+      vehicleModel: vehicle.model,
+      driverCpf: onlyDigits(driverCpf),
+      driverName: driver.name,
+    };
+    const nextCtes = saveCte(nextCte);
+
+    setCtes(nextCtes);
+    setCteNumber(generatedCteNumber);
+    setStatus(`CT-e ${generatedCteNumber} emitido com ${filledFiscalDocuments.length} documento(s) fiscal(is)`);
   }
 
   function handleReset() {
+    setCteNumber('');
+    setCteLookupOpen(false);
+    setCteSearch('');
     setUnit('001');
     setOrigin('');
     setDestination('');
@@ -248,7 +349,34 @@ export default function IssueCtePage({ onNavigate }) {
     setIssueDateTime(localDateTimeValue());
     setQrCodeValue('');
     setDamdfeAttachments([]);
+    setCteStatus('Aberto');
     setStatus('');
+  }
+
+  function handleDeleteCte() {
+    const currentCte = ctes.find((cte) => normalizeText(cte.id) === normalizeText(cteNumber));
+
+    if (!currentCte) {
+      setStatus('Selecione um CT-e cadastrado para excluir');
+      return;
+    }
+
+    const blockers = getCteDeletionBlockers(currentCte);
+
+    if (blockers.length) {
+      const nextCtes = deactivateCte(currentCte.id);
+      const inactiveCte = nextCtes.find((cte) => cte.id === currentCte.id);
+      setCtes(nextCtes);
+      setCteStatus('Cancelado');
+      if (inactiveCte) loadCte(inactiveCte);
+      setStatus(`CT-e possui vinculo em ${blockers.join(', ')} e foi cancelado`);
+      return;
+    }
+
+    const nextCtes = deleteCte(currentCte.id);
+    setCtes(nextCtes);
+    handleReset();
+    setStatus(`CT-e ${currentCte.id} excluido`);
   }
 
   return (
@@ -262,6 +390,28 @@ export default function IssueCtePage({ onNavigate }) {
 
       <form className="finance-form issue-cte-form" onSubmit={handleSubmit} onReset={handleReset}>
         <div className="form-grid">
+          <div className="field">
+            <span>Numero do CT-e</span>
+            <div className="lookup-field">
+              <input
+                type="text"
+                placeholder="Gerado ao emitir ou informe um CT-e"
+                value={cteNumber}
+                onChange={(event) => handleCteNumberChange(event.target.value)}
+              />
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Pesquisar CT-e"
+                title="Pesquisar CT-e"
+                tabIndex={-1}
+                onClick={openCteLookup}
+              >
+                <Search size={17} strokeWidth={2.2} />
+              </button>
+            </div>
+          </div>
+
           <label className="field">
             <span>Unidade</span>
             <select value={unit} onChange={(event) => setUnit(event.target.value)} required>
@@ -294,6 +444,15 @@ export default function IssueCtePage({ onNavigate }) {
           <label className="field">
             <span>Data e hora de emissão</span>
             <input type="datetime-local" value={issueDateTime} onChange={(event) => setIssueDateTime(event.target.value)} required />
+          </label>
+
+          <label className="field">
+            <span>Status do CT-e</span>
+            <select value={cteStatus} onChange={(event) => setCteStatus(event.target.value)} required>
+              <option>Aberto</option>
+              <option>Emitido</option>
+              <option>Cancelado</option>
+            </select>
           </label>
 
           <div className="form-section-title field--span-4">Veículo e motorista</div>
@@ -473,10 +632,66 @@ export default function IssueCtePage({ onNavigate }) {
             <FilePlus size={15} strokeWidth={2.2} />
             Emitir CT-e
           </button>
+          <button type="button" className="danger-button" onClick={handleDeleteCte}>
+            <Trash2 size={15} strokeWidth={2.2} />
+            Excluir CT-e
+          </button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{status}</span>
         </div>
       </form>
+
+      {cteLookupOpen && (
+        <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="issue-cte-lookup-title">
+          <button type="button" className="lookup-modal-backdrop" aria-label="Fechar pesquisa" onClick={closeCteLookup} />
+          <div className="lookup-modal-panel">
+            <header className="lookup-modal-header">
+              <h2 id="issue-cte-lookup-title">Pesquisar CT-e</h2>
+              <button type="button" className="modal-close-button" aria-label="Fechar" onClick={closeCteLookup}>
+                <X size={18} strokeWidth={2.4} />
+              </button>
+            </header>
+
+            <div className="lookup-modal-toolbar">
+              <input
+                type="search"
+                className="lookup-search"
+                placeholder="Pesquisar por CT-e, emissor, origem, destino, motorista ou placa"
+                value={cteSearch}
+                onChange={(event) => setCteSearch(event.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="lookup-table-wrap">
+              <table className="lookup-table">
+                <thead>
+                  <tr>
+                    <th>CT-e</th>
+                    <th>Emissor</th>
+                    <th>Origem</th>
+                    <th>Destino</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCtes.map((cte) => (
+                    <tr key={cte.id} onClick={() => selectCte(cte)}>
+                      <td>{cte.id}</td>
+                      <td>{cte.issuer}</td>
+                      <td>{cte.origin}</td>
+                      <td>{cte.destination}</td>
+                      <td>{cte.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {!filteredCtes.length && <div className="lookup-empty">Nenhuma opcao encontrada</div>}
+            </div>
+          </div>
+        </div>
+      )}
 
       {driverLookupOpen && (
         <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="issue-cte-driver-lookup-title">

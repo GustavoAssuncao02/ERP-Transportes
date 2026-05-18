@@ -106,11 +106,16 @@ export function isValidCpf(value) {
 
 function readStoredRecords(key, fallback) {
   try {
-    const stored = JSON.parse(localStorage.getItem(key) || '[]');
-    return stored.length ? stored : fallback;
+    const rawValue = localStorage.getItem(key);
+    if (rawValue !== null) {
+      const stored = JSON.parse(rawValue);
+      return Array.isArray(stored) ? stored : fallback;
+    }
   } catch {
     return fallback;
   }
+
+  return fallback;
 }
 
 function writeStoredRecords(key, records) {
@@ -169,4 +174,44 @@ export function saveDriver(record) {
 
   writeStoredRecords(driverStorageKey, drivers);
   return drivers;
+}
+
+export function deleteVehicle(plate) {
+  const normalizedPlate = normalizePlate(plate);
+  const vehicles = getRegisteredVehicles();
+  const nextVehicles = vehicles.filter((vehicle) => normalizePlate(vehicle.plate) !== normalizedPlate);
+
+  writeStoredRecords(vehicleStorageKey, nextVehicles);
+  return nextVehicles;
+}
+
+export function deactivateVehicle(plate) {
+  const normalizedPlate = normalizePlate(plate);
+  const vehicles = getRegisteredVehicles();
+  const nextVehicles = vehicles.map((vehicle) => (
+    normalizePlate(vehicle.plate) === normalizedPlate ? { ...vehicle, status: 'Inativo' } : vehicle
+  ));
+
+  writeStoredRecords(vehicleStorageKey, nextVehicles);
+  return nextVehicles;
+}
+
+export function deleteDriver(cpf) {
+  const normalizedCpf = onlyDigits(cpf);
+  const drivers = getRegisteredDrivers();
+  const nextDrivers = drivers.filter((driver) => onlyDigits(driver.cpf) !== normalizedCpf);
+
+  writeStoredRecords(driverStorageKey, nextDrivers);
+  return nextDrivers;
+}
+
+export function deactivateDriver(cpf) {
+  const normalizedCpf = onlyDigits(cpf);
+  const drivers = getRegisteredDrivers();
+  const nextDrivers = drivers.map((driver) => (
+    onlyDigits(driver.cpf) === normalizedCpf ? { ...driver, status: 'Inativo' } : driver
+  ));
+
+  writeStoredRecords(driverStorageKey, nextDrivers);
+  return nextDrivers;
 }

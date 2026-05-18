@@ -4,10 +4,14 @@ import AccountsPayableDeletionPage from './AccountsPayableDeletionPage.jsx';
 import AccountsPayablePage from './AccountsPayablePage.jsx';
 import AccountsPayableReportPage from './AccountsPayableReportPage.jsx';
 import AccountsPayableSettlementPage from './AccountsPayableSettlementPage.jsx';
+import AccountsReceivableDashboardPage from './AccountsReceivableDashboardPage.jsx';
+import AccountsReceivablePage from './AccountsReceivablePage.jsx';
+import AccountsReceivableSettlementPage from './AccountsReceivableSettlementPage.jsx';
 import BusinessIntelligencePage from './BusinessIntelligencePage.jsx';
 import CollectionOrderPage from './CollectionOrderPage.jsx';
 import CreateMinutaPage from './CreateMinutaPage.jsx';
 import DriverRegistrationPage from './DriverRegistrationPage.jsx';
+import FleetManagementPage from './FleetManagementPage.jsx';
 import GenerateManifestPage from './GenerateManifestPage.jsx';
 import HomeShortcutsPage from './HomeShortcutsPage.jsx';
 import IssueCtePage from './IssueCtePage.jsx';
@@ -132,6 +136,10 @@ export default function DashboardPage() {
       return <GenerateManifestPage />;
     }
 
+    if (activeTabId === 'fleet-management') {
+      return <FleetManagementPage onNavigate={openPage} />;
+    }
+
     if (activeTabId === 'issue-cte') {
       return <IssueCtePage onNavigate={openPage} />;
     }
@@ -166,6 +174,18 @@ export default function DashboardPage() {
 
     if (activeTabId === 'accounts-payable') {
       return <AccountsPayablePage initialLaunch={editingLaunch} />;
+    }
+
+    if (activeTabId === 'accounts-receivable') {
+      return <AccountsReceivablePage />;
+    }
+
+    if (activeTabId === 'accounts-receivable-dashboard') {
+      return <AccountsReceivableDashboardPage />;
+    }
+
+    if (activeTabId === 'accounts-receivable-settlement') {
+      return <AccountsReceivableSettlementPage />;
     }
 
     if (activeTabId === 'accounts-payable-report') {

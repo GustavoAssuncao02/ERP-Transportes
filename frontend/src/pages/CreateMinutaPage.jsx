@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, Trash2, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, todayValue } from '../data/financeData.js';
 import { getRegisteredSuppliers } from '../data/managementRegistry.js';
@@ -10,6 +10,8 @@ import {
   normalizePlate,
   onlyDigits,
 } from '../data/transportRegistry.js';
+import { getMinutaDeletionBlockers } from '../data/deletionRules.js';
+import { deactivateMinuta, deleteMinuta } from '../data/operationRegistry.js';
 
 const minutaStorageKey = 'transportMinutas';
 const cityApiUrl = 'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome';
@@ -89,11 +91,16 @@ function cityLabel(city) {
 
 function readMinutas() {
   try {
-    const stored = JSON.parse(localStorage.getItem(minutaStorageKey) || '[]');
-    return stored.length ? stored : defaultMinutas;
+    const rawValue = localStorage.getItem(minutaStorageKey);
+    if (rawValue !== null) {
+      const stored = JSON.parse(rawValue);
+      return Array.isArray(stored) ? stored : defaultMinutas;
+    }
   } catch {
     return defaultMinutas;
   }
+
+  return defaultMinutas;
 }
 
 function writeMinutas(minutas) {
@@ -391,6 +398,31 @@ export default function CreateMinutaPage() {
     setMessage('');
   }
 
+  function handleDelete() {
+    const currentMinuta = minutas.find((minuta) => normalizeText(minuta.id) === normalizeText(form.id));
+
+    if (!currentMinuta) {
+      setMessage('Selecione uma minuta cadastrada para excluir');
+      return;
+    }
+
+    const blockers = getMinutaDeletionBlockers(currentMinuta);
+
+    if (blockers.length) {
+      const nextMinutas = deactivateMinuta(currentMinuta.id);
+      const inactiveMinuta = nextMinutas.find((minuta) => minuta.id === currentMinuta.id);
+      setMinutas(nextMinutas);
+      setForm(inactiveMinuta || { ...currentMinuta, status: 'Cancelada' });
+      setMessage(`Minuta possui vinculo em ${blockers.join(', ')} e foi cancelada`);
+      return;
+    }
+
+    const nextMinutas = deleteMinuta(currentMinuta.id);
+    setMinutas(nextMinutas);
+    setForm(blankMinuta());
+    setMessage(`Minuta ${currentMinuta.id} excluida`);
+  }
+
   return (
     <section className="create-minuta-page">
       <header className="page-header">
@@ -570,6 +602,10 @@ export default function CreateMinutaPage() {
 
         <div className="form-actions">
           <button type="submit" className="primary-button">Salvar minuta</button>
+          <button type="button" className="danger-button" onClick={handleDelete}>
+            <Trash2 size={15} strokeWidth={2.2} />
+            Excluir minuta
+          </button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{message}</span>
         </div>

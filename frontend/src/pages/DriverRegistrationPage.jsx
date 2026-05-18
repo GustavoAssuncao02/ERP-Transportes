@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, Trash2, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import {
+  deactivateDriver,
+  deleteDriver,
   findDriverByCpf,
   formatCpf,
   getRegisteredDrivers,
@@ -11,6 +13,7 @@ import {
   pendingDriverCpfKey,
   saveDriver,
 } from '../data/transportRegistry.js';
+import { getDriverDeletionBlockers } from '../data/deletionRules.js';
 
 const licenseCategories = ['B', 'C', 'D', 'E'];
 
@@ -130,6 +133,37 @@ export default function DriverRegistrationPage() {
     setMessage('');
   }
 
+  function handleDelete() {
+    const currentDriver = drivers.find((driver) => onlyDigits(driver.cpf) === onlyDigits(cpf));
+
+    if (!currentDriver) {
+      setMessage('Selecione um motorista cadastrado para excluir');
+      return;
+    }
+
+    const blockers = getDriverDeletionBlockers(currentDriver);
+
+    if (blockers.length) {
+      const nextDrivers = deactivateDriver(currentDriver.cpf);
+      setDrivers(nextDrivers);
+      setStatusValue('Inativo');
+      setMessage(`Motorista possui vinculo em ${blockers.join(', ')} e foi desativado`);
+      return;
+    }
+
+    const nextDrivers = deleteDriver(currentDriver.cpf);
+    setDrivers(nextDrivers);
+    setCpf('');
+    setName('');
+    setPhone('');
+    setCnh('');
+    setCategory('E');
+    setStatusValue('Ativo');
+    setCpfError('');
+    closeLookup();
+    setMessage(`Motorista ${currentDriver.name} excluido`);
+  }
+
   return (
     <section className="driver-registration-page registry-page">
       <header className="page-header">
@@ -202,6 +236,10 @@ export default function DriverRegistrationPage() {
 
         <div className="form-actions">
           <button type="submit" className="primary-button">Salvar motorista</button>
+          <button type="button" className="danger-button" onClick={handleDelete}>
+            <Trash2 size={15} strokeWidth={2.2} />
+            Excluir motorista
+          </button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{message}</span>
         </div>

@@ -1,7 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
-import { formatCnpj, getRegisteredUnits, saveUnit } from '../data/managementRegistry.js';
+import {
+  deactivateUnit,
+  deleteUnit,
+  formatCnpj,
+  getRegisteredUnits,
+  saveUnit,
+} from '../data/managementRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
+import { getUnitDeletionBlockers } from '../data/deletionRules.js';
 
 const cnaeApiUrl = 'https://servicodados.ibge.gov.br/api/v2/cnae/subclasses';
 const cnaeCacheKey = 'ibgeCnaeOptionsCache';
@@ -180,6 +188,33 @@ export default function UnitRegistrationPage() {
     setMessage('');
   }
 
+  function handleDelete() {
+    const currentUnit = units.find((unit) => (
+      unit.id === form.id || onlyDigits(unit.cnpj) === onlyDigits(form.cnpj)
+    ));
+
+    if (!currentUnit) {
+      setMessage('Selecione uma unidade cadastrada para excluir');
+      return;
+    }
+
+    const blockers = getUnitDeletionBlockers(currentUnit);
+
+    if (blockers.length) {
+      const nextUnits = deactivateUnit(currentUnit);
+      const inactiveUnit = nextUnits.find((unit) => unit.id === currentUnit.id || onlyDigits(unit.cnpj) === onlyDigits(currentUnit.cnpj));
+      setUnits(nextUnits);
+      setForm(inactiveUnit || { ...currentUnit, active: false });
+      setMessage(`Unidade possui vinculo em ${blockers.join(', ')} e foi desativada`);
+      return;
+    }
+
+    const nextUnits = deleteUnit(currentUnit);
+    setUnits(nextUnits);
+    setForm(initialForm);
+    setMessage(`Unidade ${currentUnit.name} excluida`);
+  }
+
   return (
     <section className="unit-registration-page registry-page">
       <header className="page-header">
@@ -236,6 +271,10 @@ export default function UnitRegistrationPage() {
 
         <div className="form-actions">
           <button type="submit" className="primary-button">Salvar unidade</button>
+          <button type="button" className="danger-button" onClick={handleDelete}>
+            <Trash2 size={15} strokeWidth={2.2} />
+            Excluir unidade
+          </button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{message}</span>
         </div>

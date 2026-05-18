@@ -1,9 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, Trash2, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
-import { formatCnpj, getRegisteredSuppliers, saveSupplier } from '../data/managementRegistry.js';
+import {
+  deactivateSupplier,
+  deleteSupplier,
+  formatCnpj,
+  getRegisteredSuppliers,
+  saveSupplier,
+} from '../data/managementRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
 import { normalizeText } from '../data/financeData.js';
+import { getSupplierDeletionBlockers } from '../data/deletionRules.js';
 
 const initialForm = {
   id: '',
@@ -78,6 +85,33 @@ export default function SupplierRegistrationPage() {
     setMessage('');
   }
 
+  function handleDelete() {
+    const currentSupplier = suppliers.find((supplier) => (
+      supplier.id === form.id || onlyDigits(supplier.cnpj) === onlyDigits(form.cnpj)
+    ));
+
+    if (!currentSupplier) {
+      setMessage('Selecione um fornecedor cadastrado para excluir');
+      return;
+    }
+
+    const blockers = getSupplierDeletionBlockers(currentSupplier);
+
+    if (blockers.length) {
+      const nextSuppliers = deactivateSupplier(currentSupplier);
+      const inactiveSupplier = nextSuppliers.find((supplier) => supplier.id === currentSupplier.id || onlyDigits(supplier.cnpj) === onlyDigits(currentSupplier.cnpj));
+      setSuppliers(nextSuppliers);
+      setForm(inactiveSupplier || { ...currentSupplier, active: false });
+      setMessage(`Fornecedor possui vinculo em ${blockers.join(', ')} e foi desativado`);
+      return;
+    }
+
+    const nextSuppliers = deleteSupplier(currentSupplier);
+    setSuppliers(nextSuppliers);
+    setForm(initialForm);
+    setMessage(`Fornecedor ${currentSupplier.name} excluido`);
+  }
+
   return (
     <section className="supplier-registration-page registry-page">
       <header className="page-header">
@@ -141,6 +175,10 @@ export default function SupplierRegistrationPage() {
 
         <div className="form-actions">
           <button type="submit" className="primary-button">Salvar fornecedor</button>
+          <button type="button" className="danger-button" onClick={handleDelete}>
+            <Trash2 size={15} strokeWidth={2.2} />
+            Excluir fornecedor
+          </button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{message}</span>
         </div>

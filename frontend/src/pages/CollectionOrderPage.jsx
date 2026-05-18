@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, Trash2, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, todayValue } from '../data/financeData.js';
 import { getRegisteredSuppliers, getRegisteredUnits } from '../data/managementRegistry.js';
@@ -10,6 +10,8 @@ import {
   normalizePlate,
   onlyDigits,
 } from '../data/transportRegistry.js';
+import { getCollectionOrderDeletionBlockers } from '../data/deletionRules.js';
+import { deactivateCollectionOrder, deleteCollectionOrder } from '../data/operationRegistry.js';
 
 const collectionOrderStorageKey = 'collectionOrders';
 
@@ -38,11 +40,16 @@ const orderStatuses = ['Solicitada', 'Agendada', 'Em coleta', 'Coletada', 'Cance
 
 function readCollectionOrders() {
   try {
-    const stored = JSON.parse(localStorage.getItem(collectionOrderStorageKey) || '[]');
-    return stored.length ? stored : defaultCollectionOrders;
+    const rawValue = localStorage.getItem(collectionOrderStorageKey);
+    if (rawValue !== null) {
+      const stored = JSON.parse(rawValue);
+      return Array.isArray(stored) ? stored : defaultCollectionOrders;
+    }
   } catch {
     return defaultCollectionOrders;
   }
+
+  return defaultCollectionOrders;
 }
 
 function writeCollectionOrders(orders) {
@@ -298,6 +305,31 @@ export default function CollectionOrderPage() {
     setMessage('');
   }
 
+  function handleDelete() {
+    const currentOrder = orders.find((order) => normalizeText(order.id) === normalizeText(form.id));
+
+    if (!currentOrder) {
+      setMessage('Selecione uma ordem de coleta cadastrada para excluir');
+      return;
+    }
+
+    const blockers = getCollectionOrderDeletionBlockers(currentOrder);
+
+    if (blockers.length) {
+      const nextOrders = deactivateCollectionOrder(currentOrder.id);
+      const inactiveOrder = nextOrders.find((order) => order.id === currentOrder.id);
+      setOrders(nextOrders);
+      setForm(inactiveOrder || { ...currentOrder, status: 'Cancelada' });
+      setMessage(`Ordem possui vinculo em ${blockers.join(', ')} e foi cancelada`);
+      return;
+    }
+
+    const nextOrders = deleteCollectionOrder(currentOrder.id);
+    setOrders(nextOrders);
+    setForm(blankOrder());
+    setMessage(`Ordem ${currentOrder.id} excluida`);
+  }
+
   return (
     <section className="collection-order-page">
       <header className="page-header">
@@ -434,6 +466,10 @@ export default function CollectionOrderPage() {
 
         <div className="form-actions">
           <button type="submit" className="primary-button">Salvar ordem</button>
+          <button type="button" className="danger-button" onClick={handleDelete}>
+            <Trash2 size={15} strokeWidth={2.2} />
+            Excluir ordem
+          </button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{message}</span>
         </div>

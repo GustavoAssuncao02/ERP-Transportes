@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Search, X } from 'lucide-react';
+import { Plus, Search, Trash2, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, currency, normalizeText } from '../data/financeData.js';
+import { getManifestDeletionBlockers } from '../data/deletionRules.js';
+import {
+  deactivateManifest,
+  deleteManifest,
+  getRegisteredCtes,
+  getRegisteredManifests,
+  pendingManifestIdKey,
+  saveManifest,
+} from '../data/operationRegistry.js';
 
 const openCtes = [
   {
@@ -118,21 +127,35 @@ function dateDistance(value) {
 
 function readManifests() {
   try {
-    const stored = JSON.parse(localStorage.getItem(manifestStorageKey) || '[]');
-    return stored.length ? stored : defaultManifests;
+    const rawValue = localStorage.getItem(manifestStorageKey);
+    if (rawValue !== null) {
+      const stored = JSON.parse(rawValue);
+      return Array.isArray(stored) ? stored : defaultManifests;
+    }
   } catch {
     return defaultManifests;
   }
+
+  return defaultManifests;
 }
 
 function writeManifests(manifests) {
   localStorage.setItem(manifestStorageKey, JSON.stringify(manifests));
 }
 
+function pendingManifestNumber() {
+  try {
+    return localStorage.getItem(pendingManifestIdKey) || '';
+  } catch {
+    return '';
+  }
+}
+
 export default function GenerateManifestPage() {
-  const [manifests, setManifests] = useState(readManifests);
+  const [manifests, setManifests] = useState(getRegisteredManifests);
+  const [ctes] = useState(getRegisteredCtes);
   const [unit, setUnit] = useState('001');
-  const [manifestNumber, setManifestNumber] = useState('');
+  const [manifestNumber, setManifestNumber] = useState(pendingManifestNumber);
   const [cities, setCities] = useState(fallbackCities);
   const [cteSearch, setCteSearch] = useState('');
   const [selectedCteIds, setSelectedCteIds] = useState([]);
@@ -149,6 +172,7 @@ export default function GenerateManifestPage() {
   const [hasInsurance, setHasInsurance] = useState('Não');
   const [insuranceCompany, setInsuranceCompany] = useState('');
   const [insurancePolicy, setInsurancePolicy] = useState('');
+  const [manifestStatus, setManifestStatus] = useState('Emitido');
   const [status, setStatus] = useAutoClearMessage();
 
   useEffect(() => {
@@ -186,10 +210,11 @@ export default function GenerateManifestPage() {
 
   const filteredCtes = useMemo(() => {
     const query = normalizeText(cteSearch);
-    if (!query) return openCtes;
+    const availableCtes = ctes.filter((cte) => cte.status !== 'Cancelado');
+    if (!query) return availableCtes;
 
-    return openCtes.filter((cte) => normalizeText(`${cte.id} ${cte.number} ${cte.issuer} ${cte.origin} ${cte.destination}`).includes(query));
-  }, [cteSearch]);
+    return availableCtes.filter((cte) => normalizeText(`${cte.id} ${cte.number} ${cte.issuer} ${cte.origin} ${cte.destination}`).includes(query));
+  }, [cteSearch, ctes]);
 
   const manifestsByClosestDate = useMemo(
     () => [...manifests].sort((left, right) => dateDistance(left.createdAt) - dateDistance(right.createdAt)),
@@ -205,14 +230,14 @@ export default function GenerateManifestPage() {
   }, [manifestLookupSearch, manifestsByClosestDate]);
 
   const selectedCtes = useMemo(
-    () => openCtes.filter((cte) => selectedCteIds.includes(cte.id)),
-    [selectedCteIds],
+    () => ctes.filter((cte) => selectedCteIds.includes(cte.id)),
+    [ctes, selectedCteIds],
   );
   const originOptions = origin && !cities.includes(origin) ? [origin, ...cities] : cities;
   const destinationOptions = destination && !cities.includes(destination) ? [destination, ...cities] : cities;
 
-  const selectedWeight = selectedCtes.reduce((sum, cte) => sum + cte.cargoWeight, 0);
-  const selectedValue = selectedCtes.reduce((sum, cte) => sum + cte.cargoValue, 0);
+  const selectedWeight = selectedCtes.reduce((sum, cte) => sum + Number(cte.cargoWeight || 0), 0);
+  const selectedValue = selectedCtes.reduce((sum, cte) => sum + Number(cte.cargoValue || 0), 0);
 
   function loadManifest(manifest) {
     setManifestNumber(manifest.id || '');
@@ -229,8 +254,25 @@ export default function GenerateManifestPage() {
     setHasInsurance(manifest.hasInsurance || 'Não');
     setInsuranceCompany(manifest.insuranceCompany || '');
     setInsurancePolicy(manifest.insurancePolicy || '');
+    setManifestStatus(manifest.status || 'Emitido');
     setStatus(`Manifesto ${manifest.id} carregado para edição`);
   }
+
+  useEffect(() => {
+    const pendingId = pendingManifestNumber();
+    if (!pendingId) return;
+
+    const manifest = manifests.find((item) => normalizeText(item.id) === normalizeText(pendingId));
+    if (manifest) {
+      loadManifest(manifest);
+    }
+
+    try {
+      localStorage.removeItem(pendingManifestIdKey);
+    } catch {
+      // localStorage pode estar indisponível em navegação privada.
+    }
+  }, [manifests]);
 
   function handleManifestNumberChange(value) {
     const nextNumber = value.toUpperCase();
@@ -298,18 +340,10 @@ export default function GenerateManifestPage() {
       hasInsurance,
       insuranceCompany,
       insurancePolicy,
+      status: manifestStatus,
       createdAt: new Date().toISOString(),
     };
-    const existingIndex = manifests.findIndex((manifest) => normalizeText(manifest.id) === normalizeText(generatedManifestNumber));
-    const nextManifests = [...manifests];
-
-    if (existingIndex >= 0) {
-      nextManifests[existingIndex] = nextManifest;
-    } else {
-      nextManifests.push(nextManifest);
-    }
-
-    writeManifests(nextManifests);
+    const nextManifests = saveManifest(nextManifest);
     setManifests(nextManifests);
     setManifestNumber(generatedManifestNumber);
     setStatus(`Manifesto ${generatedManifestNumber} lançado com ${selectedCtes.length} CT-e(s)`);
@@ -333,7 +367,34 @@ export default function GenerateManifestPage() {
     setHasInsurance('Não');
     setInsuranceCompany('');
     setInsurancePolicy('');
+    setManifestStatus('Emitido');
     setStatus('');
+  }
+
+  function handleDeleteManifest() {
+    const currentManifest = manifests.find((manifest) => normalizeText(manifest.id) === normalizeText(manifestNumber));
+
+    if (!currentManifest) {
+      setStatus('Selecione um manifesto cadastrado para excluir');
+      return;
+    }
+
+    const blockers = getManifestDeletionBlockers(currentManifest);
+
+    if (blockers.length) {
+      const nextManifests = deactivateManifest(currentManifest.id);
+      const inactiveManifest = nextManifests.find((manifest) => manifest.id === currentManifest.id);
+      setManifests(nextManifests);
+      setManifestStatus('Cancelado');
+      if (inactiveManifest) loadManifest(inactiveManifest);
+      setStatus(`Manifesto possui vinculo em ${blockers.join(', ')} e foi cancelado`);
+      return;
+    }
+
+    const nextManifests = deleteManifest(currentManifest.id);
+    setManifests(nextManifests);
+    handleReset();
+    setStatus(`Manifesto ${currentManifest.id} excluido`);
   }
 
   return (
@@ -377,6 +438,14 @@ export default function GenerateManifestPage() {
               </button>
             </div>
           </div>
+
+          <label className="field">
+            <span>Status do manifesto</span>
+            <select value={manifestStatus} onChange={(event) => setManifestStatus(event.target.value)}>
+              <option>Emitido</option>
+              <option>Cancelado</option>
+            </select>
+          </label>
         </div>
 
         <div className="form-grid manifest-details-grid">
@@ -459,7 +528,7 @@ export default function GenerateManifestPage() {
               <h2 id="manifest-cte-title">Anexar CT-e</h2>
               <div>
                 <span>{filteredCtes.length} CT-e(s) em aberto</span>
-                <strong>{currency(filteredCtes.reduce((sum, cte) => sum + cte.cargoValue, 0))}</strong>
+                <strong>{currency(filteredCtes.reduce((sum, cte) => sum + Number(cte.cargoValue || 0), 0))}</strong>
               </div>
             </div>
 
@@ -566,6 +635,10 @@ export default function GenerateManifestPage() {
 
         <div className="form-actions">
           <button type="submit" className="primary-button">Lançar manifesto</button>
+          <button type="button" className="danger-button" onClick={handleDeleteManifest}>
+            <Trash2 size={15} strokeWidth={2.2} />
+            Excluir manifesto
+          </button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{status}</span>
         </div>

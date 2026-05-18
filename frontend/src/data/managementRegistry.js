@@ -41,11 +41,16 @@ export function formatCnpj(value) {
 
 function readRecords(key, fallback) {
   try {
-    const stored = JSON.parse(localStorage.getItem(key) || '[]');
-    return stored.length ? stored : fallback;
+    const rawValue = localStorage.getItem(key);
+    if (rawValue !== null) {
+      const stored = JSON.parse(rawValue);
+      return Array.isArray(stored) ? stored : fallback;
+    }
   } catch {
     return fallback;
   }
+
+  return fallback;
 }
 
 function writeRecords(key, records) {
@@ -98,4 +103,44 @@ export function saveSupplier(record) {
 
   writeRecords(supplierStorageKey, suppliersList);
   return suppliersList;
+}
+
+export function deleteUnit(record) {
+  const cnpjDigits = onlyDigits(record.cnpj);
+  const units = getRegisteredUnits();
+  const nextUnits = units.filter((unit) => unit.id !== record.id && onlyDigits(unit.cnpj) !== cnpjDigits);
+
+  writeRecords(unitStorageKey, nextUnits);
+  return nextUnits;
+}
+
+export function deactivateUnit(record) {
+  const cnpjDigits = onlyDigits(record.cnpj);
+  const units = getRegisteredUnits();
+  const nextUnits = units.map((unit) => (
+    unit.id === record.id || onlyDigits(unit.cnpj) === cnpjDigits ? { ...unit, active: false } : unit
+  ));
+
+  writeRecords(unitStorageKey, nextUnits);
+  return nextUnits;
+}
+
+export function deleteSupplier(record) {
+  const cnpjDigits = onlyDigits(record.cnpj);
+  const suppliersList = getRegisteredSuppliers();
+  const nextSuppliers = suppliersList.filter((supplier) => supplier.id !== record.id && onlyDigits(supplier.cnpj) !== cnpjDigits);
+
+  writeRecords(supplierStorageKey, nextSuppliers);
+  return nextSuppliers;
+}
+
+export function deactivateSupplier(record) {
+  const cnpjDigits = onlyDigits(record.cnpj);
+  const suppliersList = getRegisteredSuppliers();
+  const nextSuppliers = suppliersList.map((supplier) => (
+    supplier.id === record.id || onlyDigits(supplier.cnpj) === cnpjDigits ? { ...supplier, active: false } : supplier
+  ));
+
+  writeRecords(supplierStorageKey, nextSuppliers);
+  return nextSuppliers;
 }

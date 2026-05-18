@@ -53,6 +53,11 @@ export const navigationItems = [
         label: 'Gerar Manifesto',
         pageId: 'generate-manifest',
       },
+      {
+        id: 'gestao-frota',
+        label: 'Gestão de Frota',
+        pageId: 'fleet-management',
+      },
     ],
   },
   {
@@ -97,6 +102,27 @@ export const navigationItems = [
             id: 'baixa-contas-pagar',
             label: 'Baixa de Contas a Pagar',
             pageId: 'accounts-payable-settlement',
+          },
+        ],
+      },
+      {
+        id: 'contas-a-receber',
+        label: 'Contas a Receber',
+        children: [
+          {
+            id: 'dashboard-contas-receber',
+            label: 'Dashboard de Contas a Receber',
+            pageId: 'accounts-receivable-dashboard',
+          },
+          {
+            id: 'cadastrar-titulo-receber',
+            label: 'Cadastrar Título a Receber',
+            pageId: 'accounts-receivable',
+          },
+          {
+            id: 'baixa-titulos-receber',
+            label: 'Baixa de Títulos a Receber',
+            pageId: 'accounts-receivable-settlement',
           },
         ],
       },

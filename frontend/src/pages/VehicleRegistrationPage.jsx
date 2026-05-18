@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
-import { Search, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Search, Trash2, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, normalizeText } from '../data/financeData.js';
 import {
+  deactivateVehicle,
+  deleteVehicle,
   formatCpf,
   getRegisteredDrivers,
   findVehicleByPlate,
@@ -12,6 +14,7 @@ import {
   pendingVehiclePlateKey,
   saveVehicle,
 } from '../data/transportRegistry.js';
+import { getVehicleDeletionBlockers } from '../data/deletionRules.js';
 
 const vehicleTypes = ['Cavalo mecânico', 'Truck', 'Toco', 'Bitruck', 'Van', 'Carreta'];
 
@@ -80,6 +83,22 @@ export default function VehicleRegistrationPage() {
     setMessage(`Veículo ${vehicle.plate} carregado para edição`);
   }
 
+  useEffect(() => {
+    const nextPlate = pendingPlate();
+    if (!nextPlate) return;
+
+    const vehicle = vehicles.find((item) => normalizePlate(item.plate) === nextPlate);
+    if (vehicle) {
+      loadVehicle(vehicle);
+    }
+
+    try {
+      localStorage.removeItem(pendingVehiclePlateKey);
+    } catch {
+      // localStorage pode estar indisponível em navegação privada.
+    }
+  }, []);
+
   function handlePlateChange(value) {
     const nextPlate = normalizePlate(value);
     setPlate(nextPlate);
@@ -135,6 +154,41 @@ export default function VehicleRegistrationPage() {
     setDriverSearch('');
     setStatusValue('Ativo');
     setMessage('');
+  }
+
+  function handleDelete() {
+    const currentVehicle = vehicles.find((vehicle) => normalizePlate(vehicle.plate) === normalizePlate(plate));
+
+    if (!currentVehicle) {
+      setMessage('Selecione um veiculo cadastrado para excluir');
+      return;
+    }
+
+    const blockers = getVehicleDeletionBlockers(currentVehicle);
+
+    if (blockers.length) {
+      const nextVehicles = deactivateVehicle(currentVehicle.plate);
+      setVehicles(nextVehicles);
+      setStatusValue('Inativo');
+      setMessage(`Veiculo possui vinculo em ${blockers.join(', ')} e foi desativado`);
+      return;
+    }
+
+    const nextVehicles = deleteVehicle(currentVehicle.plate);
+    setVehicles(nextVehicles);
+    setUnit('001');
+    setPlate('');
+    setModel('');
+    setType(vehicleTypes[0]);
+    setOwnerType('company');
+    setOwner('JTD Transportes LTDA');
+    setOwnerCpf('');
+    setVehicleLookupOpen(false);
+    setVehicleSearch('');
+    setDriverLookupOpen(false);
+    setDriverSearch('');
+    setStatusValue('Ativo');
+    setMessage(`Veiculo ${currentVehicle.plate} excluido`);
   }
 
   function handleUnitChange(value) {
@@ -284,6 +338,10 @@ export default function VehicleRegistrationPage() {
 
         <div className="form-actions">
           <button type="submit" className="primary-button">Salvar veículo</button>
+          <button type="button" className="danger-button" onClick={handleDelete}>
+            <Trash2 size={15} strokeWidth={2.2} />
+            Excluir veiculo
+          </button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{message}</span>
         </div>

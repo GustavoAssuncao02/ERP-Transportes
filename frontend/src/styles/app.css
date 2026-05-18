@@ -6,7 +6,7 @@
 .user-bar {
   position: sticky;
   top: 0;
-  z-index: 70;
+  z-index: 3000;
   display: flex;
   min-height: var(--userbar-height);
   align-items: center;
@@ -57,7 +57,7 @@
 .navbar {
   position: sticky;
   top: var(--userbar-height);
-  z-index: 69;
+  z-index: 2990;
   display: flex;
   align-items: center;
   min-height: var(--navbar-height);
@@ -121,7 +121,7 @@
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 20;
+  z-index: 3100;
   display: none;
   width: max-content;
   min-width: 240px;
@@ -171,7 +171,7 @@
   position: absolute;
   top: -6px;
   left: 100%;
-  z-index: 25;
+  z-index: 3120;
   display: none;
   width: max-content;
   min-width: 280px;
@@ -213,7 +213,7 @@
 .tab-bar {
   position: sticky;
   top: calc(var(--userbar-height) + var(--navbar-height));
-  z-index: 68;
+  z-index: 2980;
   display: flex;
   min-height: var(--tab-height);
   align-items: flex-end;
@@ -874,7 +874,8 @@
 }
 
 .primary-button,
-.secondary-button {
+.secondary-button,
+.danger-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -909,6 +910,18 @@
 .secondary-button:hover,
 .secondary-button:focus-visible {
   background: #ededed;
+  outline: none;
+}
+
+.danger-button {
+  border: 1px solid #a9342b;
+  background: #fff5f3;
+  color: #a9342b;
+}
+
+.danger-button:hover,
+.danger-button:focus-visible {
+  background: #f9e5e2;
   outline: none;
 }
 
@@ -1459,6 +1472,157 @@
   margin-top: 18px;
 }
 
+.receivable-settlement-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.receivable-settlement-summary div {
+  display: flex;
+  min-height: 78px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.receivable-settlement-summary span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.receivable-settlement-summary strong {
+  color: var(--primary-dark);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.receivable-settlement-search {
+  margin: 0;
+  background: #ffffff;
+}
+
+.receivable-title-list {
+  max-height: 430px;
+}
+
+.receivable-title-row {
+  cursor: default;
+}
+
+.receivable-title-row:hover {
+  background: #eef5f4;
+}
+
+.receivable-settlement-details {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+}
+
+.receivable-selected-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px;
+  border: 1px solid #d7e5e3;
+  border-radius: 5px;
+  background: #f6fbfa;
+}
+
+.receivable-selected-card strong {
+  color: var(--primary-dark);
+  font-size: 14px;
+}
+
+.receivable-selected-card span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receivable-balance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.receivable-balance-grid div,
+.receivable-accounting-preview div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #ffffff;
+}
+
+.receivable-balance-grid span,
+.receivable-accounting-preview span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.receivable-balance-grid strong,
+.receivable-accounting-preview strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.receivable-accounting-preview {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.receivable-history {
+  display: grid;
+  max-height: 148px;
+  gap: 6px;
+  overflow: auto;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: #fafafa;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.receivable-history > strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.receivable-history div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid #eeeeee;
+  padding-top: 6px;
+}
+
+.receivable-history div strong {
+  color: var(--primary-dark);
+}
+
 .batch-settlement-panel {
   display: grid;
   gap: 16px;
@@ -1785,7 +1949,11 @@
 .business-intelligence-page,
 .accounts-payable-schedule-page,
 .accounts-payable-deletion-page,
+.accounts-receivable-dashboard-page,
+.accounts-receivable-page,
+.accounts-receivable-settlement-page,
 .generate-manifest-page,
+.fleet-management-page,
 .create-minuta-page,
 .settlement-reversal-page {
   max-width: 1280px;
@@ -2038,6 +2206,43 @@
   background: #ffffff;
 }
 
+.receivable-dashboard-filter-title {
+  cursor: default;
+}
+
+.receivable-dashboard-filter-title:hover,
+.receivable-dashboard-filter-title:focus-visible {
+  background: #f8f8f8;
+  outline: none;
+}
+
+.receivable-dashboard-metrics {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.receivable-dashboard-metric {
+  border: 1px solid var(--border);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.receivable-dashboard-metric:hover,
+.receivable-dashboard-metric:focus-visible,
+.receivable-dashboard-metric--active {
+  border-color: var(--primary);
+  background: #eef7f6;
+  outline: none;
+}
+
+.receivable-dashboard-metric strong {
+  font-size: 19px;
+}
+
+.receivable-dashboard-table {
+  min-width: 1220px;
+}
+
 .schedule-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.75fr);
@@ -2278,6 +2483,522 @@
   border-top: 1px solid var(--border);
 }
 
+.fleet-metrics-grid {
+  display: grid;
+  max-width: 1280px;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.fleet-metric {
+  display: grid;
+  min-height: 92px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 6px 10px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.fleet-metric svg {
+  grid-row: span 2;
+  color: var(--primary);
+}
+
+.fleet-metric span {
+  align-self: end;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fleet-metric strong {
+  align-self: start;
+  color: var(--primary-dark);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.fleet-metric--transit {
+  border-color: #8cc0ba;
+  background: #f3fbfa;
+}
+
+.fleet-metric:hover,
+.fleet-metric:focus-visible,
+.fleet-metric--active {
+  border-color: var(--primary);
+  background: #eef7f6;
+  outline: none;
+}
+
+.fleet-filter-form {
+  max-width: 1280px;
+  margin-bottom: 16px;
+  padding: 14px;
+}
+
+.fleet-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fleet-search {
+  flex: 1;
+  min-width: 260px;
+}
+
+.fleet-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.fleet-layout {
+  display: grid;
+  max-width: 1280px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.36fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.fleet-layout > .registered-launches-panel,
+.fleet-layout > .selection-panel {
+  margin-top: 0;
+}
+
+.fleet-table {
+  min-width: 940px;
+}
+
+.fleet-table tbody tr {
+  cursor: default;
+}
+
+.fleet-table tbody tr:has(.fleet-status-pill--transit) {
+  cursor: pointer;
+}
+
+.fleet-table td:first-child strong,
+.fleet-table td:nth-child(4) {
+  font-weight: 700;
+}
+
+.fleet-plate-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary-dark);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  text-align: left;
+}
+
+.fleet-plate-button:hover,
+.fleet-plate-button:focus-visible {
+  color: #0b5f9c;
+  outline: none;
+  text-decoration: underline;
+}
+
+.fleet-table td:first-child span,
+.fleet-table td:nth-child(4) span {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.fleet-status-pill {
+  display: inline-flex;
+  min-width: 92px;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef5f4;
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fleet-status-pill--transit {
+  background: #e9f4ff;
+  color: #0b5f9c;
+}
+
+.fleet-status-pill--inactive {
+  background: #ededed;
+  color: #666666;
+}
+
+.fleet-transit-panel {
+  min-height: 360px;
+}
+
+.fleet-transit-list {
+  max-height: 520px;
+}
+
+.fleet-transit-row {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 110px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid #ececec;
+  background: #ffffff;
+  font: inherit;
+  text-align: left;
+}
+
+.fleet-transit-row:last-child {
+  border-bottom: 0;
+}
+
+.fleet-transit-row strong,
+.fleet-transit-row span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleet-transit-row strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.fleet-transit-row span {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.fleet-transit-row--button {
+  cursor: pointer;
+}
+
+.fleet-transit-row--button:hover,
+.fleet-transit-row--button:focus-visible,
+.fleet-transit-row--selected {
+  background: #eef7f6;
+  outline: none;
+}
+
+.fleet-map-panel {
+  max-width: 1280px;
+  position: relative;
+  z-index: 0;
+}
+
+.fleet-map-filters {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.fleet-map-filters label {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fleet-map-filters span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fleet-map-filters select,
+.fleet-map-filters input {
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.fleet-map-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.28fr);
+  gap: 0;
+  min-height: 460px;
+}
+
+.fleet-map-shell {
+  position: relative;
+  z-index: 0;
+  min-width: 0;
+  min-height: 460px;
+  overflow: hidden;
+  isolation: isolate;
+  background: #e7f0ee;
+}
+
+.fleet-route-map {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  min-height: 460px;
+  height: 100%;
+  background: #e7f0ee;
+}
+
+.fleet-route-map .leaflet-control-attribution {
+  font-size: 10px;
+}
+
+.fleet-route-map .leaflet-control-zoom a {
+  color: var(--text);
+}
+
+.fleet-map-empty {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  z-index: 10;
+  min-width: 240px;
+  transform: translate(-50%, -50%);
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 38px rgba(17, 24, 39, 0.12);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.fleet-map-arrow {
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.fleet-map-arrow span {
+  display: block;
+  width: 22px;
+  height: 22px;
+  clip-path: polygon(15% 12%, 92% 50%, 15% 88%, 34% 50%);
+  transform: rotate(var(--route-angle));
+  transform-origin: center;
+  background: #1a7a72;
+  filter: drop-shadow(0 3px 6px rgba(17, 24, 39, 0.28));
+}
+
+.fleet-map-arrow--selected span {
+  width: 25px;
+  height: 25px;
+  background: #e87722;
+}
+
+.fleet-map-count-badge {
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+}
+
+.fleet-map-count-badge span {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0 7px;
+  border: 2px solid #1a7a72;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(17, 24, 39, 0.18);
+  color: #1a7a72;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.fleet-map-count-badge--selected span {
+  border-color: #e87722;
+  color: #a34d00;
+}
+
+.fleet-route-map .leaflet-interactive {
+  cursor: pointer;
+}
+
+.fleet-route-map .leaflet-tooltip {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 10px 24px rgba(17, 24, 39, 0.14);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fleet-route-highlight {
+  display: grid;
+  gap: 4px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.fleet-route-highlight span {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.fleet-route-highlight strong {
+  color: #1a7a72;
+  font-size: 16px;
+}
+
+.fleet-route-highlight small {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.fleet-map-insight-block {
+  display: grid;
+  gap: 8px;
+}
+
+.fleet-map-insight-block h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fleet-route-insight {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.fleet-route-insight:hover,
+.fleet-route-insight:focus-visible,
+.fleet-route-insight--active {
+  border-color: #e87722;
+  background: #fff6ed;
+  outline: none;
+}
+
+.fleet-route-insight span {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleet-route-insight strong {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 999px;
+  background: #e8f3f2;
+  color: #1a7a72;
+  font-size: 12px;
+}
+
+.fleet-route-insight--active strong {
+  background: #e87722;
+  color: #ffffff;
+}
+
+.fleet-point-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fleet-point-columns > div {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.fleet-point-columns strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.fleet-point-columns span {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fleet-map-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 16px;
+  border-left: 1px solid var(--border);
+  background: #ffffff;
+  max-height: 460px;
+  overflow-y: auto;
+}
+
+.fleet-map-summary-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary);
+}
+
+.fleet-map-summary-title strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.fleet-map-summary > span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .home-shortcuts-page,
 .system-updates-page {
   max-width: 1280px;
@@ -2449,6 +3170,7 @@
 .issue-cte-form,
 .collection-order-form,
 .create-minuta-form,
+.accounts-receivable-form,
 .registry-form {
   max-width: 1280px;
 }
@@ -2661,8 +3383,42 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .fleet-metrics-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .receivable-settlement-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .schedule-layout {
     grid-template-columns: 1fr;
+  }
+
+  .fleet-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fleet-map-wrap {
+    grid-template-columns: 1fr;
+  }
+
+  .fleet-map-filters {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .fleet-map-summary {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+
+  .fleet-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .fleet-search {
+    min-width: 0;
   }
 
   .shortcut-manager-layout {
@@ -2701,8 +3457,21 @@
   }
 
   .bi-metrics-grid,
+  .fleet-metrics-grid,
+  .receivable-settlement-summary,
+  .receivable-balance-grid,
+  .receivable-accounting-preview,
   .bi-chart-grid,
   .schedule-chart-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fleet-status-filter {
+    width: 100%;
+    overflow-x: auto;
+  }
+
+  .fleet-map-filters {
     grid-template-columns: 1fr;
   }
 

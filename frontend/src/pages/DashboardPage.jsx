@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import AccountsPayableSchedulePage from './AccountsPayableSchedulePage.jsx';
 import AccountsPayableDeletionPage from './AccountsPayableDeletionPage.jsx';
 import AccountsPayablePage from './AccountsPayablePage.jsx';
@@ -40,7 +40,13 @@ export default function DashboardPage() {
   const [activeTabId, setActiveTabId] = useState('home');
   const [editingLaunch, setEditingLaunch] = useState(null);
   const [homeShortcutIds, setHomeShortcutIds] = useState(readHomeShortcutIds);
+  const contentAreaRef = useRef(null);
   const homeShortcutCards = useMemo(() => getHomeShortcutCards(homeShortcutIds), [homeShortcutIds]);
+
+  useEffect(() => {
+    contentAreaRef.current?.scrollTo({ top: 0, left: 0 });
+    window.scrollTo({ top: 0, left: 0 });
+  }, [activeTabId]);
 
   function openPage(item) {
     if (!item.pageId) return;
@@ -247,7 +253,7 @@ export default function DashboardPage() {
       />
 
       <main className="main-layout">
-        <div className="content-area">
+        <div className="content-area" ref={contentAreaRef}>
           {renderContent()}
         </div>
 

@@ -465,6 +465,16 @@ export default function FleetManagementPage({ onNavigate }) {
     return nextMap;
   }, [transitManifests]);
 
+  const currentTransitManifests = useMemo(
+    () => [...latestManifestByPlate.values()].sort(latestFirst),
+    [latestManifestByPlate],
+  );
+
+  const currentTransitManifestIds = useMemo(
+    () => new Set(currentTransitManifests.map((manifest) => manifest.id)),
+    [currentTransitManifests],
+  );
+
   const fleetRows = useMemo(() => vehicles.map((vehicle) => {
     const plate = normalizePlate(vehicle.plate);
     const manifest = latestManifestByPlate.get(plate) || null;
@@ -540,10 +550,11 @@ export default function FleetManagementPage({ onNavigate }) {
 
     return manifests
       .filter((manifest) => {
+        const currentTransit = currentTransitManifestIds.has(manifest.id);
         const canceled = !activeManifest(manifest);
         const plate = normalizePlate(manifest.truckPlate);
         const statusMatches = mapStatusFilter === 'all'
-          || (mapStatusFilter === 'active' && !canceled)
+          || (mapStatusFilter === 'active' && currentTransit)
           || (mapStatusFilter === 'canceled' && canceled);
         const originMatches = !originFilter || manifest.origin === originFilter;
         const destinationMatches = !destinationFilter || manifest.destination === destinationFilter;
@@ -577,6 +588,7 @@ export default function FleetManagementPage({ onNavigate }) {
   }, [
     destinationFilter,
     driverFilter,
+    currentTransitManifestIds,
     filteredPlateSet,
     manifests,
     mapDateFilter,
@@ -941,8 +953,8 @@ export default function FleetManagementPage({ onNavigate }) {
     },
     manifests: {
       title: 'Manifestos ativos',
-      count: transitManifests.length,
-      items: transitManifests,
+      count: currentTransitManifests.length,
+      items: currentTransitManifests,
       type: 'manifest',
     },
   };
@@ -991,7 +1003,7 @@ export default function FleetManagementPage({ onNavigate }) {
         <button type="button" className={selectedMetric === 'manifests' ? 'fleet-metric fleet-metric--active' : 'fleet-metric'} onClick={() => handleMetricClick('manifests', 'transit')}>
           <FileText size={20} strokeWidth={2.2} />
           <span>Manifestos ativos</span>
-          <strong>{transitManifests.length}</strong>
+          <strong>{currentTransitManifests.length}</strong>
         </button>
       </div>
 

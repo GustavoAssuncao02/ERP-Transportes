@@ -143,7 +143,7 @@ export default function AttachmentPanel({ attachments, onAddFiles }) {
                 <div className="document-preview-placeholder">
                   <strong>{preview.name}</strong>
                   <span>{preview.type}</span>
-                  <p>Documento anexado ao lancamento. A pre-visualizacao real sera aberta quando o arquivo estiver disponivel no armazenamento.</p>
+                  <p>Documento anexado ao lançamento. A pré-visualização real será aberta quando o arquivo estiver disponível no armazenamento.</p>
                 </div>
               )}
             </div>

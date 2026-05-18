@@ -1,7 +1,29 @@
 export const navigationItems = [
   {
-    id: 'base',
-    label: 'Base',
+    id: 'gestao',
+    label: 'Gestão',
+    children: [
+      {
+        id: 'unidade',
+        label: 'Unidade',
+        pageId: 'unit-registration',
+      },
+      {
+        id: 'fornecedor',
+        label: 'Fornecedor',
+        pageId: 'supplier-registration',
+      },
+      {
+        id: 'cadastrar-veiculo',
+        label: 'Cadastrar Veículo',
+        pageId: 'vehicle-registration',
+      },
+      {
+        id: 'cadastrar-motorista',
+        label: 'Cadastrar Motorista',
+        pageId: 'driver-registration',
+      },
+    ],
   },
   {
     id: 'recursos',
@@ -9,8 +31,18 @@ export const navigationItems = [
   },
   {
     id: 'operacao',
-    label: 'Operacao',
+    label: 'Operação',
     children: [
+      {
+        id: 'emitir-cte',
+        label: 'Emitir CT-e',
+        pageId: 'issue-cte',
+      },
+      {
+        id: 'ordem-coleta',
+        label: 'Ordem de Coleta',
+        pageId: 'collection-order',
+      },
       {
         id: 'gerar-manifesto',
         label: 'Gerar Manifesto',
@@ -29,7 +61,7 @@ export const navigationItems = [
       },
       {
         id: 'consultar-lancamentos',
-        label: 'Consultar Lancamentos',
+        label: 'Consultar Lançamentos',
         pageId: 'registered-launches',
       },
       {
@@ -38,7 +70,7 @@ export const navigationItems = [
         children: [
           {
             id: 'programacao-conta-pagar',
-            label: 'Programacao de Contas a Pagar',
+            label: 'Programação de Contas a Pagar',
             pageId: 'accounts-payable-schedule',
           },
           {
@@ -48,12 +80,12 @@ export const navigationItems = [
           },
           {
             id: 'exclusao-titulos-pagar',
-            label: 'Exclusao de Titulos a Pagar',
+            label: 'Exclusão de Títulos a Pagar',
             pageId: 'accounts-payable-deletion',
           },
           {
             id: 'relatorio-contas-pagar',
-            label: 'Relatorio de Contas a Pagar',
+            label: 'Relatório de Contas a Pagar',
             pageId: 'accounts-payable-report',
           },
           {
@@ -121,13 +153,13 @@ export const quickAccessCards = [
   },
   {
     id: 'quick-registered-launches',
-    label: 'Consultar Lancamentos',
+    label: 'Consultar Lançamentos',
     pageId: 'registered-launches',
     icon: 'finance',
   },
   {
     id: 'quick-payable-schedule',
-    label: 'Programacao de Contas a Pagar',
+    label: 'Programação de Contas a Pagar',
     pageId: 'accounts-payable-schedule',
     icon: 'finance',
   },
@@ -139,7 +171,7 @@ export const quickAccessCards = [
   },
   {
     id: 'quick-payable-report',
-    label: 'Relatorio de Contas a Pagar',
+    label: 'Relatório de Contas a Pagar',
     pageId: 'accounts-payable-report',
     icon: 'finance',
   },
@@ -147,5 +179,5 @@ export const quickAccessCards = [
 
 export const quickQueryCards = Array.from({ length: 10 }, (_, index) => ({
   id: `quick-query-${index + 1}`,
-  label: `Consulta rapida ${index + 1}`,
+  label: `Consulta rápida ${index + 1}`,
 }));

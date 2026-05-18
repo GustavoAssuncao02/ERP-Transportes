@@ -6,7 +6,9 @@ import {
   accountingTypes,
   businessUnits,
   chargeTypes,
+  currency,
   findFinanceLaunchById,
+  financeLaunches,
   formatAccountingType,
   formatSupplier,
   formatUnit,
@@ -17,22 +19,39 @@ import {
 
 const defaultUnit = businessUnits[0].label;
 
+function dateDistance(value) {
+  if (!value) return Number.MAX_SAFE_INTEGER;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return Number.MAX_SAFE_INTEGER;
+
+  return Math.abs(date.getTime() - Date.now());
+}
+
 const lookupConfig = {
+  launch: {
+    title: 'Pesquisar lançamento',
+    columns: ['Lançamento', 'Data', 'Fornecedor', 'Documento', 'Situação', 'Valor'],
+    items: [...financeLaunches].sort((left, right) => (
+      dateDistance(left.dueDate || left.issueDate || left.createdDate) - dateDistance(right.dueDate || right.issueDate || right.createdDate)
+    )),
+    format: (item) => item.id,
+  },
   unit: {
     title: 'Pesquisar unidade',
-    columns: ['Codigo', 'Unidade'],
+    columns: ['Código', 'Unidade'],
     items: businessUnits,
     format: (item) => item.label,
   },
   supplier: {
     title: 'Pesquisar fornecedor',
-    columns: ['Codigo', 'Nome', 'CNPJ'],
+    columns: ['Código', 'Nome', 'CNPJ'],
     items: suppliers,
     format: (item) => `${item.code} - ${item.name} - ${item.cnpj}`,
   },
   accountingType: {
     title: 'Pesquisar tipo',
-    columns: ['Codigo', 'Classificacao contabil'],
+    columns: ['Código', 'Classificação contábil'],
     items: accountingTypes,
     format: (item) => `${item.code} - ${item.name}`,
   },
@@ -100,6 +119,17 @@ function nextLaunchNumber() {
 }
 
 function getLookupCells(type, item) {
+  if (type === 'launch') {
+    return [
+      item.id,
+      item.dueDate || item.issueDate || item.createdDate || '',
+      item.supplier,
+      item.document,
+      item.status,
+      currency(item.amount),
+    ];
+  }
+
   if (type === 'supplier') {
     return [item.code, item.name, item.cnpj];
   }
@@ -141,6 +171,10 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
     if (!query) return activeLookup.items;
 
     return activeLookup.items.filter((item) => {
+      if (lookupType === 'launch') {
+        return `${item.id} ${item.supplier} ${item.document} ${item.status}`.toLowerCase().includes(query);
+      }
+
       if (lookupType === 'supplier' && supplierSearchBy === 'cnpj') {
         return item.cnpj.toLowerCase().includes(query);
       }
@@ -149,7 +183,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
     });
   }, [activeLookup, lookupSearch, lookupType, supplierSearchBy]);
 
-  function populateFromLaunch(launch, message = `Lancamento ${launch.id} carregado para edicao`) {
+  function populateFromLaunch(launch, message = `Lançamento ${launch.id} carregado para edição`) {
     const nextInstallments = launch.installments?.length
       ? launch.installments
       : [{ number: 1, dueDate: launch.dueDate, value: launch.amount.toFixed(2) }];
@@ -218,6 +252,12 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
   function selectLookupItem(item) {
     const value = activeLookup.format(item);
 
+    if (lookupType === 'launch') {
+      populateFromLaunch(item);
+      closeLookup();
+      return;
+    }
+
     if (lookupType === 'unit') setUnit(value);
     if (lookupType === 'supplier') setSupplier(value);
     if (lookupType === 'accountingType') setAccountingType(value);
@@ -283,7 +323,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
     const generatedLaunchNumber = launchNumber || nextLaunchNumber();
 
     if (isSettledLaunch) {
-      setStatus(`Lancamento ${generatedLaunchNumber} baixado: somente novos documentos podem ser anexados`);
+      setStatus(`Lançamento ${generatedLaunchNumber} baixado: somente novos documentos podem ser anexados`);
       return;
     }
 
@@ -292,8 +332,8 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
     setLoadedLaunchStatus('Aberto');
     setStatus(
       loadedLaunchId
-        ? `Lancamento ${generatedLaunchNumber} atualizado`
-        : `Lancamento ${generatedLaunchNumber} criado com ${attachments.length} anexo(s)`,
+        ? `Lançamento ${generatedLaunchNumber} atualizado`
+        : `Lançamento ${generatedLaunchNumber} criado com ${attachments.length} anexo(s)`,
     );
   }
 
@@ -331,14 +371,14 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
       <header className="page-header">
         <div>
           <h1 className="page-title">Cadastro de Contas a Pagar</h1>
-          <p className="page-kicker">Lancamentos de contas a pagar</p>
+          <p className="page-kicker">Lançamentos de contas a pagar</p>
         </div>
       </header>
 
       <form className="finance-form" onSubmit={handleSubmit} onReset={handleReset}>
         {isSettledLaunch && (
           <div className="locked-record-notice">
-            Lancamento baixado: os dados ficam bloqueados para edicao, mas novos documentos podem ser anexados.
+            Lançamento baixado: os dados ficam bloqueados para edição, mas novos documentos podem ser anexados.
           </div>
         )}
 
@@ -348,7 +388,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Codigo da empresa"
+                placeholder="Código da empresa"
                 value={unit}
                 onChange={(event) => setUnit(event.target.value)}
                 readOnly={isSettledLaunch}
@@ -368,22 +408,34 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
             </div>
           </div>
 
-          <label className="field">
-            <span>Numero do Lancamento</span>
-            <input
-              type="text"
-              placeholder="Digite ou gere ao criar"
-              value={launchNumber}
-              onChange={(event) => handleLaunchNumberChange(event.target.value)}
-            />
-          </label>
+          <div className="field">
+            <span>Número do Lançamento</span>
+            <div className="lookup-field">
+              <input
+                type="text"
+                placeholder="Digite ou gere ao criar"
+                value={launchNumber}
+                onChange={(event) => handleLaunchNumberChange(event.target.value)}
+              />
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Pesquisar lançamento"
+                title="Pesquisar lançamento"
+                tabIndex={-1}
+                onClick={() => openLookup('launch')}
+              >
+                <Search size={17} strokeWidth={2.2} />
+              </button>
+            </div>
+          </div>
 
           <div className="field field--span-2">
             <span>Fornecedor</span>
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Codigo ou nome"
+                placeholder="Código ou nome"
                 value={supplier}
                 onChange={(event) => setSupplier(event.target.value)}
                 readOnly={isSettledLaunch}
@@ -408,7 +460,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Classificacao contabil"
+                placeholder="Classificação contábil"
                 value={accountingType}
                 onChange={(event) => setAccountingType(event.target.value)}
                 readOnly={isSettledLaunch}
@@ -442,7 +494,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
             <span>Documento</span>
             <input
               type="text"
-              placeholder="Numero do documento"
+              placeholder="Número do documento"
               value={documentNumber}
               onChange={(event) => setDocumentNumber(event.target.value)}
               readOnly={isSettledLaunch}
@@ -451,7 +503,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
           </label>
 
           <label className="field">
-            <span>Data de emissao</span>
+            <span>Data de emissão</span>
             <input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} disabled={isSettledLaunch} required />
           </label>
 
@@ -461,7 +513,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
           </label>
 
           <label className="field">
-            <span>Valor do lancamento</span>
+            <span>Valor do lançamento</span>
             <input
               type="number"
               min="0"
@@ -514,9 +566,9 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
           </label>
 
           <label className="field field--span-4">
-            <span>Observacao</span>
+            <span>Observação</span>
             <textarea
-              placeholder="Observacao do lancamento"
+              placeholder="Observação do lançamento"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
               readOnly={isSettledLaunch}
@@ -531,7 +583,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
               </label>
 
               <label className="field field--span-4">
-                <span>Observacao de baixa</span>
+                <span>Observação de baixa</span>
                 <textarea
                   placeholder="Sem observacao de baixa"
                   value={settlementNote}
@@ -549,7 +601,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
           <table className="installments-table">
             <thead>
               <tr>
-                <th>Numero</th>
+                <th>Número</th>
                 <th>Vencimento</th>
                 <th>Valor</th>
               </tr>
@@ -592,7 +644,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
         </div>
 
         <div className="form-actions">
-          <button type="submit" className="primary-button">{isSettledLaunch ? 'Salvar anexos' : loadedLaunchId ? 'Salvar alteracoes' : 'Criar lancamento'}</button>
+          <button type="submit" className="primary-button">{isSettledLaunch ? 'Salvar anexos' : loadedLaunchId ? 'Salvar alterações' : 'Criar lançamento'}</button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{status}</span>
         </div>
@@ -658,7 +710,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
                   ))}
                 </tbody>
               </table>
-              {lookupItems.length === 0 && <div className="lookup-empty">Nenhuma opcao encontrada</div>}
+              {lookupItems.length === 0 && <div className="lookup-empty">Nenhuma opção encontrada</div>}
             </div>
           </div>
         </div>

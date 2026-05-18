@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { Home, X } from 'lucide-react';
 
-export default function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onReorderTabs }) {
+export default function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onCloseAllTabs, onReorderTabs }) {
   const [draggingTabId, setDraggingTabId] = useState(null);
   const [dragOverTabId, setDragOverTabId] = useState(null);
+  const hasClosableTabs = tabs.some((tab) => tab.closable);
 
   return (
     <div className="tab-bar" role="tablist" aria-label="Abas abertas">
@@ -70,6 +71,17 @@ export default function TabBar({ tabs, activeTabId, onSelectTab, onCloseTab, onR
           )}
         </button>
       ))}
+
+      <button
+        type="button"
+        className="tab-close-all"
+        aria-label="Fechar todas as abas"
+        title="Fechar todas as abas"
+        disabled={!hasClosableTabs}
+        onClick={onCloseAllTabs}
+      >
+        <X size={14} strokeWidth={2.6} />
+      </button>
     </div>
   );
 }

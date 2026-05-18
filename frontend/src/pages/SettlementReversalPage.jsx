@@ -78,7 +78,7 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
               <span>{option}</span>
             </label>
           ))}
-          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opcao encontrada</div>}
+          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
         </div>
       </div>
     </div>
@@ -130,12 +130,12 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
 
   function addLaunch(launchId) {
     setSelectedIds((current) => (current.includes(launchId) ? current : [...current, launchId]));
-    setStatus('Lancamento adicionado ao estorno');
+    setStatus('Lançamento adicionado ao estorno');
   }
 
   function removeLaunch(launchId) {
     setSelectedIds((current) => current.filter((id) => id !== launchId));
-    setStatus('Lancamento removido do estorno');
+    setStatus('Lançamento removido do estorno');
   }
 
   function searchAndAddLaunch() {
@@ -144,22 +144,22 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
     const settledLaunch = settledLaunches.find((launch) => normalizeText(launch.id) === normalizeText(query));
 
     if (!query) {
-      setStatus('Informe o numero do lancamento');
+      setStatus('Informe o número do lançamento');
       return;
     }
 
     if (!anyLaunch) {
-      setStatus('Lancamento nao encontrado');
+      setStatus('Lançamento não encontrado');
       return;
     }
 
     if (!settledLaunch) {
-      setStatus('Somente titulos baixados podem ser adicionados ao estorno');
+      setStatus('Somente títulos baixados podem ser adicionados ao estorno');
       return;
     }
 
     if (selectedIds.includes(settledLaunch.id)) {
-      setStatus('Lancamento ja esta selecionado para estorno');
+      setStatus('Lançamento já esta selecionado para estorno');
       return;
     }
 
@@ -182,7 +182,7 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
 
   function reverseSettlement() {
     if (!selectedLaunches.length) {
-      setStatus('Selecione pelo menos um titulo baixado para estornar');
+      setStatus('Selecione pelo menos um título baixado para estornar');
       return;
     }
 
@@ -194,7 +194,7 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
       <header className="page-header">
         <div>
           <h1 className="page-title">Estorno de Baixa</h1>
-          <p className="page-kicker">Selecao de titulos baixados para desfazer a baixa</p>
+          <p className="page-kicker">Seleção de títulos baixados para desfazer a baixa</p>
         </div>
       </header>
 
@@ -238,7 +238,7 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
           />
 
           <MultiCheckField
-            label="Tipo de Cobranca"
+            label="Tipo de Cobrança"
             options={settledChargeTypes}
             selected={selectedChargeTypes}
             onChange={setSelectedChargeTypes}
@@ -250,7 +250,7 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
             options={settledTypes}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            placeholder="Pesquisar tipo contabil"
+            placeholder="Pesquisar tipo contábil"
           />
 
           <MultiCheckField
@@ -278,20 +278,20 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
         <div className="schedule-layout">
           <section className="registered-launches-panel" aria-labelledby="settled-launches-title">
             <div className="registered-launches-header">
-              <h2 id="settled-launches-title">Titulos baixados</h2>
+              <h2 id="settled-launches-title">Títulos baixados</h2>
               <div>
-                <span>{filteredLaunches.length} titulo(s)</span>
+                <span>{filteredLaunches.length} título(s)</span>
                 <strong>{currency(totalAmount(filteredLaunches))}</strong>
               </div>
             </div>
 
             <div className="schedule-direct-search">
-              <label htmlFor="reversal-launch-search">Pesquisar Lancamento</label>
+              <label htmlFor="reversal-launch-search">Pesquisar Lançamento</label>
               <div>
                 <input
                   id="reversal-launch-search"
                   type="search"
-                  placeholder="Numero do lancamento"
+                  placeholder="Número do lançamento"
                   value={launchSearch}
                   onChange={(event) => setLaunchSearch(event.target.value)}
                   onKeyDown={(event) => {
@@ -312,7 +312,7 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
               <table className="registered-launches-table reversal-table">
                 <thead>
                   <tr>
-                    <th>Lancamento</th>
+                    <th>Lançamento</th>
                     <th>Fornecedor</th>
                     <th>Documento</th>
                     <th>Tipo</th>
@@ -360,7 +360,7 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
                 </tbody>
               </table>
 
-              {!filteredLaunches.length && <div className="empty-list">Nenhum titulo baixado encontrado</div>}
+              {!filteredLaunches.length && <div className="empty-list">Nenhum título baixado encontrado</div>}
             </div>
           </section>
 
@@ -384,14 +384,14 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
                   <button
                     type="button"
                     className="mini-remove-button"
-                    aria-label="Remover lancamento"
+                    aria-label="Remover lançamento"
                     onClick={() => removeLaunch(launch.id)}
                   >
                     <X size={14} strokeWidth={2.4} />
                   </button>
                 </div>
               ))}
-              {!selectedLaunches.length && <div className="empty-list">Nenhum titulo selecionado</div>}
+              {!selectedLaunches.length && <div className="empty-list">Nenhum título selecionado</div>}
             </div>
 
             <div className="schedule-actions">

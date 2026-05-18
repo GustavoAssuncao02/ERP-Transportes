@@ -123,7 +123,7 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
               <span>{option}</span>
             </label>
           ))}
-          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opcao encontrada</div>}
+          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
         </div>
       </div>
     </div>
@@ -138,7 +138,7 @@ function LaunchReport({ title, launches }) {
       <div className="registered-launches-header">
         <h2 id="bi-report-title">{title}</h2>
         <div>
-          <span>{launches.length} titulo(s)</span>
+          <span>{launches.length} título(s)</span>
           <strong>{currency(total)}</strong>
         </div>
       </div>
@@ -147,17 +147,17 @@ function LaunchReport({ title, launches }) {
         <table className="registered-launches-table">
           <thead>
             <tr>
-              <th>Lancamento</th>
+              <th>Lançamento</th>
               <th>Unidade</th>
               <th>Fornecedor</th>
               <th>Documento</th>
               <th>Tipo</th>
-              <th>Cobranca</th>
+              <th>Cobrança</th>
               <th>Banco</th>
               <th>Vencimento</th>
               <th>Pagamento</th>
               <th>Valor</th>
-              <th>Situacao</th>
+              <th>Situação</th>
             </tr>
           </thead>
           <tbody>
@@ -179,7 +179,7 @@ function LaunchReport({ title, launches }) {
           </tbody>
         </table>
 
-        {!launches.length && <div className="empty-list">Nenhum titulo encontrado</div>}
+        {!launches.length && <div className="empty-list">Nenhum título encontrado</div>}
       </div>
     </section>
   );
@@ -247,11 +247,11 @@ export default function BusinessIntelligencePage() {
   }, [filteredLaunches, today]);
 
   const reportMap = {
-    open: { title: 'Lancamentos em aberto', launches: data.open },
+    open: { title: 'Lançamentos em aberto', launches: data.open },
     future: { title: 'Contas a pagar no futuro', launches: data.future },
     paid: { title: 'Contas pagas', launches: data.paid },
-    dueToday: { title: 'Lancamentos a pagar hoje', launches: data.dueToday },
-    overdue: { title: 'Lancamentos vencidos', launches: data.overdue },
+    dueToday: { title: 'Lançamentos a pagar hoje', launches: data.dueToday },
+    overdue: { title: 'Lançamentos vencidos', launches: data.overdue },
   };
   const selectedReport = reportMap[reportKey] || reportMap.open;
 
@@ -284,7 +284,7 @@ export default function BusinessIntelligencePage() {
           onClick={() => setFiltersOpen((current) => !current)}
         >
           <span>Filtros</span>
-          <strong>{filteredLaunches.length} titulo(s) considerados</strong>
+          <strong>{filteredLaunches.length} título(s) considerados</strong>
         </button>
 
         {filtersOpen && (
@@ -323,7 +323,7 @@ export default function BusinessIntelligencePage() {
               />
 
               <MultiCheckField
-                label="Situacao de Lancamento"
+                label="Situação de Lançamento"
                 options={statusOptions}
                 selected={selectedStatuses}
                 onChange={setSelectedStatuses}
@@ -331,7 +331,7 @@ export default function BusinessIntelligencePage() {
               />
 
               <MultiCheckField
-                label="Tipo de Cobranca"
+                label="Tipo de Cobrança"
                 options={chargeTypes}
                 selected={selectedChargeTypes}
                 onChange={setSelectedChargeTypes}
@@ -351,7 +351,7 @@ export default function BusinessIntelligencePage() {
                 options={accountingTypeNames}
                 selected={selectedTypes}
                 onChange={setSelectedTypes}
-                placeholder="Pesquisar tipo contabil"
+                placeholder="Pesquisar tipo contábil"
               />
 
               <MultiCheckField
@@ -367,9 +367,9 @@ export default function BusinessIntelligencePage() {
       </section>
 
       <div className="bi-metrics-grid">
-        <MetricCard label="Lancamentos considerados" value={data.all.length} detail={currency(totalAmount(data.all))} />
-        <MetricCard label="Lancamentos em aberto" value={data.open.length} detail={currency(totalAmount(data.open))} />
-        <MetricCard label="Lancamentos baixados" value={data.paid.length} detail={currency(totalAmount(data.paid))} />
+        <MetricCard label="Lançamentos considerados" value={data.all.length} detail={currency(totalAmount(data.all))} />
+        <MetricCard label="Lançamentos em aberto" value={data.open.length} detail={currency(totalAmount(data.open))} />
+        <MetricCard label="Lançamentos baixados" value={data.paid.length} detail={currency(totalAmount(data.paid))} />
         <MetricCard label="Vencidos em aberto" value={data.overdue.length} detail={currency(totalAmount(data.overdue))} />
         <MetricCard label="Vencendo hoje" value={data.dueToday.length} detail={currency(totalAmount(data.dueToday))} />
       </div>

@@ -50,7 +50,7 @@ export default function Navbar({ onNavigate }) {
           <div
             className={`nav-subdropdown ${isOpen ? 'nav-subdropdown--open' : ''}`}
             role="menu"
-            aria-label={`Opcoes de ${item.label}`}
+            aria-label={`Opções de ${item.label}`}
           >
             {item.children.map((child) => (
               <button

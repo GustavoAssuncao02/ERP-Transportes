@@ -17,8 +17,8 @@ const openCtes = [
   {
     id: 'CTE-202605-00002',
     number: '351605000002',
-    issuer: 'JTD Logistica Nordeste',
-    origin: 'Camacari - BA',
+    issuer: 'JTD Logística Nordeste',
+    origin: 'Camaçari - BA',
     destination: 'Aracaju - SE',
     cargoWeight: 9200,
     cargoValue: 112300,
@@ -29,7 +29,7 @@ const openCtes = [
     number: '351605000003',
     issuer: 'Transportes Parceiros SA',
     origin: 'Lauro de Freitas - BA',
-    destination: 'Maceio - AL',
+    destination: 'Maceió - AL',
     cargoWeight: 15300,
     cargoValue: 206900,
     status: 'Aberto',
@@ -37,7 +37,7 @@ const openCtes = [
   {
     id: 'CTE-202605-00004',
     number: '351605000004',
-    issuer: 'JTD Armazens Salvador',
+    issuer: 'JTD Armazéns Salvador',
     origin: 'Salvador - BA',
     destination: 'Recife - PE',
     cargoWeight: 11100,
@@ -46,14 +46,36 @@ const openCtes = [
   },
 ];
 
+const manifestStorageKey = 'transportManifests';
+
+const defaultManifests = [
+  {
+    id: 'MDFE-202605-00001',
+    unit: '001',
+    selectedCteIds: ['CTE-202605-00001', 'CTE-202605-00002'],
+    origin: 'Salvador - BA',
+    destination: 'Feira de Santana - BA',
+    truckPlate: 'ABC1D23',
+    truckModel: 'Volvo FH 540',
+    driverCpf: '529.982.247-25',
+    driverName: 'João Pereira Santos',
+    cargoWeight: '22000',
+    cargoValue: '296800',
+    hasInsurance: 'Sim',
+    insuranceCompany: 'Seguradora Atlântica',
+    insurancePolicy: 'AP-2026-00184',
+    createdAt: '2026-05-18T08:30',
+  },
+];
+
 const cityApiUrl = 'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome';
 
 const fallbackCities = [
   'Aracaju - SE',
-  'Camacari - BA',
+  'Camaçari - BA',
   'Feira de Santana - BA',
   'Lauro de Freitas - BA',
-  'Maceio - AL',
+  'Maceió - AL',
   'Recife - PE',
   'Salvador - BA',
 ];
@@ -85,11 +107,37 @@ function nextManifestNumber() {
   return `MDFE-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(sequence).padStart(5, '0')}`;
 }
 
+function dateDistance(value) {
+  if (!value) return Number.MAX_SAFE_INTEGER;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return Number.MAX_SAFE_INTEGER;
+
+  return Math.abs(date.getTime() - Date.now());
+}
+
+function readManifests() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(manifestStorageKey) || '[]');
+    return stored.length ? stored : defaultManifests;
+  } catch {
+    return defaultManifests;
+  }
+}
+
+function writeManifests(manifests) {
+  localStorage.setItem(manifestStorageKey, JSON.stringify(manifests));
+}
+
 export default function GenerateManifestPage() {
+  const [manifests, setManifests] = useState(readManifests);
   const [unit, setUnit] = useState('001');
+  const [manifestNumber, setManifestNumber] = useState('');
   const [cities, setCities] = useState(fallbackCities);
   const [cteSearch, setCteSearch] = useState('');
   const [selectedCteIds, setSelectedCteIds] = useState([]);
+  const [manifestLookupOpen, setManifestLookupOpen] = useState(false);
+  const [manifestLookupSearch, setManifestLookupSearch] = useState('');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [truckPlate, setTruckPlate] = useState('');
@@ -98,7 +146,7 @@ export default function GenerateManifestPage() {
   const [driverName, setDriverName] = useState('');
   const [cargoWeight, setCargoWeight] = useState('');
   const [cargoValue, setCargoValue] = useState('');
-  const [hasInsurance, setHasInsurance] = useState('Nao');
+  const [hasInsurance, setHasInsurance] = useState('Não');
   const [insuranceCompany, setInsuranceCompany] = useState('');
   const [insurancePolicy, setInsurancePolicy] = useState('');
   const [status, setStatus] = useAutoClearMessage();
@@ -143,6 +191,19 @@ export default function GenerateManifestPage() {
     return openCtes.filter((cte) => normalizeText(`${cte.id} ${cte.number} ${cte.issuer} ${cte.origin} ${cte.destination}`).includes(query));
   }, [cteSearch]);
 
+  const manifestsByClosestDate = useMemo(
+    () => [...manifests].sort((left, right) => dateDistance(left.createdAt) - dateDistance(right.createdAt)),
+    [manifests],
+  );
+  const manifestLookupItems = useMemo(() => {
+    const query = normalizeText(manifestLookupSearch);
+    if (!query) return manifestsByClosestDate;
+
+    return manifestsByClosestDate.filter((manifest) => (
+      normalizeText(`${manifest.id} ${manifest.origin} ${manifest.destination} ${manifest.driverName} ${manifest.truckPlate}`).includes(query)
+    ));
+  }, [manifestLookupSearch, manifestsByClosestDate]);
+
   const selectedCtes = useMemo(
     () => openCtes.filter((cte) => selectedCteIds.includes(cte.id)),
     [selectedCteIds],
@@ -153,36 +214,114 @@ export default function GenerateManifestPage() {
   const selectedWeight = selectedCtes.reduce((sum, cte) => sum + cte.cargoWeight, 0);
   const selectedValue = selectedCtes.reduce((sum, cte) => sum + cte.cargoValue, 0);
 
+  function loadManifest(manifest) {
+    setManifestNumber(manifest.id || '');
+    setUnit(manifest.unit || '001');
+    setSelectedCteIds(manifest.selectedCteIds || []);
+    setOrigin(manifest.origin || '');
+    setDestination(manifest.destination || '');
+    setTruckPlate(manifest.truckPlate || '');
+    setTruckModel(manifest.truckModel || '');
+    setDriverCpf(manifest.driverCpf || '');
+    setDriverName(manifest.driverName || '');
+    setCargoWeight(manifest.cargoWeight || '');
+    setCargoValue(manifest.cargoValue || '');
+    setHasInsurance(manifest.hasInsurance || 'Não');
+    setInsuranceCompany(manifest.insuranceCompany || '');
+    setInsurancePolicy(manifest.insurancePolicy || '');
+    setStatus(`Manifesto ${manifest.id} carregado para edição`);
+  }
+
+  function handleManifestNumberChange(value) {
+    const nextNumber = value.toUpperCase();
+    setManifestNumber(nextNumber);
+
+    const existingManifest = manifests.find((manifest) => normalizeText(manifest.id) === normalizeText(nextNumber));
+    if (existingManifest) {
+      loadManifest(existingManifest);
+      return;
+    }
+
+    setStatus('');
+  }
+
+  function openManifestLookup() {
+    setManifestLookupOpen(true);
+    setManifestLookupSearch('');
+  }
+
+  function closeManifestLookup() {
+    setManifestLookupOpen(false);
+    setManifestLookupSearch('');
+  }
+
+  function selectManifest(manifest) {
+    loadManifest(manifest);
+    closeManifestLookup();
+  }
+
   function addCte(cte) {
     setSelectedCteIds((current) => (current.includes(cte.id) ? current : [...current, cte.id]));
     setOrigin((current) => current || cte.origin);
     setDestination((current) => current || cte.destination);
     setCargoWeight((current) => current || String(cte.cargoWeight));
     setCargoValue((current) => current || String(cte.cargoValue));
-    setStatus('CTE anexado ao manifesto');
+    setStatus('CT-e anexado ao manifesto');
   }
 
   function removeCte(cteId) {
     setSelectedCteIds((current) => current.filter((id) => id !== cteId));
-    setStatus('CTE removido do manifesto');
+    setStatus('CT-e removido do manifesto');
   }
 
   function handleSubmit(event) {
     event.preventDefault();
 
     if (!selectedCtes.length) {
-      setStatus('Anexe pelo menos um CTE aberto ao manifesto');
+      setStatus('Anexe pelo menos um CT-e aberto ao manifesto');
       return;
     }
 
-    const manifestNumber = nextManifestNumber();
-    setStatus(`Manifesto ${manifestNumber} lancado com ${selectedCtes.length} CTE(s)`);
+    const generatedManifestNumber = manifestNumber.trim().toUpperCase() || nextManifestNumber();
+    const nextManifest = {
+      id: generatedManifestNumber,
+      unit,
+      selectedCteIds,
+      origin,
+      destination,
+      truckPlate,
+      truckModel,
+      driverCpf,
+      driverName,
+      cargoWeight,
+      cargoValue,
+      hasInsurance,
+      insuranceCompany,
+      insurancePolicy,
+      createdAt: new Date().toISOString(),
+    };
+    const existingIndex = manifests.findIndex((manifest) => normalizeText(manifest.id) === normalizeText(generatedManifestNumber));
+    const nextManifests = [...manifests];
+
+    if (existingIndex >= 0) {
+      nextManifests[existingIndex] = nextManifest;
+    } else {
+      nextManifests.push(nextManifest);
+    }
+
+    writeManifests(nextManifests);
+    setManifests(nextManifests);
+    setManifestNumber(generatedManifestNumber);
+    setStatus(`Manifesto ${generatedManifestNumber} lançado com ${selectedCtes.length} CT-e(s)`);
   }
 
   function handleReset() {
     setUnit('001');
+    setManifestNumber('');
     setCteSearch('');
     setSelectedCteIds([]);
+    setManifestLookupOpen(false);
+    setManifestLookupSearch('');
     setOrigin('');
     setDestination('');
     setTruckPlate('');
@@ -191,7 +330,7 @@ export default function GenerateManifestPage() {
     setDriverName('');
     setCargoWeight('');
     setCargoValue('');
-    setHasInsurance('Nao');
+    setHasInsurance('Não');
     setInsuranceCompany('');
     setInsurancePolicy('');
     setStatus('');
@@ -202,7 +341,7 @@ export default function GenerateManifestPage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">Gerar Manifesto</h1>
-          <p className="page-kicker">Lancamento de manifesto operacional com CTEs em aberto</p>
+          <p className="page-kicker">Lançamento de manifesto operacional com CT-e(s) em aberto</p>
         </div>
       </header>
 
@@ -216,117 +355,28 @@ export default function GenerateManifestPage() {
               ))}
             </select>
           </label>
-        </div>
 
-        <div className="schedule-layout manifest-cte-layout">
-          <section className="registered-launches-panel" aria-labelledby="manifest-cte-title">
-            <div className="registered-launches-header">
-              <h2 id="manifest-cte-title">Anexar CTE</h2>
-              <div>
-                <span>{filteredCtes.length} CTE(s) em aberto</span>
-                <strong>{currency(filteredCtes.reduce((sum, cte) => sum + cte.cargoValue, 0))}</strong>
-              </div>
+          <div className="field">
+            <span>Número do manifesto</span>
+            <div className="lookup-field">
+              <input
+                type="text"
+                placeholder="Gerado ao lançar ou informe um manifesto existente"
+                value={manifestNumber}
+                onChange={(event) => handleManifestNumberChange(event.target.value)}
+              />
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Pesquisar manifesto"
+                title="Pesquisar manifesto"
+                tabIndex={-1}
+                onClick={openManifestLookup}
+              >
+                <Search size={17} strokeWidth={2.2} />
+              </button>
             </div>
-
-            <div className="schedule-direct-search">
-              <label htmlFor="manifest-cte-search">Consultar CTE</label>
-              <div>
-                <input
-                  id="manifest-cte-search"
-                  type="search"
-                  placeholder="Numero, emissor, origem ou destino"
-                  value={cteSearch}
-                  onChange={(event) => setCteSearch(event.target.value)}
-                />
-                <button type="button" className="secondary-button schedule-search-button">
-                  <Search size={15} strokeWidth={2.2} />
-                  Pesquisar
-                </button>
-              </div>
-            </div>
-
-            <div className="registered-launches-table-wrap">
-              <table className="registered-launches-table manifest-cte-table">
-                <thead>
-                  <tr>
-                    <th>CTE</th>
-                    <th>Emissor</th>
-                    <th>Origem</th>
-                    <th>Destino</th>
-                    <th>Peso</th>
-                    <th>Valor</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCtes.map((cte) => {
-                    const selected = selectedCteIds.includes(cte.id);
-
-                    return (
-                      <tr key={cte.id}>
-                        <td><strong>{cte.id}</strong><span>{cte.number}</span></td>
-                        <td>{cte.issuer}</td>
-                        <td>{cte.origin}</td>
-                        <td>{cte.destination}</td>
-                        <td>{formatWeight(cte.cargoWeight)}</td>
-                        <td>{currency(cte.cargoValue)}</td>
-                        <td>
-                          <button
-                            type="button"
-                            className="icon-button"
-                            aria-label="Anexar CTE"
-                            title="Anexar CTE"
-                            disabled={selected}
-                            onClick={() => addCte(cte)}
-                          >
-                            <Plus size={16} strokeWidth={2.2} />
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-
-              {!filteredCtes.length && <div className="empty-list">Nenhum CTE em aberto encontrado</div>}
-            </div>
-          </section>
-
-          <section className="selection-panel selected-panel" aria-labelledby="manifest-selected-title">
-            <div className="selection-panel-header">
-              <h2 id="manifest-selected-title">CTEs anexados</h2>
-              <strong>{currency(selectedValue)}</strong>
-            </div>
-
-            <div className="selected-list-box">
-              {selectedCtes.map((cte) => (
-                <div className="selected-launch-row" key={cte.id}>
-                  <div>
-                    <strong>{cte.id}</strong>
-                    <span>{cte.origin} - {cte.destination}</span>
-                  </div>
-                  <div className="settlement-value-stack">
-                    <span>{formatWeight(cte.cargoWeight)}</span>
-                    <strong>{currency(cte.cargoValue)}</strong>
-                  </div>
-                  <button
-                    type="button"
-                    className="mini-remove-button"
-                    aria-label="Remover CTE"
-                    onClick={() => removeCte(cte.id)}
-                  >
-                    <X size={14} strokeWidth={2.4} />
-                  </button>
-                </div>
-              ))}
-              {!selectedCtes.length && <div className="empty-list">Nenhum CTE anexado</div>}
-            </div>
-
-            <div className="manifest-selected-summary">
-              <span>Peso total: {formatWeight(selectedWeight)}</span>
-              <span>Valor total: {currency(selectedValue)}</span>
-            </div>
-          </section>
+          </div>
         </div>
 
         <div className="form-grid manifest-details-grid">
@@ -383,7 +433,7 @@ export default function GenerateManifestPage() {
           <label className="field">
             <span>Seguro</span>
             <select value={hasInsurance} onChange={(event) => setHasInsurance(event.target.value)}>
-              <option>Nao</option>
+              <option>Não</option>
               <option>Sim</option>
             </select>
           </label>
@@ -396,11 +446,122 @@ export default function GenerateManifestPage() {
               </label>
 
               <label className="field">
-                <span>Apolice</span>
-                <input type="text" placeholder="Numero da apolice" value={insurancePolicy} onChange={(event) => setInsurancePolicy(event.target.value)} required />
+                <span>Apólice</span>
+                <input type="text" placeholder="Número da apólice" value={insurancePolicy} onChange={(event) => setInsurancePolicy(event.target.value)} required />
               </label>
             </>
           )}
+        </div>
+
+        <div className="schedule-layout manifest-cte-layout">
+          <section className="registered-launches-panel" aria-labelledby="manifest-cte-title">
+            <div className="registered-launches-header">
+              <h2 id="manifest-cte-title">Anexar CT-e</h2>
+              <div>
+                <span>{filteredCtes.length} CT-e(s) em aberto</span>
+                <strong>{currency(filteredCtes.reduce((sum, cte) => sum + cte.cargoValue, 0))}</strong>
+              </div>
+            </div>
+
+            <div className="schedule-direct-search">
+              <label htmlFor="manifest-cte-search">Consultar CT-e</label>
+              <div>
+                <input
+                  id="manifest-cte-search"
+                  type="search"
+                  placeholder="Número, emissor, origem ou destino"
+                  value={cteSearch}
+                  onChange={(event) => setCteSearch(event.target.value)}
+                />
+                <button type="button" className="secondary-button schedule-search-button">
+                  <Search size={15} strokeWidth={2.2} />
+                  Pesquisar
+                </button>
+              </div>
+            </div>
+
+            <div className="registered-launches-table-wrap">
+              <table className="registered-launches-table manifest-cte-table">
+                <thead>
+                  <tr>
+                    <th>CT-e</th>
+                    <th>Emissor</th>
+                    <th>Origem</th>
+                    <th>Destino</th>
+                    <th>Peso</th>
+                    <th>Valor</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCtes.map((cte) => {
+                    const selected = selectedCteIds.includes(cte.id);
+
+                    return (
+                      <tr key={cte.id}>
+                        <td><strong>{cte.id}</strong><span>{cte.number}</span></td>
+                        <td>{cte.issuer}</td>
+                        <td>{cte.origin}</td>
+                        <td>{cte.destination}</td>
+                        <td>{formatWeight(cte.cargoWeight)}</td>
+                        <td>{currency(cte.cargoValue)}</td>
+                        <td>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            aria-label="Anexar CT-e"
+                            title="Anexar CT-e"
+                            disabled={selected}
+                            onClick={() => addCte(cte)}
+                          >
+                            <Plus size={16} strokeWidth={2.2} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+
+              {!filteredCtes.length && <div className="empty-list">Nenhum CT-e em aberto encontrado</div>}
+            </div>
+          </section>
+
+          <section className="selection-panel selected-panel" aria-labelledby="manifest-selected-title">
+            <div className="selection-panel-header">
+              <h2 id="manifest-selected-title">CT-e(s) anexados</h2>
+              <strong>{currency(selectedValue)}</strong>
+            </div>
+
+            <div className="selected-list-box">
+              {selectedCtes.map((cte) => (
+                <div className="selected-launch-row" key={cte.id}>
+                  <div>
+                    <strong>{cte.id}</strong>
+                    <span>{cte.origin} - {cte.destination}</span>
+                  </div>
+                  <div className="settlement-value-stack">
+                    <span>{formatWeight(cte.cargoWeight)}</span>
+                    <strong>{currency(cte.cargoValue)}</strong>
+                  </div>
+                  <button
+                    type="button"
+                    className="mini-remove-button"
+                    aria-label="Remover CT-e"
+                    onClick={() => removeCte(cte.id)}
+                  >
+                    <X size={14} strokeWidth={2.4} />
+                  </button>
+                </div>
+              ))}
+              {!selectedCtes.length && <div className="empty-list">Nenhum CT-e anexado</div>}
+            </div>
+
+            <div className="manifest-selected-summary">
+              <span>Peso total: {formatWeight(selectedWeight)}</span>
+              <span>Valor total: {currency(selectedValue)}</span>
+            </div>
+          </section>
         </div>
 
         <div className="form-actions">
@@ -409,6 +570,60 @@ export default function GenerateManifestPage() {
           <span className="status-line" aria-live="polite">{status}</span>
         </div>
       </form>
+
+      {manifestLookupOpen && (
+        <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="manifest-lookup-title">
+          <button type="button" className="lookup-modal-backdrop" aria-label="Fechar pesquisa" onClick={closeManifestLookup} />
+          <div className="lookup-modal-panel">
+            <header className="lookup-modal-header">
+              <h2 id="manifest-lookup-title">Pesquisar manifesto</h2>
+              <button type="button" className="modal-close-button" aria-label="Fechar" onClick={closeManifestLookup}>
+                <X size={18} strokeWidth={2.4} />
+              </button>
+            </header>
+
+            <div className="lookup-modal-toolbar">
+              <input
+                type="search"
+                className="lookup-search"
+                placeholder="Pesquisar por manifesto, origem, destino, motorista ou placa"
+                value={manifestLookupSearch}
+                onChange={(event) => setManifestLookupSearch(event.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="lookup-table-wrap">
+              <table className="lookup-table">
+                <thead>
+                  <tr>
+                    <th>Manifesto</th>
+                    <th>Data</th>
+                    <th>Origem</th>
+                    <th>Destino</th>
+                    <th>Motorista</th>
+                    <th>Placa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {manifestLookupItems.map((manifest) => (
+                    <tr key={manifest.id} onClick={() => selectManifest(manifest)}>
+                      <td>{manifest.id}</td>
+                      <td>{manifest.createdAt ? new Date(manifest.createdAt).toLocaleString('pt-BR') : ''}</td>
+                      <td>{manifest.origin}</td>
+                      <td>{manifest.destination}</td>
+                      <td>{manifest.driverName}</td>
+                      <td>{manifest.truckPlate}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {!manifestLookupItems.length && <div className="lookup-empty">Nenhuma opção encontrada</div>}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

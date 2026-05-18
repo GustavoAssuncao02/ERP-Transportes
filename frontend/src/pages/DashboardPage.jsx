@@ -5,10 +5,16 @@ import AccountsPayablePage from './AccountsPayablePage.jsx';
 import AccountsPayableReportPage from './AccountsPayableReportPage.jsx';
 import AccountsPayableSettlementPage from './AccountsPayableSettlementPage.jsx';
 import BusinessIntelligencePage from './BusinessIntelligencePage.jsx';
+import CollectionOrderPage from './CollectionOrderPage.jsx';
+import DriverRegistrationPage from './DriverRegistrationPage.jsx';
 import GenerateManifestPage from './GenerateManifestPage.jsx';
+import IssueCtePage from './IssueCtePage.jsx';
 import OneOffPaymentPage from './OneOffPaymentPage.jsx';
 import RegisteredLaunchesPage from './RegisteredLaunchesPage.jsx';
 import SettlementReversalPage from './SettlementReversalPage.jsx';
+import SupplierRegistrationPage from './SupplierRegistrationPage.jsx';
+import UnitRegistrationPage from './UnitRegistrationPage.jsx';
+import VehicleRegistrationPage from './VehicleRegistrationPage.jsx';
 import CardGrid from '../components/CardGrid.jsx';
 import DashboardSection from '../components/DashboardSection.jsx';
 import Navbar from '../components/Navbar.jsx';
@@ -74,6 +80,15 @@ export default function DashboardPage() {
     }
   }
 
+  function closeAllTabs() {
+    setOpenTabs((currentTabs) => {
+      const fixedTabs = currentTabs.filter((tab) => !tab.closable);
+      return fixedTabs.length ? fixedTabs : initialTabs;
+    });
+    setActiveTabId('home');
+    setEditingLaunch(null);
+  }
+
   function reorderTabs(draggedTabId, targetTabId, placement) {
     setOpenTabs((currentTabs) => {
       const draggedTab = currentTabs.find((tab) => tab.id === draggedTabId);
@@ -99,6 +114,30 @@ export default function DashboardPage() {
 
     if (activeTabId === 'generate-manifest') {
       return <GenerateManifestPage />;
+    }
+
+    if (activeTabId === 'issue-cte') {
+      return <IssueCtePage onNavigate={openPage} />;
+    }
+
+    if (activeTabId === 'collection-order') {
+      return <CollectionOrderPage />;
+    }
+
+    if (activeTabId === 'vehicle-registration') {
+      return <VehicleRegistrationPage />;
+    }
+
+    if (activeTabId === 'driver-registration') {
+      return <DriverRegistrationPage />;
+    }
+
+    if (activeTabId === 'supplier-registration') {
+      return <SupplierRegistrationPage />;
+    }
+
+    if (activeTabId === 'unit-registration') {
+      return <UnitRegistrationPage />;
     }
 
     if (activeTabId === 'registered-launches') {
@@ -155,6 +194,7 @@ export default function DashboardPage() {
         activeTabId={activeTabId}
         onSelectTab={setActiveTabId}
         onCloseTab={closeTab}
+        onCloseAllTabs={closeAllTabs}
         onReorderTabs={reorderTabs}
       />
 

@@ -304,6 +304,36 @@
   color: var(--text);
 }
 
+.tab-close-all {
+  position: sticky;
+  right: 0;
+  z-index: 3;
+  display: grid;
+  width: 31px;
+  height: 31px;
+  flex: 0 0 31px;
+  place-items: center;
+  align-self: flex-start;
+  margin: 4px 2px 0 auto;
+  border: 1px solid #d7342f;
+  background: var(--chrome-bg);
+  color: #3f4c4c;
+  cursor: pointer;
+  transition: background 100ms ease, color 100ms ease;
+}
+
+.tab-close-all:hover,
+.tab-close-all:focus-visible {
+  background: #fff1f0;
+  color: #b3221f;
+  outline: none;
+}
+
+.tab-close-all:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
 .main-layout {
   display: flex;
   min-height: calc(100vh - var(--userbar-height) - var(--navbar-height) - var(--tab-height));
@@ -503,6 +533,28 @@
   background: #f5f5f5;
   color: var(--text-muted);
   cursor: not-allowed;
+}
+
+.field-error {
+  color: #b3261e;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.inline-check-field {
+  min-height: 64px;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding-top: 19px;
+}
+
+.inline-check-field input {
+  width: 15px;
+  height: 15px;
+  min-height: 15px;
+  padding: 0;
+  accent-color: var(--primary);
 }
 
 .locked-record-notice {
@@ -788,6 +840,10 @@
 
 .primary-button,
 .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   min-height: 36px;
   padding: 0 16px;
   border-radius: 4px;
@@ -1674,6 +1730,23 @@
   outline: none;
 }
 
+.report-results-panel {
+  max-width: 1280px;
+}
+
+.report-results-table {
+  min-width: 1220px;
+}
+
+.report-results-table tfoot th {
+  padding: 9px;
+  border-top: 1px solid var(--border);
+  background: #f8f8f8;
+  color: var(--primary-dark);
+  font-weight: 800;
+  text-align: left;
+}
+
 .business-intelligence-page,
 .accounts-payable-schedule-page,
 .accounts-payable-deletion-page,
@@ -2169,6 +2242,92 @@
   border-top: 1px solid var(--border);
 }
 
+.issue-cte-page,
+.collection-order-page,
+.registry-page {
+  max-width: 1280px;
+}
+
+.issue-cte-form,
+.collection-order-form,
+.registry-form {
+  max-width: 1280px;
+}
+
+.form-section-title {
+  margin-top: 4px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--primary-dark);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.lookup-status {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid #e1c56c;
+  border-radius: 5px;
+  background: #fff8df;
+  color: #66510b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fiscal-documents-panel {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.fiscal-documents-header {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #f8f8f8;
+}
+
+.fiscal-documents-header h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.fiscal-document-list {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.fiscal-document-row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) 36px;
+  gap: 10px;
+  align-items: end;
+}
+
+.registry-list-panel {
+  max-width: 1280px;
+}
+
+.registry-table {
+  min-width: 760px;
+}
+
+.registry-table tbody tr {
+  cursor: pointer;
+}
+
 
 .schedule-table th,
 .schedule-table td {
@@ -2354,6 +2513,15 @@
 
   .schedule-direct-search > div {
     flex-direction: column;
+  }
+
+  .fiscal-document-row {
+    grid-template-columns: 1fr;
+  }
+
+  .lookup-status {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .sidebar-logo {

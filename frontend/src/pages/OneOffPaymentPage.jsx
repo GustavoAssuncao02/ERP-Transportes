@@ -2,46 +2,55 @@ import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import AttachmentPanel from '../components/AttachmentPanel.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
+import { currency, financeLaunches } from '../data/financeData.js';
 
 const units = [
   { code: '001', name: 'JTD Transportes LTDA' },
-  { code: '002', name: 'JTD Logistica Nordeste' },
-  { code: '003', name: 'JTD Armazens Salvador' },
+  { code: '002', name: 'JTD Logística Nordeste' },
+  { code: '003', name: 'JTD Armazéns Salvador' },
 ];
 
 const defaultUnit = '1';
 
 const suppliers = [
   { code: '1001', name: 'Auto Posto Central LTDA', cnpj: '12.345.678/0001-90' },
-  { code: '2042', name: 'Oficina Sao Jorge', cnpj: '23.456.789/0001-10' },
-  { code: '3110', name: 'Seguradora Atlantica', cnpj: '34.567.890/0001-22' },
+  { code: '2042', name: 'Oficina São Jorge', cnpj: '23.456.789/0001-10' },
+  { code: '3110', name: 'Seguradora Atlântica', cnpj: '34.567.890/0001-22' },
   { code: '4208', name: 'Transportes Parceiros SA', cnpj: '45.678.901/0001-33' },
 ];
 
 const accountingTypes = [
-  { code: '01', name: 'Servicos de transporte' },
-  { code: '02', name: 'Combustivel' },
-  { code: '03', name: 'Manutencao' },
-  { code: '04', name: 'Pedagio' },
+  { code: '01', name: 'Serviços de transporte' },
+  { code: '02', name: 'Combustível' },
+  { code: '03', name: 'Manutenção' },
+  { code: '04', name: 'Pedágio' },
   { code: '05', name: 'Administrativo' },
 ];
 
 const lookupConfig = {
+  payment: {
+    title: 'Pesquisar pagamento',
+    columns: ['Pagamento', 'Data', 'Fornecedor', 'Documento', 'Situação', 'Valor'],
+    items: financeLaunches
+      .filter((launch) => launch.id.startsWith('PAV-'))
+      .sort((left, right) => dateDistance(left.paymentDate || left.issueDate) - dateDistance(right.paymentDate || right.issueDate)),
+    format: (item) => item.id,
+  },
   unit: {
     title: 'Pesquisar unidade',
-    columns: ['Codigo', 'Unidade'],
+    columns: ['Código', 'Unidade'],
     items: units,
     format: (item) => `${item.code} - ${item.name}`,
   },
   supplier: {
     title: 'Pesquisar fornecedor',
-    columns: ['Codigo', 'Nome', 'CNPJ'],
+    columns: ['Código', 'Nome', 'CNPJ'],
     items: suppliers,
     format: (item) => `${item.code} - ${item.name} - ${item.cnpj}`,
   },
   accountingType: {
     title: 'Pesquisar tipo',
-    columns: ['Codigo', 'Classificacao contabil'],
+    columns: ['Código', 'Classificação contábil'],
     items: accountingTypes,
     format: (item) => `${item.code} - ${item.name}`,
   },
@@ -49,6 +58,15 @@ const lookupConfig = {
 
 function todayValue() {
   return new Date().toISOString().slice(0, 10);
+}
+
+function dateDistance(value) {
+  if (!value) return Number.MAX_SAFE_INTEGER;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return Number.MAX_SAFE_INTEGER;
+
+  return Math.abs(date.getTime() - Date.now());
 }
 
 function nextPaymentNumber() {
@@ -67,6 +85,17 @@ function nextPaymentNumber() {
 }
 
 function getLookupCells(type, item) {
+  if (type === 'payment') {
+    return [
+      item.id,
+      item.paymentDate || item.issueDate || '',
+      item.supplier,
+      item.document,
+      item.status,
+      currency(item.amount),
+    ];
+  }
+
   if (type === 'supplier') {
     return [item.code, item.name, item.cnpj];
   }
@@ -98,6 +127,10 @@ export default function OneOffPaymentPage() {
     if (!query) return activeLookup.items;
 
     return activeLookup.items.filter((item) => {
+      if (lookupType === 'payment') {
+        return `${item.id} ${item.supplier} ${item.document} ${item.status}`.toLowerCase().includes(query);
+      }
+
       if (lookupType === 'supplier' && supplierSearchBy === 'cnpj') {
         return item.cnpj.toLowerCase().includes(query);
       }
@@ -120,6 +153,12 @@ export default function OneOffPaymentPage() {
   function selectLookupItem(item) {
     const value = activeLookup.format(item);
 
+    if (lookupType === 'payment') {
+      populateFromPayment(item);
+      closeLookup();
+      return;
+    }
+
     if (lookupType === 'unit') setUnit(value);
     if (lookupType === 'supplier') setSupplier(value);
     if (lookupType === 'accountingType') setAccountingType(value);
@@ -127,12 +166,41 @@ export default function OneOffPaymentPage() {
     closeLookup();
   }
 
+  function formatUnitLabel(unitCode) {
+    const selectedUnit = units.find((item) => item.code === unitCode);
+    return selectedUnit ? `${selectedUnit.code} - ${selectedUnit.name}` : unitCode;
+  }
+
+  function formatSupplierLabel(launch) {
+    const selectedSupplier = suppliers.find((item) => item.code === launch.supplierCode || item.name === launch.supplier);
+    return selectedSupplier ? `${selectedSupplier.code} - ${selectedSupplier.name} - ${selectedSupplier.cnpj}` : launch.supplier;
+  }
+
+  function formatAccountingTypeLabel(launch) {
+    const selectedType = accountingTypes.find((item) => item.code === launch.accountingTypeCode || item.name === launch.type);
+    return selectedType ? `${selectedType.code} - ${selectedType.name}` : launch.type;
+  }
+
+  function populateFromPayment(payment) {
+    setUnit(formatUnitLabel(payment.unit));
+    setPaymentNumber(payment.id);
+    setSupplier(formatSupplierLabel(payment));
+    setAccountingType(formatAccountingTypeLabel(payment));
+    setChargeType(payment.chargeType || '');
+    setDocumentNumber(payment.document || '');
+    setPaymentDate(payment.paymentDate || payment.issueDate || todayValue());
+    setPaymentValue(payment.amount ? payment.amount.toFixed(2) : '');
+    setNotes(payment.notes || '');
+    setAttachments(payment.attachments || []);
+    setStatus(`Pagamento ${payment.id} carregado para consulta`);
+  }
+
   function handleSubmit(event) {
     event.preventDefault();
     const generatedPaymentNumber = paymentNumber || nextPaymentNumber();
 
     setPaymentNumber(generatedPaymentNumber);
-    setStatus(`Pagamento avulso ${generatedPaymentNumber} lancado e baixado em ${paymentDate} com ${attachments.length} anexo(s)`);
+    setStatus(`Pagamento avulso ${generatedPaymentNumber} lançado e baixado em ${paymentDate} com ${attachments.length} anexo(s)`);
   }
 
   function handleReset() {
@@ -160,7 +228,7 @@ export default function OneOffPaymentPage() {
       <header className="page-header">
         <div>
           <h1 className="page-title">Pagamento Avulso</h1>
-          <p className="page-kicker">Lancamento e baixa de pagamento em um unico fluxo</p>
+          <p className="page-kicker">Lançamento e baixa de pagamento em um único fluxo</p>
         </div>
       </header>
 
@@ -171,7 +239,7 @@ export default function OneOffPaymentPage() {
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Codigo da empresa"
+                placeholder="Código da empresa"
                 value={unit}
                 onChange={(event) => setUnit(event.target.value)}
                 required
@@ -189,17 +257,29 @@ export default function OneOffPaymentPage() {
             </div>
           </div>
 
-          <label className="field">
-            <span>Numero do pagamento</span>
-            <input type="text" placeholder="Gerado ao baixar" value={paymentNumber} readOnly tabIndex={-1} />
-          </label>
+          <div className="field">
+            <span>Número do pagamento</span>
+            <div className="lookup-field">
+              <input type="text" placeholder="Gerado ao baixar" value={paymentNumber} readOnly tabIndex={-1} />
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Pesquisar pagamento"
+                title="Pesquisar pagamento"
+                tabIndex={-1}
+                onClick={() => openLookup('payment')}
+              >
+                <Search size={17} strokeWidth={2.2} />
+              </button>
+            </div>
+          </div>
 
           <div className="field field--span-2">
             <span>Fornecedor</span>
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Codigo ou nome"
+                placeholder="Código ou nome"
                 value={supplier}
                 onChange={(event) => setSupplier(event.target.value)}
                 required
@@ -222,7 +302,7 @@ export default function OneOffPaymentPage() {
             <div className="lookup-field">
               <input
                 type="text"
-                placeholder="Classificacao contabil"
+                placeholder="Classificação contábil"
                 value={accountingType}
                 onChange={(event) => setAccountingType(event.target.value)}
                 required
@@ -247,7 +327,7 @@ export default function OneOffPaymentPage() {
               <option>Boleto</option>
               <option>Pix</option>
               <option>Transferencia</option>
-              <option>Cartao</option>
+              <option>Cartão</option>
               <option>Dinheiro</option>
             </select>
           </label>
@@ -256,7 +336,7 @@ export default function OneOffPaymentPage() {
             <span>Documento</span>
             <input
               type="text"
-              placeholder="Numero do documento"
+              placeholder="Número do documento"
               value={documentNumber}
               onChange={(event) => setDocumentNumber(event.target.value)}
               required
@@ -282,9 +362,9 @@ export default function OneOffPaymentPage() {
           </label>
 
           <label className="field field--span-4">
-            <span>Observacao</span>
+            <span>Observação</span>
             <textarea
-              placeholder="Observacao do pagamento avulso"
+              placeholder="Observação do pagamento avulso"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
             />
@@ -361,7 +441,7 @@ export default function OneOffPaymentPage() {
                 </tbody>
               </table>
 
-              {!lookupItems.length && <div className="lookup-empty">Nenhuma opcao encontrada</div>}
+              {!lookupItems.length && <div className="lookup-empty">Nenhuma opção encontrada</div>}
             </div>
           </div>
         </div>

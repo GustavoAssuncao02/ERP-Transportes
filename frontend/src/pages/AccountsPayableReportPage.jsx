@@ -190,7 +190,7 @@ function MultiCheckFilter({ title, options, selected, onChange, searchable = fal
             </label>
           ))}
           {searchable && visibleOptions.length === 0 && (
-            <div className="report-filter-empty">Nenhuma opcao encontrada</div>
+            <div className="report-filter-empty">Nenhuma opção encontrada</div>
           )}
         </div>
       )}
@@ -272,7 +272,7 @@ export default function AccountsPayableReportPage() {
       ['Unidade', businessUnit || 'Todas'],
       ['Periodo inicial', periodStart || 'Todos'],
       ['Periodo final', periodEnd || 'Todos'],
-      ['Situacao', status],
+      ['Situação', status],
       ['Tipo pesquisa', selectedSearchTypeLabel()],
       ['Bancos selecionados', `${selectedBanks.length} de ${bankOptions.length}`],
     ];
@@ -309,20 +309,20 @@ export default function AccountsPayableReportPage() {
       <html>
         <head><meta charset="UTF-8"></head>
         <body>
-          <h1>Relatorio de Contas a Pagar</h1>
+          <h1>Relatório de Contas a Pagar</h1>
           <table border="1">${metadataRows}</table>
           <br>
           <table border="1">
             <thead>
               <tr>
-                <th>Lancamento</th>
+                <th>Lançamento</th>
                 <th>Unidade</th>
                 <th>Fornecedor</th>
                 <th>Tipo</th>
                 <th>Documento</th>
                 <th>Vencimento</th>
-                <th>Situacao</th>
-                <th>Cobranca</th>
+                <th>Situação</th>
+                <th>Cobrança</th>
                 <th>Banco</th>
                 <th>Valor</th>
                 <th>Juros</th>
@@ -347,7 +347,7 @@ export default function AccountsPayableReportPage() {
 
     downloadBlob(content, reportFilename('xls'), 'application/vnd.ms-excel;charset=utf-8');
     setGenerateMenuOpen(false);
-    setMessage('Relatorio em Excel gerado');
+    setMessage('Relatório em Excel gerado');
   }
 
   function reportPdfLines() {
@@ -358,7 +358,7 @@ export default function AccountsPayableReportPage() {
       final: acc.final + (launch.finalAmount || 0),
     }), { amount: 0, interest: 0, discount: 0, final: 0 });
     const lines = [
-      'Relatorio de Contas a Pagar',
+      'Relatório de Contas a Pagar',
       `Gerado em ${todayValue()}`,
       '',
     ];
@@ -368,11 +368,11 @@ export default function AccountsPayableReportPage() {
     });
 
     lines.push('');
-    lines.push('Lancamento       Unid Fornecedor      Documento Banco        Vencimento Sit    Valor        Juros    Desconto Valor final');
+    lines.push('Lançamento       Unid Fornecedor      Documento Banco        Vencimento Sit    Valor        Juros    Desconto Valor final');
     lines.push('------------------------------------------------------------------------------------------------------------------------------');
 
     if (!filteredLaunches.length) {
-      lines.push('Nenhum lancamento encontrado para os filtros aplicados.');
+      lines.push('Nenhum lançamento encontrado para os filtros aplicados.');
     }
 
     filteredLaunches.forEach((launch) => {
@@ -392,14 +392,14 @@ export default function AccountsPayableReportPage() {
     });
 
     lines.push('------------------------------------------------------------------------------------------------------------------------------');
-    lines.push(`Total titulos: ${currency(totals.amount)} | Juros: ${currency(totals.interest)} | Desconto: ${currency(totals.discount)} | Valor final: ${currency(totals.final)}`);
+    lines.push(`Total títulos: ${currency(totals.amount)} | Juros: ${currency(totals.interest)} | Desconto: ${currency(totals.discount)} | Valor final: ${currency(totals.final)}`);
     return lines;
   }
 
   function generatePdf() {
     downloadBlob(createPdfContent(reportPdfLines()), reportFilename('pdf'), 'application/pdf');
     setGenerateMenuOpen(false);
-    setMessage('Relatorio em PDF gerado');
+    setMessage('Relatório em PDF gerado');
   }
 
   function handleSubmit(event) {
@@ -409,12 +409,19 @@ export default function AccountsPayableReportPage() {
     setMessage('Filtros aplicados para o relatorio de contas a pagar');
   }
 
+  const tableTotals = filteredLaunches.reduce((acc, launch) => ({
+    amount: acc.amount + launch.amount,
+    interest: acc.interest + (launch.interestAmount || 0),
+    discount: acc.discount + (launch.discountAmount || 0),
+    final: acc.final + (launch.finalAmount || 0),
+  }), { amount: 0, interest: 0, discount: 0, final: 0 });
+
   return (
     <section className="accounts-payable-report-page">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Relatorio de Contas a Pagar</h1>
-          <p className="page-kicker">Filtros para consulta de lancamentos a pagar</p>
+          <h1 className="page-title">Relatório de Contas a Pagar</h1>
+          <p className="page-kicker">Filtros para consulta de lançamentos a pagar</p>
         </div>
       </header>
 
@@ -461,7 +468,7 @@ export default function AccountsPayableReportPage() {
           </label>
 
           <label className="field">
-            <span>Situacao do Lancamento</span>
+            <span>Situação do Lançamento</span>
             <select
               value={status}
               onChange={(event) => {
@@ -492,7 +499,7 @@ export default function AccountsPayableReportPage() {
         </div>
 
         <div className="report-grid">
-          <MultiCheckFilter title="Tipo de Cobranca" options={chargeTypes} selected={selectedChargeTypes} onChange={(next) => updateSelection(setSelectedChargeTypes, next)} />
+          <MultiCheckFilter title="Tipo de Cobrança" options={chargeTypes} selected={selectedChargeTypes} onChange={(next) => updateSelection(setSelectedChargeTypes, next)} />
           <MultiCheckFilter title="Selecionar Tipo" options={accountingTypeNames} selected={selectedTypes} onChange={(next) => updateSelection(setSelectedTypes, next)} />
           <MultiCheckFilter title="Banco do Pagamento" options={bankOptions} selected={selectedBanks} onChange={(next) => updateSelection(setSelectedBanks, next)} searchable searchPlaceholder="Pesquisar banco" />
           <MultiCheckFilter title="Selecionar Fornecedor" options={supplierNames} selected={selectedSuppliers} onChange={(next) => updateSelection(setSelectedSuppliers, next)} searchable searchPlaceholder="Pesquisar fornecedor" />
@@ -529,12 +536,12 @@ export default function AccountsPayableReportPage() {
             <div className="report-generate-actions">
               <div className="report-split-button">
                 <button type="button" className="primary-button report-generate-main" onClick={generatePdf}>
-                  Gerar Relatorio
+                  Gerar Relatório
                 </button>
                 <button
                   type="button"
                   className="primary-button report-generate-toggle"
-                  aria-label="Opcoes de geracao"
+                  aria-label="Opções de geração"
                   aria-expanded={generateMenuOpen}
                   onClick={() => setGenerateMenuOpen((current) => !current)}
                 >
@@ -551,6 +558,70 @@ export default function AccountsPayableReportPage() {
           <span className="status-line" aria-live="polite">{message}</span>
         </div>
       </form>
+
+      {filtersApplied && (
+        <section className="registered-launches-panel report-results-panel" aria-labelledby="accounts-payable-report-results-title">
+          <div className="registered-launches-header">
+            <h2 id="accounts-payable-report-results-title">Dados consultados</h2>
+            <div>
+              <span>{filteredLaunches.length} lançamento(s)</span>
+              <strong>{currency(tableTotals.amount)}</strong>
+            </div>
+          </div>
+
+          <div className="registered-launches-table-wrap">
+            <table className="registered-launches-table report-results-table">
+              <thead>
+                <tr>
+                  <th>Lançamento</th>
+                  <th>Unidade</th>
+                  <th>Fornecedor</th>
+                  <th>Documento</th>
+                  <th>Vencimento</th>
+                  <th>Situação</th>
+                  <th>Cobrança</th>
+                  <th>Banco</th>
+                  <th>Valor</th>
+                  <th>Juros</th>
+                  <th>Desconto</th>
+                  <th>Valor final</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLaunches.map((launch) => (
+                  <tr key={launch.id}>
+                    <td><strong>{launch.id}</strong></td>
+                    <td>{launch.unit}</td>
+                    <td>{launch.supplier}</td>
+                    <td>{launch.document}</td>
+                    <td>{launch.dueDate}</td>
+                    <td>{launch.status}</td>
+                    <td>{launch.paymentMethod}</td>
+                    <td>{bankLabel(launch)}</td>
+                    <td>{currency(launch.amount)}</td>
+                    <td>{currency(launch.interestAmount || 0)}</td>
+                    <td>{currency(launch.discountAmount || 0)}</td>
+                    <td>{currency(launch.finalAmount || 0)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th colSpan="8">Total</th>
+                  <th>{currency(tableTotals.amount)}</th>
+                  <th>{currency(tableTotals.interest)}</th>
+                  <th>{currency(tableTotals.discount)}</th>
+                  <th>{currency(tableTotals.final)}</th>
+                </tr>
+              </tfoot>
+            </table>
+
+            {!filteredLaunches.length && (
+              <div className="empty-list">Nenhum lançamento encontrado para os filtros aplicados</div>
+            )}
+          </div>
+        </section>
+      )}
     </section>
   );
 }

@@ -71,7 +71,7 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
               <span>{option}</span>
             </label>
           ))}
-          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opcao encontrada</div>}
+          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
         </div>
       </div>
     </div>
@@ -120,12 +120,12 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
 
   function addLaunch(launchId) {
     setSelectedIds((current) => (current.includes(launchId) ? current : [...current, launchId]));
-    setStatus('Lancamento adicionado a exclusao');
+    setStatus('Lançamento adicionado a exclusão');
   }
 
   function removeLaunch(launchId) {
     setSelectedIds((current) => current.filter((id) => id !== launchId));
-    setStatus('Lancamento removido da exclusao');
+    setStatus('Lançamento removido da exclusão');
   }
 
   function searchAndAddLaunch() {
@@ -134,22 +134,22 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
     const deletableLaunch = deletableLaunches.find((launch) => normalizeText(launch.id) === normalizeText(query));
 
     if (!query) {
-      setStatus('Informe o numero do lancamento');
+      setStatus('Informe o número do lançamento');
       return;
     }
 
     if (!anyLaunch) {
-      setStatus('Lancamento nao encontrado');
+      setStatus('Lançamento não encontrado');
       return;
     }
 
     if (!deletableLaunch) {
-      setStatus('Somente titulos em aberto podem ser adicionados a exclusao');
+      setStatus('Somente títulos em aberto podem ser adicionados a exclusão');
       return;
     }
 
     if (selectedIds.includes(deletableLaunch.id)) {
-      setStatus('Lancamento ja esta selecionado para exclusao');
+      setStatus('Lançamento já esta selecionado para exclusão');
       return;
     }
 
@@ -171,19 +171,19 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
 
   function deleteLaunches() {
     if (!selectedLaunches.length) {
-      setStatus('Selecione pelo menos um titulo em aberto para excluir');
+      setStatus('Selecione pelo menos um título em aberto para excluir');
       return;
     }
 
-    setStatus(`${selectedLaunches.length} titulo(s) marcado(s) para exclusao`);
+    setStatus(`${selectedLaunches.length} título(s) marcado(s) para exclusão`);
   }
 
   return (
     <section className="accounts-payable-deletion-page">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Exclusao de Titulos a Pagar</h1>
-          <p className="page-kicker">Selecao de titulos em aberto para exclusao</p>
+          <h1 className="page-title">Exclusão de Títulos a Pagar</h1>
+          <p className="page-kicker">Seleção de títulos em aberto para exclusão</p>
         </div>
       </header>
 
@@ -219,7 +219,7 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
           </label>
 
           <MultiCheckField
-            label="Tipo de Cobranca"
+            label="Tipo de Cobrança"
             options={chargeTypeOptions}
             selected={selectedChargeTypes}
             onChange={setSelectedChargeTypes}
@@ -231,7 +231,7 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
             options={typeOptions}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            placeholder="Pesquisar tipo contabil"
+            placeholder="Pesquisar tipo contábil"
           />
 
           <MultiCheckField
@@ -259,20 +259,20 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
         <div className="schedule-layout">
           <section className="registered-launches-panel" aria-labelledby="deletion-launches-title">
             <div className="registered-launches-header">
-              <h2 id="deletion-launches-title">Titulos em aberto</h2>
+              <h2 id="deletion-launches-title">Títulos em aberto</h2>
               <div>
-                <span>{filteredLaunches.length} titulo(s)</span>
+                <span>{filteredLaunches.length} título(s)</span>
                 <strong>{currency(totalAmount(filteredLaunches))}</strong>
               </div>
             </div>
 
             <div className="schedule-direct-search">
-              <label htmlFor="deletion-launch-search">Pesquisar Lancamento</label>
+              <label htmlFor="deletion-launch-search">Pesquisar Lançamento</label>
               <div>
                 <input
                   id="deletion-launch-search"
                   type="search"
-                  placeholder="Numero do lancamento"
+                  placeholder="Número do lançamento"
                   value={launchSearch}
                   onChange={(event) => setLaunchSearch(event.target.value)}
                   onKeyDown={(event) => {
@@ -293,7 +293,7 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
               <table className="registered-launches-table schedule-table">
                 <thead>
                   <tr>
-                    <th>Lancamento</th>
+                    <th>Lançamento</th>
                     <th>Fornecedor</th>
                     <th>Documento</th>
                     <th>Tipo</th>
@@ -322,8 +322,8 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
                           <button
                             type="button"
                             className="icon-button"
-                            aria-label="Adicionar a exclusao"
-                            title="Adicionar a exclusao"
+                            aria-label="Adicionar a exclusão"
+                            title="Adicionar a exclusão"
                             disabled={selected}
                             onClick={(event) => {
                               event.stopPropagation();
@@ -339,13 +339,13 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
                 </tbody>
               </table>
 
-              {!filteredLaunches.length && <div className="empty-list">Nenhum titulo em aberto encontrado</div>}
+              {!filteredLaunches.length && <div className="empty-list">Nenhum título em aberto encontrado</div>}
             </div>
           </section>
 
           <section className="selection-panel selected-panel" aria-labelledby="deletion-selected-title">
             <div className="selection-panel-header">
-              <h2 id="deletion-selected-title">Selecionados para exclusao</h2>
+              <h2 id="deletion-selected-title">Selecionados para exclusão</h2>
               <strong>{currency(totalAmount(selectedLaunches))}</strong>
             </div>
 
@@ -363,18 +363,18 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
                   <button
                     type="button"
                     className="mini-remove-button"
-                    aria-label="Remover lancamento"
+                    aria-label="Remover lançamento"
                     onClick={() => removeLaunch(launch.id)}
                   >
                     <X size={14} strokeWidth={2.4} />
                   </button>
                 </div>
               ))}
-              {!selectedLaunches.length && <div className="empty-list">Nenhum titulo selecionado</div>}
+              {!selectedLaunches.length && <div className="empty-list">Nenhum título selecionado</div>}
             </div>
 
             <div className="schedule-actions">
-              <button type="button" className="primary-button" onClick={deleteLaunches}>Excluir titulos</button>
+              <button type="button" className="primary-button" onClick={deleteLaunches}>Excluir títulos</button>
               <button type="button" className="secondary-button" onClick={() => setSelectedIds([])}>Limpar</button>
               <span className="status-line" aria-live="polite">{status}</span>
             </div>

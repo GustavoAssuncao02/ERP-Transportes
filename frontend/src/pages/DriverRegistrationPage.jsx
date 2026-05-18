@@ -1,0 +1,297 @@
+import { useMemo, useState } from 'react';
+import { Search, X } from 'lucide-react';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
+import { normalizeText } from '../data/financeData.js';
+import {
+  findDriverByCpf,
+  formatCpf,
+  getRegisteredDrivers,
+  isValidCpf,
+  onlyDigits,
+  pendingDriverCpfKey,
+  saveDriver,
+} from '../data/transportRegistry.js';
+
+const licenseCategories = ['B', 'C', 'D', 'E'];
+
+function pendingCpf() {
+  try {
+    return formatCpf(localStorage.getItem(pendingDriverCpfKey) || '');
+  } catch {
+    return '';
+  }
+}
+
+export default function DriverRegistrationPage() {
+  const [drivers, setDrivers] = useState(getRegisteredDrivers);
+  const [cpf, setCpf] = useState(pendingCpf);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [cnh, setCnh] = useState('');
+  const [category, setCategory] = useState('E');
+  const [statusValue, setStatusValue] = useState('Ativo');
+  const [cpfError, setCpfError] = useState('');
+  const [lookupOpen, setLookupOpen] = useState(false);
+  const [lookupSearch, setLookupSearch] = useState('');
+  const [message, setMessage] = useAutoClearMessage();
+
+  const sortedDrivers = useMemo(
+    () => [...drivers].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
+    [drivers],
+  );
+  const lookupDrivers = useMemo(() => {
+    const query = normalizeText(lookupSearch);
+    if (!query) return sortedDrivers;
+
+    return sortedDrivers.filter((driver) => normalizeText(`${driver.name} ${formatCpf(driver.cpf)} ${driver.cnh} ${driver.phone}`).includes(query));
+  }, [lookupSearch, sortedDrivers]);
+
+  function loadDriver(driver) {
+    setCpf(formatCpf(driver.cpf));
+    setName(driver.name || '');
+    setPhone(driver.phone || '');
+    setCnh(driver.cnh || '');
+    setCategory(driver.category || 'E');
+    setStatusValue(driver.status || 'Ativo');
+    setCpfError('');
+    setMessage(`Motorista ${driver.name} carregado para edição`);
+  }
+
+  function handleCpfChange(value) {
+    const nextCpf = formatCpf(value);
+    setCpf(nextCpf);
+    setCpfError('');
+
+    if (onlyDigits(nextCpf).length === 11) {
+      if (!isValidCpf(nextCpf)) {
+        setCpfError('CPF inválido');
+        return;
+      }
+
+      const driver = findDriverByCpf(nextCpf);
+      if (driver) {
+        loadDriver(driver);
+      }
+    }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    if (!isValidCpf(cpf)) {
+      setCpfError('CPF inválido');
+      setMessage('Informe um CPF válido para cadastrar o motorista');
+      return;
+    }
+
+    const nextDrivers = saveDriver({
+      cpf,
+      name,
+      phone,
+      cnh,
+      category,
+      status: statusValue,
+    });
+
+    try {
+      localStorage.removeItem(pendingDriverCpfKey);
+    } catch {
+      // localStorage pode estar indisponível em navegação privada.
+    }
+
+    setDrivers(nextDrivers);
+    setMessage(`Motorista ${name} cadastrado`);
+  }
+
+  function openLookup() {
+    setLookupOpen(true);
+    setLookupSearch('');
+  }
+
+  function closeLookup() {
+    setLookupOpen(false);
+    setLookupSearch('');
+  }
+
+  function selectDriver(driver) {
+    loadDriver(driver);
+    closeLookup();
+  }
+
+  function handleReset() {
+    setCpf('');
+    setName('');
+    setPhone('');
+    setCnh('');
+    setCategory('E');
+    setStatusValue('Ativo');
+    setCpfError('');
+    closeLookup();
+    setMessage('');
+  }
+
+  return (
+    <section className="driver-registration-page registry-page">
+      <header className="page-header">
+        <div>
+          <h1 className="page-title">Cadastrar Motorista</h1>
+          <p className="page-kicker">Gestão dos motoristas vinculados aos documentos fiscais</p>
+        </div>
+      </header>
+
+      <form className="finance-form registry-form" onSubmit={handleSubmit} onReset={handleReset}>
+        <div className="form-grid">
+          <label className="field">
+            <span>CPF do motorista</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="000.000.000-00"
+              value={cpf}
+              onChange={(event) => handleCpfChange(event.target.value)}
+              aria-invalid={cpfError ? 'true' : undefined}
+              required
+            />
+            {cpfError && <strong className="field-error">{cpfError}</strong>}
+          </label>
+
+          <div className="field field--span-2">
+            <span>Nome do motorista</span>
+            <div className="lookup-field">
+              <input type="text" placeholder="Nome completo" value={name} onChange={(event) => setName(event.target.value)} required />
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Pesquisar motorista"
+                title="Pesquisar motorista"
+                tabIndex={-1}
+                onClick={openLookup}
+              >
+                <Search size={17} strokeWidth={2.2} />
+              </button>
+            </div>
+          </div>
+
+          <label className="field">
+            <span>Telefone</span>
+            <input type="text" placeholder="(00) 00000-0000" value={phone} onChange={(event) => setPhone(event.target.value)} />
+          </label>
+
+          <label className="field">
+            <span>CNH</span>
+            <input type="text" inputMode="numeric" placeholder="Número da CNH" value={cnh} onChange={(event) => setCnh(event.target.value)} required />
+          </label>
+
+          <label className="field">
+            <span>Categoria da CNH</span>
+            <select value={category} onChange={(event) => setCategory(event.target.value)} required>
+              {licenseCategories.map((licenseCategory) => (
+                <option value={licenseCategory} key={licenseCategory}>{licenseCategory}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Status</span>
+            <select value={statusValue} onChange={(event) => setStatusValue(event.target.value)}>
+              <option>Ativo</option>
+              <option>Inativo</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="form-actions">
+          <button type="submit" className="primary-button">Salvar motorista</button>
+          <button type="reset" className="secondary-button">Limpar</button>
+          <span className="status-line" aria-live="polite">{message}</span>
+        </div>
+      </form>
+
+      <section className="registered-launches-panel registry-list-panel" aria-labelledby="drivers-list-title">
+        <div className="registered-launches-header">
+          <h2 id="drivers-list-title">Motoristas cadastrados</h2>
+          <div>
+            <span>{sortedDrivers.length} motorista(s)</span>
+          </div>
+        </div>
+
+        <div className="registered-launches-table-wrap">
+          <table className="registered-launches-table registry-table">
+            <thead>
+              <tr>
+                <th>CPF</th>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>CNH</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedDrivers.map((driver) => (
+                <tr key={driver.cpf} onClick={() => loadDriver(driver)}>
+                  <td><strong>{formatCpf(driver.cpf)}</strong></td>
+                  <td>{driver.name}</td>
+                  <td>{driver.phone}</td>
+                  <td>{driver.cnh} / {driver.category}</td>
+                  <td>{driver.status}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {lookupOpen && (
+        <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="driver-lookup-title">
+          <button type="button" className="lookup-modal-backdrop" aria-label="Fechar pesquisa" onClick={closeLookup} />
+          <div className="lookup-modal-panel">
+            <header className="lookup-modal-header">
+              <h2 id="driver-lookup-title">Pesquisar motorista</h2>
+              <button type="button" className="modal-close-button" aria-label="Fechar" onClick={closeLookup}>
+                <X size={18} strokeWidth={2.4} />
+              </button>
+            </header>
+
+            <div className="lookup-modal-toolbar">
+              <input
+                type="search"
+                className="lookup-search"
+                placeholder="Pesquisar por nome, CPF, CNH ou telefone"
+                value={lookupSearch}
+                onChange={(event) => setLookupSearch(event.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="lookup-table-wrap">
+              <table className="lookup-table">
+                <thead>
+                  <tr>
+                    <th>CPF</th>
+                    <th>Nome</th>
+                    <th>Telefone</th>
+                    <th>CNH</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lookupDrivers.map((driver) => (
+                    <tr key={driver.cpf} onClick={() => selectDriver(driver)}>
+                      <td>{formatCpf(driver.cpf)}</td>
+                      <td>{driver.name}</td>
+                      <td>{driver.phone}</td>
+                      <td>{driver.cnh} / {driver.category}</td>
+                      <td>{driver.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {!lookupDrivers.length && <div className="lookup-empty">Nenhuma opção encontrada</div>}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}

@@ -98,7 +98,7 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
               <span>{option}</span>
             </label>
           ))}
-          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opcao encontrada</div>}
+          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
         </div>
       </div>
     </div>
@@ -153,7 +153,7 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
 
   function addLaunch(launchId) {
     setScheduledIds((current) => (current.includes(launchId) ? current : [...current, launchId]));
-    setStatus('Lancamento adicionado a programacao');
+    setStatus('Lançamento adicionado a programação');
   }
 
   function searchAndAddLaunch() {
@@ -162,22 +162,22 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
     const anyLaunch = financeLaunches.find((item) => normalizeText(item.id) === normalizeText(query));
 
     if (!query) {
-      setStatus('Informe o numero do lancamento');
+      setStatus('Informe o número do lançamento');
       return;
     }
 
     if (!anyLaunch) {
-      setStatus('Lancamento nao encontrado');
+      setStatus('Lançamento não encontrado');
       return;
     }
 
     if (!launch) {
-      setStatus('Somente titulos em aberto podem entrar na programacao');
+      setStatus('Somente títulos em aberto podem entrar na programação');
       return;
     }
 
     if (scheduledIds.includes(launch.id)) {
-      setStatus('Lancamento ja esta na programacao');
+      setStatus('Lançamento já esta na programação');
       return;
     }
 
@@ -187,12 +187,12 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
 
   function removeLaunch(launchId) {
     setScheduledIds((current) => current.filter((id) => id !== launchId));
-    setStatus('Lancamento removido da programacao');
+    setStatus('Lançamento removido da programação');
   }
 
   function clearSchedule() {
     setScheduledIds([]);
-    setStatus('Programacao limpa');
+    setStatus('Programação limpa');
   }
 
   function clearFilters() {
@@ -211,8 +211,8 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
     <section className="accounts-payable-schedule-page">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Programacao de Contas a Pagar</h1>
-          <p className="page-kicker">Organizacao diaria dos titulos em aberto para pagamento</p>
+          <h1 className="page-title">Programação de Contas a Pagar</h1>
+          <p className="page-kicker">Organização diaria dos títulos em aberto para pagamento</p>
         </div>
       </header>
 
@@ -260,7 +260,7 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
             options={typeOptions}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            placeholder="Pesquisar tipo contabil"
+            placeholder="Pesquisar tipo contábil"
           />
 
           <MultiCheckField
@@ -304,20 +304,20 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
         <div className="schedule-layout">
           <section className="registered-launches-panel" aria-labelledby="schedule-available-title">
             <div className="registered-launches-header">
-              <h2 id="schedule-available-title">Titulos em aberto</h2>
+              <h2 id="schedule-available-title">Títulos em aberto</h2>
               <div>
-                <span>{filteredLaunches.length} titulo(s)</span>
+                <span>{filteredLaunches.length} título(s)</span>
                 <strong>{currency(totalAmount(filteredLaunches))}</strong>
               </div>
             </div>
 
             <div className="schedule-direct-search">
-              <label htmlFor="schedule-launch-search">Pesquisar Lancamento</label>
+              <label htmlFor="schedule-launch-search">Pesquisar Lançamento</label>
               <div>
                 <input
                   id="schedule-launch-search"
                   type="search"
-                  placeholder="Numero do lancamento"
+                  placeholder="Número do lançamento"
                   value={launchSearch}
                   onChange={(event) => setLaunchSearch(event.target.value)}
                   onKeyDown={(event) => {
@@ -342,7 +342,7 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
               <table className="registered-launches-table schedule-table">
                 <thead>
                   <tr>
-                    <th>Lancamento</th>
+                    <th>Lançamento</th>
                     <th>Fornecedor</th>
                     <th>Documento</th>
                     <th>Tipo</th>
@@ -371,8 +371,8 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
                           <button
                             type="button"
                             className="icon-button"
-                            aria-label="Adicionar a programacao"
-                            title="Adicionar a programacao"
+                            aria-label="Adicionar a programação"
+                            title="Adicionar a programação"
                             disabled={scheduled}
                             onClick={(event) => {
                               event.stopPropagation();
@@ -388,13 +388,13 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
                 </tbody>
               </table>
 
-              {!filteredLaunches.length && <div className="empty-list">Nenhum titulo em aberto encontrado</div>}
+              {!filteredLaunches.length && <div className="empty-list">Nenhum título em aberto encontrado</div>}
             </div>
           </section>
 
           <section className="selection-panel selected-panel" aria-labelledby="schedule-selected-title">
             <div className="selection-panel-header">
-              <h2 id="schedule-selected-title">Programacao do dia</h2>
+              <h2 id="schedule-selected-title">Programação do dia</h2>
               <strong>{currency(scheduledTotal)}</strong>
             </div>
 
@@ -412,14 +412,14 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
                   <button
                     type="button"
                     className="mini-remove-button"
-                    aria-label="Remover lancamento"
+                    aria-label="Remover lançamento"
                     onClick={() => removeLaunch(launch.id)}
                   >
                     <X size={14} strokeWidth={2.4} />
                   </button>
                 </div>
               ))}
-              {!scheduledLaunches.length && <div className="empty-list">Nenhum lancamento programado</div>}
+              {!scheduledLaunches.length && <div className="empty-list">Nenhum lançamento programado</div>}
             </div>
 
             <div className="schedule-actions">
@@ -431,13 +431,13 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
 
         <div className="schedule-chart-grid">
           <section className="chart-panel chart-panel--static">
-            <span className="chart-title">Distribuicao por tipo contabil</span>
+            <span className="chart-title">Distribuição por tipo contábil</span>
             <strong>{currency(scheduledTotal)}</strong>
             <PieChart data={groupBy(scheduledLaunches, 'type')} />
           </section>
 
           <section className="chart-panel chart-panel--static">
-            <span className="chart-title">Distribuicao por fornecedor</span>
+            <span className="chart-title">Distribuição por fornecedor</span>
             <strong>{currency(scheduledTotal)}</strong>
             <PieChart data={groupBy(scheduledLaunches, 'supplier')} />
           </section>

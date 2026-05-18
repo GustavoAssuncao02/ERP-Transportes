@@ -74,7 +74,7 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
               <span>{option}</span>
             </label>
           ))}
-          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opcao encontrada</div>}
+          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
         </div>
       </div>
     </div>
@@ -136,8 +136,8 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
     <section className="registered-launches-page">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Consultar Lancamentos</h1>
-          <p className="page-kicker">Consulta dos lancamentos cadastrados no sistema</p>
+          <h1 className="page-title">Consultar Lançamentos</h1>
+          <p className="page-kicker">Consulta dos lançamentos cadastrados no sistema</p>
         </div>
       </header>
 
@@ -163,7 +163,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
           </label>
 
           <label className="field">
-            <span>Situacao do Lancamento</span>
+            <span>Situação do Lançamento</span>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option>Ambos</option>
               <option>Aberto</option>
@@ -194,7 +194,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
             options={accountingTypeNames}
             selected={selectedTypes}
             onChange={setSelectedTypes}
-            placeholder="Pesquisar tipo contabil"
+            placeholder="Pesquisar tipo contábil"
           />
 
           <MultiCheckField
@@ -245,9 +245,9 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
 
         <section className="registered-launches-panel" aria-labelledby="registered-launches-title">
           <div className="registered-launches-header">
-            <h2 id="registered-launches-title">Lancamentos cadastrados</h2>
+            <h2 id="registered-launches-title">Lançamentos cadastrados</h2>
             <div>
-              <span>{filteredLaunches.length} lancamento(s)</span>
+              <span>{filteredLaunches.length} lançamento(s)</span>
               <strong>{currency(filteredTotal)}</strong>
             </div>
           </div>
@@ -256,7 +256,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
             <table className="registered-launches-table">
               <thead>
                 <tr>
-                  <th>Lancamento</th>
+                  <th>Lançamento</th>
                   <th>Unidade</th>
                   <th>Fornecedor</th>
                   <th>Documento</th>
@@ -265,7 +265,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
                   <th>Emissao</th>
                   <th>Vencimento</th>
                   <th>Valor</th>
-                  <th>Situacao</th>
+                  <th>Situação</th>
                 </tr>
               </thead>
               <tbody>
@@ -287,7 +287,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
             </table>
 
             {!filteredLaunches.length && (
-              <div className="empty-list">Nenhum lancamento encontrado para os filtros informados</div>
+              <div className="empty-list">Nenhum lançamento encontrado para os filtros informados</div>
             )}
           </div>
         </section>

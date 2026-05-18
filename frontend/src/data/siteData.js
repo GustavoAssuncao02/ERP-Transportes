@@ -44,6 +44,11 @@ export const navigationItems = [
         pageId: 'collection-order',
       },
       {
+        id: 'criar-minuta',
+        label: 'Criar Minuta',
+        pageId: 'create-minuta',
+      },
+      {
         id: 'gerar-manifesto',
         label: 'Gerar Manifesto',
         pageId: 'generate-manifest',

@@ -1786,6 +1786,7 @@
 .accounts-payable-schedule-page,
 .accounts-payable-deletion-page,
 .generate-manifest-page,
+.create-minuta-page,
 .settlement-reversal-page {
   max-width: 1280px;
 }
@@ -2440,12 +2441,14 @@
 
 .issue-cte-page,
 .collection-order-page,
+.create-minuta-page,
 .registry-page {
   max-width: 1280px;
 }
 
 .issue-cte-form,
 .collection-order-form,
+.create-minuta-form,
 .registry-form {
   max-width: 1280px;
 }

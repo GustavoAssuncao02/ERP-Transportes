@@ -6,6 +6,7 @@ import AccountsPayableReportPage from './AccountsPayableReportPage.jsx';
 import AccountsPayableSettlementPage from './AccountsPayableSettlementPage.jsx';
 import BusinessIntelligencePage from './BusinessIntelligencePage.jsx';
 import CollectionOrderPage from './CollectionOrderPage.jsx';
+import CreateMinutaPage from './CreateMinutaPage.jsx';
 import DriverRegistrationPage from './DriverRegistrationPage.jsx';
 import GenerateManifestPage from './GenerateManifestPage.jsx';
 import HomeShortcutsPage from './HomeShortcutsPage.jsx';
@@ -137,6 +138,10 @@ export default function DashboardPage() {
 
     if (activeTabId === 'collection-order') {
       return <CollectionOrderPage />;
+    }
+
+    if (activeTabId === 'create-minuta') {
+      return <CreateMinutaPage />;
     }
 
     if (activeTabId === 'vehicle-registration') {

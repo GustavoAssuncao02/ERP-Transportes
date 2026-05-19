@@ -192,88 +192,107 @@ const defaultSectorId = validSectorIds.has('H4') ? 'H4' : blueprintSectors[0].id
 const warehouseColumnCount = new Set(blueprintSectors.map((sector) => sector.column)).size;
 const warehouseRowCount = new Set(blueprintSectors.map((sector) => sector.row)).size;
 
-const initialCargoItems = [
-  {
-    id: 'cargo-001',
-    sectorId: defaultSectorId,
-    invoice: 'NF-2',
-    description: 'Motor elétrico paletizado',
-    customer: 'Atlas Equipamentos',
-    quantity: 1,
-    weight: 320,
-    status: 'Aguardando expedição',
-  },
-  {
-    id: 'cargo-002',
-    sectorId: defaultSectorId,
-    invoice: 'NF-2',
-    description: 'Caixa de acionadores industriais',
-    customer: 'Atlas Equipamentos',
-    quantity: 2,
-    weight: 86,
-    status: 'Conferido',
-  },
-  {
-    id: 'cargo-003',
-    sectorId: defaultSectorId,
-    invoice: 'NF-2',
-    description: 'Kit de sensores embalado',
-    customer: 'Atlas Equipamentos',
-    quantity: 3,
-    weight: 42,
-    status: 'Conferido',
-  },
-  {
-    id: 'cargo-004',
-    sectorId: defaultSectorId,
-    invoice: 'NF-8742',
-    description: 'Volumes de autopeças',
-    customer: 'Transportadora Nordeste',
-    quantity: 4,
-    weight: 155,
-    status: 'Separação',
-  },
-  {
-    id: 'cargo-005',
-    sectorId: validSectorIds.has('B3') ? 'B3' : defaultSectorId,
-    invoice: 'NF-5518',
-    description: 'Bobinas plásticas',
-    customer: 'Embalagens Costa',
-    quantity: 6,
-    weight: 480,
-    status: 'Aguardando coleta',
-  },
-  {
-    id: 'cargo-006',
-    sectorId: validSectorIds.has('T5') ? 'T5' : defaultSectorId,
-    invoice: 'NF-9081',
-    description: 'Eletrodomésticos pequenos',
-    customer: 'Rede Litoral',
-    quantity: 8,
-    weight: 210,
-    status: 'Roteirizado',
-  },
-  {
-    id: 'cargo-007',
-    sectorId: validSectorIds.has('T5') ? 'T5' : defaultSectorId,
-    invoice: 'NF-9081',
-    description: 'Caixas de reposição',
-    customer: 'Rede Litoral',
-    quantity: 2,
-    weight: 58,
-    status: 'Roteirizado',
-  },
-  {
-    id: 'cargo-008',
-    sectorId: validSectorIds.has('P1') ? 'P1' : defaultSectorId,
-    invoice: 'NF-3407',
-    description: 'Palete de ferramentas',
-    customer: 'Construtora Ponte Alta',
-    quantity: 1,
-    weight: 390,
-    status: 'Bloqueio fiscal',
-  },
+const demoWarehouseSectors = [
+  'A1', 'C1', 'E1', 'G1', 'H1', 'I1', 'J1', 'K1', 'O1', 'P1',
+  'Q1', 'R1', 'S1', 'T1', 'O2', 'P2', 'Q2', 'R2', 'S2', 'T2',
+  'B3', 'D3', 'F3', 'G3', 'H3', 'I3', 'J3', 'L3', 'Q3', 'R3',
+  'S3', 'T3', 'B4', 'D4', 'F4', 'G4', 'H4', 'I4', 'J4', 'M4',
+  'N4', 'O4', 'B5', 'D5', 'F5', 'G5', 'H5', 'I5', 'L5', 'T5',
 ];
+
+const demoWarehouseCustomers = [
+  'Atlas Equipamentos',
+  'Transportadora Nordeste',
+  'Embalagens Costa',
+  'Rede Litoral',
+  'Construtora Ponte Alta',
+  'Mercantil São Jorge',
+  'Distribuidora Bahia Sul',
+  'Supermercados Recôncavo',
+  'Farmalog Nordeste',
+  'Auto Peças Camaçari',
+];
+
+const demoWarehouseProducts = [
+  'Motor elétrico WEG 5CV',
+  'Kit sensores industriais',
+  'Bobina plástica stretch',
+  'Caixa de autopeças',
+  'Eletrodoméstico pequeno',
+  'Ferramentas manuais',
+  'Medicamentos lacrados',
+  'Alimentos não perecíveis',
+  'Peças de reposição',
+  'Componentes eletrônicos',
+  'Tintas embaladas',
+  'Materiais de construção',
+  'Cabos elétricos',
+  'Produtos de higiene',
+  'Equipamentos de proteção',
+];
+
+const extraDemoEmptySectorInvoices = [
+  { sectorId: 'O5', invoice: 'NF-3001', customer: 'Atlas Equipamentos', description: 'Inversores industriais', quantity: 2, weight: 180, status: 'Conferido' },
+  { sectorId: 'O6', invoice: 'NF-3002', customer: 'Transportadora Nordeste', description: 'Caixas de rolamentos', quantity: 4, weight: 96, status: 'Aguardando coleta' },
+  { sectorId: 'P5', invoice: 'NF-3003', customer: 'Embalagens Costa', description: 'Filmes termoencolhíveis', quantity: 6, weight: 220, status: 'Separação' },
+  { sectorId: 'P6', invoice: 'NF-3004', customer: 'Rede Litoral', description: 'Peças de linha branca', quantity: 3, weight: 145, status: 'Roteirizado' },
+  { sectorId: 'Q5', invoice: 'NF-3005', customer: 'Construtora Ponte Alta', description: 'Discos de corte', quantity: 8, weight: 74, status: 'Aguardando expedição' },
+  { sectorId: 'Q6', invoice: 'NF-3006', customer: 'Mercantil São Jorge', description: 'Fardos de higiene', quantity: 10, weight: 310, status: 'Conferido' },
+  { sectorId: 'R5', invoice: 'NF-3007', customer: 'Distribuidora Bahia Sul', description: 'Cabos flexíveis', quantity: 5, weight: 265, status: 'Aguardando roteirização' },
+  { sectorId: 'R6', invoice: 'NF-3008', customer: 'Supermercados Recôncavo', description: 'Alimentos embalados', quantity: 12, weight: 430, status: 'Aguardando coleta' },
+  { sectorId: 'S5', invoice: 'NF-3009', customer: 'Farmalog Nordeste', description: 'Medicamentos lacrados', quantity: 7, weight: 88, status: 'Bloqueio fiscal' },
+  { sectorId: 'S6', invoice: 'NF-3010', customer: 'Auto Peças Camaçari', description: 'Kits de amortecedores', quantity: 4, weight: 240, status: 'Separação' },
+];
+
+function getSectorOrDefault(sectorId) {
+  return validSectorIds.has(sectorId) ? sectorId : defaultSectorId;
+}
+
+function createDemoWarehouseInvoices() {
+  return Array.from({ length: 150 }, (_, index) => {
+    const invoiceIndex = index + 1;
+    const itemCount = (index % 5 === 0) ? 3 : (index % 3 === 0) ? 2 : 1;
+    const customer = demoWarehouseCustomers[index % demoWarehouseCustomers.length];
+
+    return {
+      invoice: `NF-${String(1000 + invoiceIndex).padStart(4, '0')}`,
+      sectorId: getSectorOrDefault(demoWarehouseSectors[index % demoWarehouseSectors.length]),
+      customer,
+      status: statusOptions[index % statusOptions.length],
+      items: Array.from({ length: itemCount }, (_, itemIndex) => ({
+        description: demoWarehouseProducts[(index + itemIndex) % demoWarehouseProducts.length],
+        quantity: ((index + itemIndex) % 8) + 1,
+        weight: 35 + ((index * 17) + (itemIndex * 29)) % 620,
+      })),
+    };
+  });
+}
+
+const demoWarehouseInvoices = [
+  ...createDemoWarehouseInvoices(),
+  ...extraDemoEmptySectorInvoices.map((invoice) => ({
+    ...invoice,
+    sectorId: getSectorOrDefault(invoice.sectorId),
+    items: [{
+      description: invoice.description,
+      quantity: invoice.quantity,
+      weight: invoice.weight,
+    }],
+  })),
+];
+
+const initialCargoItems = demoWarehouseInvoices.flatMap((invoice) => (
+  invoice.items.map((item, itemIndex) => ({
+    id: `demo-${invoice.invoice.toLowerCase()}-${itemIndex + 1}`,
+    sectorId: invoice.sectorId,
+    invoice: invoice.invoice,
+    description: item.description,
+    customer: invoice.customer,
+    quantity: item.quantity,
+    weight: item.weight,
+    status: invoice.status,
+  }))
+));
 
 const weightFormatter = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 1,
@@ -291,7 +310,12 @@ function normalizeStoredItems(items) {
     weight: Number(item.weight) || 0,
   }));
 
-  return normalizedItems.length ? normalizedItems : initialCargoItems;
+  if (!normalizedItems.length) return initialCargoItems;
+
+  const storedInvoices = new Set(normalizedItems.map((item) => item.invoice));
+  const missingDemoItems = initialCargoItems.filter((item) => !storedInvoices.has(item.invoice));
+
+  return [...normalizedItems, ...missingDemoItems];
 }
 
 function loadCargoItems() {
@@ -364,14 +388,72 @@ function groupDashboardItems(items, getKey) {
   }, {})).sort((first, second) => second.itemCount - first.itemCount || second.weight - first.weight);
 }
 
+function groupInventoryItems(items) {
+  return Object.values(items.reduce((groups, item) => {
+    const key = item.description || 'Não informado';
+
+    if (!groups[key]) {
+      groups[key] = {
+        name: key,
+        itemCount: 0,
+        quantity: 0,
+        weight: 0,
+        invoices: new Set(),
+        sectors: new Set(),
+      };
+    }
+
+    groups[key].itemCount += 1;
+    groups[key].quantity += item.quantity;
+    groups[key].weight += item.weight;
+    groups[key].invoices.add(item.invoice);
+    groups[key].sectors.add(item.sectorId);
+    return groups;
+  }, {})).map((product) => ({
+    name: product.name,
+    itemCount: product.itemCount,
+    quantity: product.quantity,
+    weight: product.weight,
+    invoiceCount: product.invoices.size,
+    sectorCount: product.sectors.size,
+  })).sort((first, second) => (
+    second.quantity - first.quantity
+    || second.weight - first.weight
+    || first.name.localeCompare(second.name)
+  ));
+}
+
 function getWarehouseDashboards(items) {
-  const topClients = groupDashboardItems(items, (item) => item.customer).slice(0, 5);
-  const topProducts = groupDashboardItems(items, (item) => item.description).slice(0, 5);
-  const totalItems = Math.max(1, items.length);
-  const clientDistribution = topClients.map((client) => ({
-    ...client,
-    percentage: Math.round((client.itemCount / totalItems) * 100),
+  const clientGroups = groupDashboardItems(items, (item) => item.customer);
+  const productGroups = groupDashboardItems(items, (item) => item.description);
+  const inventoryItems = groupInventoryItems(items);
+  const topClients = [...clientGroups]
+    .sort((first, second) => second.itemCount - first.itemCount || second.quantity - first.quantity)
+    .slice(0, 5);
+  const topProducts = [...productGroups]
+    .sort((first, second) => second.quantity - first.quantity || second.itemCount - first.itemCount)
+    .slice(0, 5);
+  const totalWeight = Math.max(1, items.reduce((sum, item) => sum + item.weight, 0));
+  const clientDistribution = [...clientGroups]
+    .sort((first, second) => second.weight - first.weight)
+    .slice(0, 5)
+    .map((client) => ({
+      ...client,
+      percentage: Math.round((client.weight / totalWeight) * 100),
+    }));
+  const inventoryQuantityMax = Math.max(1, ...inventoryItems.map((item) => item.quantity));
+  const inventoryWeightMax = Math.max(1, ...inventoryItems.map((item) => item.weight));
+  const inventoryQuantityChart = inventoryItems.slice(0, 6).map((item) => ({
+    ...item,
+    percentage: Math.round((item.quantity / inventoryQuantityMax) * 100),
   }));
+  const inventoryWeightChart = [...inventoryItems]
+    .sort((first, second) => second.weight - first.weight || second.quantity - first.quantity)
+    .slice(0, 6)
+    .map((item) => ({
+      ...item,
+      percentage: Math.round((item.weight / inventoryWeightMax) * 100),
+    }));
   const reportItems = [...items].sort((first, second) => (
     first.sectorId.localeCompare(second.sectorId)
     || first.invoice.localeCompare(second.invoice)
@@ -382,6 +464,10 @@ function getWarehouseDashboards(items) {
     topClients,
     topProducts,
     clientDistribution,
+    mainInventoryItem: inventoryItems[0] || null,
+    inventoryItems,
+    inventoryQuantityChart,
+    inventoryWeightChart,
     reportItems,
   };
 }
@@ -667,7 +753,7 @@ export default function WarehouseManagementPage() {
               <strong>{selectedStats.invoiceCount}</strong>
             </div>
             <div>
-              <span>Volumes</span>
+              <span>Quantidade</span>
               <strong>{selectedStats.quantity}</strong>
             </div>
             <div>
@@ -709,7 +795,7 @@ export default function WarehouseManagementPage() {
                           <Box size={16} strokeWidth={2.2} aria-hidden="true" />
                           <div>
                             <strong>{item.description}</strong>
-                            <span>{item.quantity} volume(s) - {weightFormatter.format(item.weight)} kg - {item.status}</span>
+                            <span>Quantidade: {item.quantity} - Peso: {weightFormatter.format(item.weight)} kg - {item.status}</span>
                           </div>
                         </div>
                       ))}
@@ -792,14 +878,14 @@ export default function WarehouseManagementPage() {
                       <span>Item {index + 1}</span>
                       <input
                         type="text"
-                        placeholder="Descrição da carga"
+                        placeholder="Descrição ou código do produto"
                         value={item.description}
                         onChange={(event) => updateCargoFormItem(item.id, 'description', event.target.value)}
                       />
                     </label>
 
                     <label className="field">
-                      <span>Volumes</span>
+                      <span>Quantidade</span>
                       <input
                         type="number"
                         min="1"
@@ -844,18 +930,18 @@ export default function WarehouseManagementPage() {
         </aside>
       </div>
 
-      <section className="warehouse-dashboard-grid" aria-label="Dashboards do galpão">
+      <section className="warehouse-dashboard-grid" aria-label="Indicadores do galpão">
         <article className="registered-launches-panel warehouse-dashboard-card">
           <div className="registered-launches-header">
-            <h2>Principais clientes</h2>
-            <div><span>{warehouseDashboards.topClients.length} cliente(s)</span></div>
+            <h2>Clientes com mais itens</h2>
+            <div><span>ranking por item</span></div>
           </div>
           <div className="warehouse-ranking-list">
             {warehouseDashboards.topClients.map((client) => (
               <div className="warehouse-ranking-row" key={client.name}>
                 <div>
                   <strong>{client.name}</strong>
-                  <span>{client.quantity} volume(s) - {weightFormatter.format(client.weight)} kg</span>
+                  <span>Itens: {client.itemCount} - Quantidade: {client.quantity} - Peso: {weightFormatter.format(client.weight)} kg</span>
                 </div>
                 <em>{client.itemCount}</em>
               </div>
@@ -865,17 +951,17 @@ export default function WarehouseManagementPage() {
 
         <article className="registered-launches-panel warehouse-dashboard-card">
           <div className="registered-launches-header">
-            <h2>Principais produtos</h2>
-            <div><span>{warehouseDashboards.topProducts.length} produto(s)</span></div>
+            <h2>Produtos por quantidade</h2>
+            <div><span>soma da quantidade</span></div>
           </div>
           <div className="warehouse-ranking-list">
             {warehouseDashboards.topProducts.map((product) => (
               <div className="warehouse-ranking-row" key={product.name}>
                 <div>
                   <strong>{product.name}</strong>
-                  <span>{product.quantity} volume(s) - {weightFormatter.format(product.weight)} kg</span>
+                  <span>Quantidade: {product.quantity} - Itens: {product.itemCount} - Peso: {weightFormatter.format(product.weight)} kg</span>
                 </div>
-                <em>{product.itemCount}</em>
+                <em>{product.quantity}</em>
               </div>
             ))}
           </div>
@@ -883,8 +969,8 @@ export default function WarehouseManagementPage() {
 
         <article className="registered-launches-panel warehouse-dashboard-card">
           <div className="registered-launches-header">
-            <h2>Distribuição por cliente</h2>
-            <div><span>{cargoItems.length} item(s)</span></div>
+            <h2>Peso por cliente (kg)</h2>
+            <div><span>Total {weightFormatter.format(totalWeight)} kg</span></div>
           </div>
           <div className="warehouse-distribution-list">
             {warehouseDashboards.clientDistribution.map((client) => (
@@ -893,6 +979,7 @@ export default function WarehouseManagementPage() {
                   <strong>{client.name}</strong>
                   <span>{client.percentage}%</span>
                 </div>
+                <small>Peso: {weightFormatter.format(client.weight)} kg - Itens: {client.itemCount} - Quantidade: {client.quantity}</small>
                 <span className="warehouse-distribution-track">
                   <span style={{ width: `${client.percentage}%` }} />
                 </span>
@@ -914,7 +1001,7 @@ export default function WarehouseManagementPage() {
                   <th>NF</th>
                   <th>Cliente</th>
                   <th>Item</th>
-                  <th>Volumes</th>
+                  <th>Quantidade</th>
                   <th>Peso</th>
                   <th>Status</th>
                 </tr>
@@ -935,6 +1022,98 @@ export default function WarehouseManagementPage() {
             </table>
 
             {!warehouseDashboards.reportItems.length && <div className="empty-list">Nenhum item guardado</div>}
+          </div>
+        </article>
+
+        <article className="registered-launches-panel warehouse-dashboard-card warehouse-dashboard-card--stock">
+          <div className="registered-launches-header">
+            <h2>Relatório de estoque por produto</h2>
+            <div><span>{warehouseDashboards.inventoryItems.length} produto(s)</span></div>
+          </div>
+
+          {warehouseDashboards.mainInventoryItem ? (
+            <div className="warehouse-stock-highlight">
+              <span>Principal item no estoque</span>
+              <strong>{warehouseDashboards.mainInventoryItem.name}</strong>
+              <small>
+                Quantidade: {warehouseDashboards.mainInventoryItem.quantity}
+                {' - '}
+                Itens: {warehouseDashboards.mainInventoryItem.itemCount}
+                {' - '}
+                Peso: {weightFormatter.format(warehouseDashboards.mainInventoryItem.weight)} kg
+                {' - '}
+                NFs: {warehouseDashboards.mainInventoryItem.invoiceCount}
+                {' - '}
+                Setores: {warehouseDashboards.mainInventoryItem.sectorCount}
+              </small>
+            </div>
+          ) : (
+            <div className="empty-list">Nenhum produto em estoque</div>
+          )}
+
+          <div className="warehouse-stock-analytics">
+            <section className="warehouse-stock-chart" aria-label="Top produtos por quantidade">
+              <h3>Top produtos por quantidade</h3>
+              <div>
+                {warehouseDashboards.inventoryQuantityChart.map((item) => (
+                  <div className="warehouse-stock-bar-row" key={item.name}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>Quantidade: {item.quantity} - Itens: {item.itemCount}</span>
+                    </div>
+                    <span className="warehouse-stock-bar-track">
+                      <span style={{ width: `${item.percentage}%` }} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section className="warehouse-stock-chart" aria-label="Top produtos por peso">
+              <h3>Top produtos por peso</h3>
+              <div>
+                {warehouseDashboards.inventoryWeightChart.map((item) => (
+                  <div className="warehouse-stock-bar-row" key={item.name}>
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>Peso: {weightFormatter.format(item.weight)} kg - Quantidade: {item.quantity}</span>
+                    </div>
+                    <span className="warehouse-stock-bar-track warehouse-stock-bar-track--weight">
+                      <span style={{ width: `${item.percentage}%` }} />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <div className="registered-launches-table-wrap warehouse-stock-table-wrap">
+            <table className="registered-launches-table warehouse-stock-table">
+              <thead>
+                <tr>
+                  <th>Produto</th>
+                  <th>Quantidade</th>
+                  <th>Itens</th>
+                  <th>Peso</th>
+                  <th>NFs</th>
+                  <th>Setores</th>
+                </tr>
+              </thead>
+              <tbody>
+                {warehouseDashboards.inventoryItems.map((item) => (
+                  <tr key={item.name}>
+                    <td><strong>{item.name}</strong></td>
+                    <td>{item.quantity}</td>
+                    <td>{item.itemCount}</td>
+                    <td>{weightFormatter.format(item.weight)} kg</td>
+                    <td>{item.invoiceCount}</td>
+                    <td>{item.sectorCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {!warehouseDashboards.inventoryItems.length && <div className="empty-list">Nenhum produto em estoque</div>}
           </div>
         </article>
       </section>

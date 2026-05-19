@@ -156,6 +156,12 @@ function columnLabel(index) {
   return label;
 }
 
+function columnLabelIndex(label) {
+  return String(label).split('').reduce((index, character) => (
+    (index * 26) + character.charCodeAt(0) - 64
+  ), 0);
+}
+
 function closestClusterIndex(clusters, value) {
   return clusters.reduce((closestIndex, cluster, index) => {
     const closestDistance = Math.abs(value - clusters[closestIndex].center);
@@ -191,6 +197,23 @@ const validSectorIds = new Set(blueprintSectors.map((sector) => sector.id));
 const defaultSectorId = validSectorIds.has('H4') ? 'H4' : blueprintSectors[0].id;
 const warehouseColumnCount = new Set(blueprintSectors.map((sector) => sector.column)).size;
 const warehouseRowCount = new Set(blueprintSectors.map((sector) => sector.row)).size;
+const depotSplitColumnIndex = columnLabelIndex('M');
+const warehouseDepots = [
+  {
+    id: 'deposit-2',
+    label: 'Depósito 2',
+    columns: '',
+  },
+  {
+    id: 'deposit-1',
+    label: 'Depósito 1',
+    columns: '',
+  },
+];
+const sectorDepotMap = new Map(blueprintSectors.map((sector) => [
+  sector.id,
+  columnLabelIndex(sector.column) >= depotSplitColumnIndex ? 'deposit-1' : 'deposit-2',
+]));
 
 const demoWarehouseSectors = [
   'A1', 'C1', 'E1', 'G1', 'H1', 'I1', 'J1', 'K1', 'O1', 'P1',
@@ -345,6 +368,28 @@ function getSectorStats(items) {
     quantity,
     weight,
   };
+}
+
+function getDepotUsageStats(items, sectorItemsMap) {
+  return warehouseDepots.map((depot) => {
+    const sectors = blueprintSectors.filter((sector) => sectorDepotMap.get(sector.id) === depot.id);
+    const depotItems = items.filter((item) => sectorDepotMap.get(item.sectorId) === depot.id);
+    const occupiedSectors = sectors.filter((sector) => (sectorItemsMap.get(sector.id) || []).length > 0).length;
+    const quantity = depotItems.reduce((sum, item) => sum + item.quantity, 0);
+    const weight = depotItems.reduce((sum, item) => sum + item.weight, 0);
+    const invoices = new Set(depotItems.map((item) => item.invoice));
+
+    return {
+      ...depot,
+      sectors: sectors.length,
+      occupiedSectors,
+      occupancyPercent: sectors.length ? Math.round((occupiedSectors / sectors.length) * 100) : 0,
+      itemCount: depotItems.length,
+      invoiceCount: invoices.size,
+      quantity,
+      weight,
+    };
+  });
 }
 
 function groupItemsByInvoice(items) {
@@ -539,6 +584,14 @@ export default function WarehouseManagementPage() {
   const selectedStats = useMemo(() => getSectorStats(selectedItems), [selectedItems]);
   const groupedInvoices = useMemo(() => groupItemsByInvoice(selectedItems), [selectedItems]);
   const groupedCustomers = useMemo(() => groupItemsByCustomer(selectedItems), [selectedItems]);
+  const depotUsageStats = useMemo(
+    () => getDepotUsageStats(cargoItems, sectorItemsMap),
+    [cargoItems, sectorItemsMap],
+  );
+  const totalDepotQuantity = Math.max(1, depotUsageStats.reduce((sum, depot) => sum + depot.quantity, 0));
+  const totalDepotWeight = Math.max(1, depotUsageStats.reduce((sum, depot) => sum + depot.weight, 0));
+  const maxDepotWeight = Math.max(1, ...depotUsageStats.map((depot) => depot.weight));
+  const maxDepotQuantity = Math.max(1, ...depotUsageStats.map((depot) => depot.quantity));
 
   useEffect(() => {
     if (sectorGroupingMode !== 'customer') return;
@@ -835,6 +888,17 @@ export default function WarehouseManagementPage() {
                   })}
                 </g>
               </svg>
+
+              <div className="warehouse-depot-labels" aria-label="Divisão dos depósitos">
+                <div>
+                  <strong>Depósito 2</strong>
+                  <span></span>
+                </div>
+                <div>
+                  <strong>Depósito 1</strong>
+                  <span></span>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -1043,6 +1107,118 @@ export default function WarehouseManagementPage() {
           </form>
         </aside>
       </div>
+
+      <section className="warehouse-depot-dashboard" aria-label="Comparativo de uso dos depósitos">
+        <div className="registered-launches-header warehouse-depot-dashboard-header">
+          <h2>Comparativo dos depósitos</h2>
+          <div><span>Depósito 2 A-L</span><strong>Depósito 1 M-T</strong></div>
+        </div>
+
+        <div className="warehouse-depot-cards">
+          {depotUsageStats.map((depot) => (
+            <article className="warehouse-depot-card" key={depot.id}>
+              <header>
+                <div>
+                  <h3>{depot.label}</h3>
+                  <span>{depot.columns}</span>
+                </div>
+                <strong>{depot.occupancyPercent}%</strong>
+              </header>
+
+              <div className="warehouse-depot-stat-grid">
+                <div>
+                  <span>Setores usados</span>
+                  <strong>{depot.occupiedSectors}/{depot.sectors}</strong>
+                </div>
+                <div>
+                  <span>NFs</span>
+                  <strong>{depot.invoiceCount}</strong>
+                </div>
+                <div>
+                  <span>Itens</span>
+                  <strong>{depot.itemCount}</strong>
+                </div>
+                <div>
+                  <span>Quantidade</span>
+                  <strong>{depot.quantity}</strong>
+                </div>
+              </div>
+
+              <div className="warehouse-depot-bars">
+                <div>
+                  <span>Uso dos setores</span>
+                  <strong>{depot.occupancyPercent}%</strong>
+                  <em><span style={{ width: `${depot.occupancyPercent}%` }} /></em>
+                </div>
+                <div>
+                  <span>Quantidade</span>
+                  <strong>{depot.quantity}</strong>
+                  <em><span style={{ width: `${Math.round((depot.quantity / maxDepotQuantity) * 100)}%` }} /></em>
+                </div>
+                <div>
+                  <span>Peso</span>
+                  <strong>{weightFormatter.format(depot.weight)} kg</strong>
+                  <em><span style={{ width: `${Math.round((depot.weight / maxDepotWeight) * 100)}%` }} /></em>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="warehouse-depot-distribution">
+          <section aria-label="Distribuição por quantidade">
+            <header>
+              <h3>Distribuição por quantidade</h3>
+              <span>{depotUsageStats.reduce((sum, depot) => sum + depot.quantity, 0)} unidades</span>
+            </header>
+            <div className="warehouse-depot-stacked-bar">
+              {depotUsageStats.map((depot) => (
+                <span
+                  key={depot.id}
+                  className={`warehouse-depot-stacked-segment warehouse-depot-stacked-segment--${depot.id}`}
+                  style={{ width: `${Math.round((depot.quantity / totalDepotQuantity) * 100)}%` }}
+                  title={`${depot.label}: ${depot.quantity}`}
+                />
+              ))}
+            </div>
+            <div className="warehouse-depot-distribution-legend">
+              {depotUsageStats.map((depot) => (
+                <div key={depot.id}>
+                  <span className={`warehouse-depot-dot warehouse-depot-dot--${depot.id}`} />
+                  <strong>{depot.label}</strong>
+                  <em>{Math.round((depot.quantity / totalDepotQuantity) * 100)}%</em>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section aria-label="Distribuição por peso">
+            <header>
+              <h3>Distribuição por peso</h3>
+              <span>{weightFormatter.format(depotUsageStats.reduce((sum, depot) => sum + depot.weight, 0))} kg</span>
+            </header>
+            <div className="warehouse-depot-stacked-bar">
+              {depotUsageStats.map((depot) => (
+                <span
+                  key={depot.id}
+                  className={`warehouse-depot-stacked-segment warehouse-depot-stacked-segment--${depot.id}`}
+                  style={{ width: `${Math.round((depot.weight / totalDepotWeight) * 100)}%` }}
+                  title={`${depot.label}: ${weightFormatter.format(depot.weight)} kg`}
+                />
+              ))}
+            </div>
+            <div className="warehouse-depot-distribution-legend">
+              {depotUsageStats.map((depot) => (
+                <div key={depot.id}>
+                  <span className={`warehouse-depot-dot warehouse-depot-dot--${depot.id}`} />
+                  <strong>{depot.label}</strong>
+                  <em>{Math.round((depot.weight / totalDepotWeight) * 100)}%</em>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
 
       <section className="warehouse-dashboard-grid" aria-label="Indicadores do galpão">
         <article className="registered-launches-panel warehouse-dashboard-card">

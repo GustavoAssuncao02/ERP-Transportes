@@ -19,8 +19,49 @@ const searchTypes = [
 const deletableLaunches = financeLaunches.filter((launch) => launch.status === 'Aberto');
 const supplierOptions = [...new Set(deletableLaunches.map((launch) => launch.supplier))];
 const typeOptions = [...new Set(deletableLaunches.map((launch) => launch.type))];
-const documentOptions = [...new Set(deletableLaunches.map((launch) => launch.document))];
 const chargeTypeOptions = [...new Set(deletableLaunches.map((launch) => launch.chargeType))];
+
+function digitsOnly(value) {
+  return String(value).replace(/\D/g, '');
+}
+
+function searchAmountValue(value) {
+  const trimmed = String(value).trim();
+
+  if (!/\d/.test(trimmed)) return Number.NaN;
+
+  let sanitized = trimmed.replace(/[^\d,.-]/g, '');
+
+  if (sanitized.includes(',')) {
+    sanitized = sanitized.replace(/\./g, '').replace(',', '.');
+  } else {
+    const parts = sanitized.split('.');
+
+    if (parts.length > 2 || (parts.length === 2 && parts[1].length === 3)) {
+      sanitized = sanitized.replace(/\./g, '');
+    }
+  }
+
+  return Number.parseFloat(sanitized);
+}
+
+function launchMatchesDirectSearch(launch, searchValue) {
+  const query = normalizeText(searchValue.trim());
+
+  if (!query) return true;
+
+  const documentMatches = normalizeText(launch.document).includes(query);
+  const supplierMatches = normalizeText(launch.supplier).includes(query);
+  const searchAmount = searchAmountValue(searchValue);
+  const amountMatches = Number.isFinite(searchAmount) && Math.abs(launch.amount - searchAmount) < 0.005;
+  const searchDigits = digitsOnly(searchValue);
+  const amountDigits = digitsOnly(launch.amount.toFixed(2));
+  const formattedAmountDigits = digitsOnly(currency(launch.amount));
+  const amountTextMatches = searchDigits.length >= 3
+    && (amountDigits.includes(searchDigits) || formattedAmountDigits.includes(searchDigits));
+
+  return documentMatches || supplierMatches || amountMatches || amountTextMatches;
+}
 
 function totalAmount(launches) {
   return launches.reduce((sum, launch) => sum + launch.amount, 0);
@@ -28,8 +69,12 @@ function totalAmount(launches) {
 
 function MultiCheckField({ label, options, selected, onChange, placeholder }) {
   const [query, setQuery] = useState('');
+  const [expanded, setExpanded] = useState(false);
   const allSelected = selected.length === options.length;
   const visibleOptions = options.filter((option) => normalizeText(option).includes(normalizeText(query)));
+  const selectedSummary = allSelected
+    ? 'Todos selecionados'
+    : `${selected.length} selecionado(s)`;
 
   function toggleAll() {
     onChange(allSelected ? [] : options);
@@ -45,34 +90,46 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
   }
 
   return (
-    <div className="field field--span-4 multi-check-field">
+    <div
+      className={`field field--span-4 multi-check-field${expanded ? ' multi-check-field--expanded' : ' multi-check-field--collapsed'}`}
+      onClick={() => setExpanded(true)}
+      onFocusCapture={() => setExpanded(true)}
+    >
       <span>{label}</span>
-      <div className="multi-check-box">
+      <div className="multi-check-box" aria-expanded={expanded}>
         <div className="multi-check-toolbar">
-          <input
-            type="search"
-            placeholder={placeholder}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          {expanded ? (
+            <input
+              type="search"
+              placeholder={placeholder}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          ) : (
+            <button type="button" className="multi-check-summary-button">
+              {selectedSummary}
+            </button>
+          )}
           <label>
             <input type="checkbox" checked={allSelected} onChange={toggleAll} />
             Todos
           </label>
         </div>
-        <div className="multi-check-list">
-          {visibleOptions.map((option) => (
-            <label className="multi-check-row" key={option}>
-              <input
-                type="checkbox"
-                checked={selected.includes(option)}
-                onChange={() => toggleOption(option)}
-              />
-              <span>{option}</span>
-            </label>
-          ))}
-          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
-        </div>
+        {expanded && (
+          <div className="multi-check-list">
+            {visibleOptions.map((option) => (
+              <label className="multi-check-row" key={option}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(option)}
+                  onChange={() => toggleOption(option)}
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+            {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -86,8 +143,8 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
   const [selectedChargeTypes, setSelectedChargeTypes] = useState(chargeTypeOptions);
   const [selectedTypes, setSelectedTypes] = useState(typeOptions);
   const [selectedSuppliers, setSelectedSuppliers] = useState(supplierOptions);
-  const [selectedDocuments, setSelectedDocuments] = useState(documentOptions);
   const [launchSearch, setLaunchSearch] = useState('');
+  const [activeLaunchSearch, setActiveLaunchSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [status, setStatus] = useAutoClearMessage();
 
@@ -99,16 +156,16 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
     const chargeMatches = selectedChargeTypes.includes(launch.chargeType);
     const typeMatches = selectedTypes.includes(launch.type);
     const supplierMatches = selectedSuppliers.includes(launch.supplier);
-    const documentMatches = selectedDocuments.includes(launch.document);
+    const directSearchMatches = launchMatchesDirectSearch(launch, activeLaunchSearch);
 
-    return unitMatches && startMatches && endMatches && chargeMatches && typeMatches && supplierMatches && documentMatches;
+    return unitMatches && startMatches && endMatches && chargeMatches && typeMatches && supplierMatches && directSearchMatches;
   }), [
+    activeLaunchSearch,
     businessUnit,
     dateEnd,
     dateStart,
     searchType,
     selectedChargeTypes,
-    selectedDocuments,
     selectedSuppliers,
     selectedTypes,
   ]);
@@ -128,33 +185,17 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
     setStatus('Lançamento removido da exclusão');
   }
 
-  function searchAndAddLaunch() {
+  function applyLaunchSearch() {
     const query = launchSearch.trim();
-    const anyLaunch = financeLaunches.find((launch) => normalizeText(launch.id) === normalizeText(query));
-    const deletableLaunch = deletableLaunches.find((launch) => normalizeText(launch.id) === normalizeText(query));
 
     if (!query) {
-      setStatus('Informe o número do lançamento');
+      setActiveLaunchSearch('');
+      setStatus('Busca limpa');
       return;
     }
 
-    if (!anyLaunch) {
-      setStatus('Lançamento não encontrado');
-      return;
-    }
-
-    if (!deletableLaunch) {
-      setStatus('Somente títulos em aberto podem ser adicionados a exclusão');
-      return;
-    }
-
-    if (selectedIds.includes(deletableLaunch.id)) {
-      setStatus('Lançamento já esta selecionado para exclusão');
-      return;
-    }
-
-    addLaunch(deletableLaunch.id);
-    setLaunchSearch('');
+    setActiveLaunchSearch(query);
+    setStatus('Busca aplicada aos títulos em aberto');
   }
 
   function clearFilters() {
@@ -165,7 +206,8 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
     setSelectedChargeTypes(chargeTypeOptions);
     setSelectedTypes(typeOptions);
     setSelectedSuppliers(supplierOptions);
-    setSelectedDocuments(documentOptions);
+    setLaunchSearch('');
+    setActiveLaunchSearch('');
     setStatus('');
   }
 
@@ -242,14 +284,6 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
             placeholder="Pesquisar fornecedor"
           />
 
-          <MultiCheckField
-            label="Selecionar Documento"
-            options={documentOptions}
-            selected={selectedDocuments}
-            onChange={setSelectedDocuments}
-            placeholder="Pesquisar documento"
-          />
-
           <div className="field registered-launches-actions">
             <span>&nbsp;</span>
             <button type="button" className="secondary-button" onClick={clearFilters}>Limpar filtros</button>
@@ -272,17 +306,17 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
                 <input
                   id="deletion-launch-search"
                   type="search"
-                  placeholder="Número do lançamento"
+                  placeholder="Documento, fornecedor ou valor"
                   value={launchSearch}
                   onChange={(event) => setLaunchSearch(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') {
                       event.preventDefault();
-                      searchAndAddLaunch();
+                      applyLaunchSearch();
                     }
                   }}
                 />
-                <button type="button" className="secondary-button schedule-search-button" onClick={searchAndAddLaunch}>
+                <button type="button" className="secondary-button schedule-search-button" onClick={applyLaunchSearch}>
                   <Search size={15} strokeWidth={2.2} />
                   Pesquisar
                 </button>

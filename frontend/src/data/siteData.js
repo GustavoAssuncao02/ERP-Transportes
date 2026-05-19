@@ -95,7 +95,7 @@ export const navigationItems = [
           },
           {
             id: 'exclusao-titulos-pagar',
-            label: 'Exclusão de Títulos a Pagar',
+            label: 'Exclusão de Lançamentos a Pagar',
             pageId: 'accounts-payable-deletion',
           },
           {

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import AttachmentPanel from '../components/AttachmentPanel.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
-import { currency, financeLaunches } from '../data/financeData.js';
+import { chargeTypes, currency, financeLaunches, paymentBanks } from '../data/financeData.js';
 
 const units = [
   { code: '001', name: 'JTD Transportes LTDA' },
@@ -10,7 +10,7 @@ const units = [
   { code: '003', name: 'JTD Armazéns Salvador' },
 ];
 
-const defaultUnit = '1';
+const defaultUnit = '001';
 
 const suppliers = [
   { code: '1001', name: 'Auto Posto Central LTDA', cnpj: '12.345.678/0001-90' },
@@ -26,6 +26,10 @@ const accountingTypes = [
   { code: '04', name: 'Pedágio' },
   { code: '05', name: 'Administrativo' },
 ];
+
+const settlementTypeOptions = ['Baixa avulsa', 'Baixa manual', 'Reembolso', 'Complemento de pagamento'];
+const paymentTypeOptions = ['Total', 'Desconto', 'Juros'];
+const paymentMethodOptions = chargeTypes;
 
 const lookupConfig = {
   payment: {
@@ -69,6 +73,10 @@ function dateDistance(value) {
   return Math.abs(date.getTime() - Date.now());
 }
 
+function numberValue(value) {
+  return Number.parseFloat(String(value).replace(',', '.')) || 0;
+}
+
 function nextPaymentNumber() {
   const now = new Date();
   const key = 'oneOffPaymentSequence';
@@ -108,7 +116,11 @@ export default function OneOffPaymentPage() {
   const [paymentNumber, setPaymentNumber] = useState('');
   const [supplier, setSupplier] = useState('');
   const [accountingType, setAccountingType] = useState('');
-  const [chargeType, setChargeType] = useState('');
+  const [settlementType, setSettlementType] = useState(settlementTypeOptions[0]);
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentType, setPaymentType] = useState('Total');
+  const [paymentBank, setPaymentBank] = useState('');
+  const [adjustmentAmount, setAdjustmentAmount] = useState('');
   const [documentNumber, setDocumentNumber] = useState('');
   const [paymentDate, setPaymentDate] = useState(todayValue());
   const [paymentValue, setPaymentValue] = useState('');
@@ -120,6 +132,13 @@ export default function OneOffPaymentPage() {
   const [status, setStatus] = useAutoClearMessage();
 
   const activeLookup = lookupType ? lookupConfig[lookupType] : null;
+  const paymentAmount = numberValue(paymentValue);
+  const adjustmentValue = numberValue(adjustmentAmount);
+  const finalPaymentValue = paymentType === 'Desconto'
+    ? Math.max(0, paymentAmount - adjustmentValue)
+    : paymentType === 'Juros'
+      ? paymentAmount + adjustmentValue
+      : paymentAmount;
   const lookupItems = useMemo(() => {
     if (!activeLookup) return [];
 
@@ -186,7 +205,19 @@ export default function OneOffPaymentPage() {
     setPaymentNumber(payment.id);
     setSupplier(formatSupplierLabel(payment));
     setAccountingType(formatAccountingTypeLabel(payment));
-    setChargeType(payment.chargeType || '');
+    setSettlementType(settlementTypeOptions[0]);
+    setPaymentMethod(payment.chargeType || '');
+    setPaymentBank(payment.paymentBank || '');
+    if (payment.discountAmount) {
+      setPaymentType('Desconto');
+      setAdjustmentAmount(String(payment.discountAmount));
+    } else if (payment.interestAmount) {
+      setPaymentType('Juros');
+      setAdjustmentAmount(String(payment.interestAmount));
+    } else {
+      setPaymentType('Total');
+      setAdjustmentAmount('');
+    }
     setDocumentNumber(payment.document || '');
     setPaymentDate(payment.paymentDate || payment.issueDate || todayValue());
     setPaymentValue(payment.amount ? payment.amount.toFixed(2) : '');
@@ -197,10 +228,15 @@ export default function OneOffPaymentPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
+    if (paymentType !== 'Total' && !adjustmentAmount) {
+      setStatus(`Informe o ${paymentType === 'Desconto' ? 'valor do desconto' : 'valor dos juros'}`);
+      return;
+    }
+
     const generatedPaymentNumber = paymentNumber || nextPaymentNumber();
 
     setPaymentNumber(generatedPaymentNumber);
-    setStatus(`Pagamento avulso ${generatedPaymentNumber} lançado e baixado em ${paymentDate} com ${attachments.length} anexo(s)`);
+    setStatus(`Pagamento avulso ${generatedPaymentNumber} baixado em ${paymentDate} no valor final de ${currency(finalPaymentValue)} com ${attachments.length} anexo(s)`);
   }
 
   function handleReset() {
@@ -208,7 +244,11 @@ export default function OneOffPaymentPage() {
     setPaymentNumber('');
     setSupplier('');
     setAccountingType('');
-    setChargeType('');
+    setSettlementType(settlementTypeOptions[0]);
+    setPaymentMethod('');
+    setPaymentType('Total');
+    setPaymentBank('');
+    setAdjustmentAmount('');
     setDocumentNumber('');
     setPaymentDate(todayValue());
     setPaymentValue('');
@@ -321,14 +361,40 @@ export default function OneOffPaymentPage() {
           </div>
 
           <label className="field">
-            <span>Tipo de cobranca</span>
-            <select value={chargeType} onChange={(event) => setChargeType(event.target.value)} required>
+            <span>Tipo de baixa</span>
+            <select value={settlementType} onChange={(event) => setSettlementType(event.target.value)} required>
+              {settlementTypeOptions.map((type) => (
+                <option value={type} key={type}>{type}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Banco</span>
+            <select value={paymentBank} onChange={(event) => setPaymentBank(event.target.value)} required>
               <option value="">Selecione</option>
-              <option>Boleto</option>
-              <option>Pix</option>
-              <option>Transferencia</option>
-              <option>Cartão</option>
-              <option>Dinheiro</option>
+              {paymentBanks.map((bank) => (
+                <option value={bank} key={bank}>{bank}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Forma de pagamento</span>
+            <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} required>
+              <option value="">Selecione</option>
+              {paymentMethodOptions.map((method) => (
+                <option value={method} key={method}>{method}</option>
+              ))}
+            </select>
+          </label>
+
+          <label className="field">
+            <span>Tipo de pagamento</span>
+            <select value={paymentType} onChange={(event) => setPaymentType(event.target.value)} required>
+              {paymentTypeOptions.map((type) => (
+                <option value={type} key={type}>{type}</option>
+              ))}
             </select>
           </label>
 
@@ -359,6 +425,26 @@ export default function OneOffPaymentPage() {
               onChange={(event) => setPaymentValue(event.target.value)}
               required
             />
+          </label>
+
+          {paymentType !== 'Total' && (
+            <label className="field">
+              <span>{paymentType === 'Desconto' ? 'Valor do desconto' : 'Valor dos juros'}</span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="0,00"
+                value={adjustmentAmount}
+                onChange={(event) => setAdjustmentAmount(event.target.value)}
+                required
+              />
+            </label>
+          )}
+
+          <label className="field">
+            <span>Valor final baixado</span>
+            <input type="text" value={currency(finalPaymentValue)} readOnly />
           </label>
 
           <label className="field field--span-4">
@@ -432,7 +518,7 @@ export default function OneOffPaymentPage() {
                 </thead>
                 <tbody>
                   {lookupItems.map((item) => (
-                    <tr key={`${lookupType}-${item.code}`} onClick={() => selectLookupItem(item)}>
+                    <tr key={`${lookupType}-${item.id || item.code}`} onClick={() => selectLookupItem(item)}>
                       {getLookupCells(lookupType, item).map((cell) => (
                         <td key={cell}>{cell}</td>
                       ))}

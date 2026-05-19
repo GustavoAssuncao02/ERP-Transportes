@@ -368,6 +368,35 @@ function groupItemsByInvoice(items) {
   return Object.values(groups).sort((first, second) => first.invoice.localeCompare(second.invoice));
 }
 
+function groupItemsByCustomer(items) {
+  const groups = items.reduce((accumulator, item) => {
+    const customer = item.customer || 'Cliente não informado';
+
+    if (!accumulator[customer]) {
+      accumulator[customer] = {
+        customer,
+        items: [],
+        quantity: 0,
+        weight: 0,
+        invoiceCount: 0,
+      };
+    }
+
+    accumulator[customer].items.push(item);
+    accumulator[customer].quantity += item.quantity;
+    accumulator[customer].weight += item.weight;
+    return accumulator;
+  }, {});
+
+  return Object.values(groups)
+    .map((group) => ({
+      ...group,
+      invoices: groupItemsByInvoice(group.items),
+      invoiceCount: new Set(group.items.map((item) => item.invoice)).size,
+    }))
+    .sort((first, second) => first.customer.localeCompare(second.customer));
+}
+
 function groupDashboardItems(items, getKey) {
   return Object.values(items.reduce((groups, item) => {
     const key = getKey(item) || 'Não informado';
@@ -482,7 +511,9 @@ function handleSectorKeyDown(event, sectorId, onSelect) {
 export default function WarehouseManagementPage() {
   const [cargoItems, setCargoItems] = useState(loadCargoItems);
   const [selectedSectorId, setSelectedSectorId] = useState(defaultSectorId);
+  const [sectorGroupingMode, setSectorGroupingMode] = useState('invoice');
   const [expandedInvoices, setExpandedInvoices] = useState({ 'NF-2': true });
+  const [expandedCustomers, setExpandedCustomers] = useState({});
   const [cargoForm, setCargoForm] = useState(createCargoForm);
   const [status, setStatus] = useAutoClearMessage();
 
@@ -507,6 +538,22 @@ export default function WarehouseManagementPage() {
 
   const selectedStats = useMemo(() => getSectorStats(selectedItems), [selectedItems]);
   const groupedInvoices = useMemo(() => groupItemsByInvoice(selectedItems), [selectedItems]);
+  const groupedCustomers = useMemo(() => groupItemsByCustomer(selectedItems), [selectedItems]);
+
+  useEffect(() => {
+    if (sectorGroupingMode !== 'customer') return;
+
+    setExpandedCustomers((currentExpanded) => {
+      const nextExpanded = { ...currentExpanded };
+      groupedCustomers.forEach((group) => {
+        if (nextExpanded[group.customer] === undefined) {
+          nextExpanded[group.customer] = true;
+        }
+      });
+      return nextExpanded;
+    });
+  }, [groupedCustomers, sectorGroupingMode]);
+
   const warehouseDashboards = useMemo(() => getWarehouseDashboards(cargoItems), [cargoItems]);
   const clientSelectOptions = useMemo(() => (
     [...new Set([...customerOptions, ...cargoItems.map((item) => item.customer).filter(Boolean)])]
@@ -518,6 +565,7 @@ export default function WarehouseManagementPage() {
   function selectSector(sectorId) {
     setSelectedSectorId(sectorId);
     setExpandedInvoices({});
+    setExpandedCustomers({});
     setCargoForm(createCargoForm());
     setStatus(`Setor ${sectorId} selecionado`);
   }
@@ -589,6 +637,55 @@ export default function WarehouseManagementPage() {
     }));
   }
 
+  function toggleCustomer(customer) {
+    setExpandedCustomers((currentExpanded) => ({
+      ...currentExpanded,
+      [customer]: !currentExpanded[customer],
+    }));
+  }
+
+  function renderInvoiceGroup(group) {
+    const expanded = Boolean(expandedInvoices[group.invoice]);
+
+    return (
+      <article className="warehouse-invoice-card" key={group.invoice}>
+        <button
+          type="button"
+          className="warehouse-invoice-header"
+          aria-expanded={expanded}
+          onClick={() => toggleInvoice(group.invoice)}
+        >
+          <span aria-hidden="true">
+            {expanded ? (
+              <ChevronDown size={16} strokeWidth={2.3} />
+            ) : (
+              <ChevronRight size={16} strokeWidth={2.3} />
+            )}
+          </span>
+          <div>
+            <strong>{group.invoice}</strong>
+            <small>{group.customer}</small>
+          </div>
+          <em>{group.items.length} item(s)</em>
+        </button>
+
+        {expanded && (
+          <div className="warehouse-invoice-items">
+            {group.items.map((item) => (
+              <div className="warehouse-cargo-row" key={item.id}>
+                <Box size={16} strokeWidth={2.2} aria-hidden="true" />
+                <div>
+                  <strong>{item.description}</strong>
+                  <span>Quantidade: {item.quantity} - Peso: {weightFormatter.format(item.weight)} kg - {item.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </article>
+    );
+  }
+
   function addCargoItem(event) {
     event.preventDefault();
 
@@ -620,6 +717,7 @@ export default function WarehouseManagementPage() {
 
     setCargoItems((currentItems) => [...currentItems, ...nextCargoItems]);
     setExpandedInvoices((currentExpanded) => ({ ...currentExpanded, [invoice]: true }));
+    setExpandedCustomers((currentExpanded) => ({ ...currentExpanded, [customer]: true }));
     setCargoForm(createCargoForm());
     setStatus(`${nextCargoItems.length} item(s) da ${invoice} adicionados ao setor ${selectedSectorId}`);
   }
@@ -762,17 +860,41 @@ export default function WarehouseManagementPage() {
             </div>
           </div>
 
+          <div className="warehouse-group-mode" aria-label="Agrupamento das cargas do setor">
+            <span>Agrupar por</span>
+            <div>
+              <button
+                type="button"
+                className={sectorGroupingMode === 'invoice' ? 'active' : ''}
+                aria-pressed={sectorGroupingMode === 'invoice'}
+                onClick={() => setSectorGroupingMode('invoice')}
+              >
+                NF
+              </button>
+              <button
+                type="button"
+                className={sectorGroupingMode === 'customer' ? 'active' : ''}
+                aria-pressed={sectorGroupingMode === 'customer'}
+                onClick={() => setSectorGroupingMode('customer')}
+              >
+                Fornecedor
+              </button>
+            </div>
+          </div>
+
           <div className="warehouse-invoice-list" aria-label={`Cargas do setor ${selectedSectorId}`}>
-            {groupedInvoices.map((group) => {
-              const expanded = Boolean(expandedInvoices[group.invoice]);
+            {sectorGroupingMode === 'invoice' && groupedInvoices.map((group) => renderInvoiceGroup(group))}
+
+            {sectorGroupingMode === 'customer' && groupedCustomers.map((group) => {
+              const expanded = Boolean(expandedCustomers[group.customer]);
 
               return (
-                <article className="warehouse-invoice-card" key={group.invoice}>
+                <article className="warehouse-customer-card" key={group.customer}>
                   <button
                     type="button"
-                    className="warehouse-invoice-header"
+                    className="warehouse-customer-header"
                     aria-expanded={expanded}
-                    onClick={() => toggleInvoice(group.invoice)}
+                    onClick={() => toggleCustomer(group.customer)}
                   >
                     <span aria-hidden="true">
                       {expanded ? (
@@ -782,23 +904,15 @@ export default function WarehouseManagementPage() {
                       )}
                     </span>
                     <div>
-                      <strong>{group.invoice}</strong>
-                      <small>{group.customer}</small>
+                      <strong>{group.customer}</strong>
+                      <small>{group.invoiceCount} NF(s) - Quantidade {group.quantity} - {weightFormatter.format(group.weight)} kg</small>
                     </div>
                     <em>{group.items.length} item(s)</em>
                   </button>
 
                   {expanded && (
-                    <div className="warehouse-invoice-items">
-                      {group.items.map((item) => (
-                        <div className="warehouse-cargo-row" key={item.id}>
-                          <Box size={16} strokeWidth={2.2} aria-hidden="true" />
-                          <div>
-                            <strong>{item.description}</strong>
-                            <span>Quantidade: {item.quantity} - Peso: {weightFormatter.format(item.weight)} kg - {item.status}</span>
-                          </div>
-                        </div>
-                      ))}
+                    <div className="warehouse-customer-invoices">
+                      {group.invoices.map((invoiceGroup) => renderInvoiceGroup(invoiceGroup))}
                     </div>
                   )}
                 </article>

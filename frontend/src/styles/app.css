@@ -3161,8 +3161,337 @@
 }
 
 .home-shortcuts-page,
+.user-management-page,
 .system-updates-page {
   max-width: 1280px;
+}
+
+.user-management-page .page-header {
+  width: 100%;
+  max-width: 1280px;
+}
+
+.user-management-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.user-management-summary-grid div {
+  display: flex;
+  min-height: 78px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.user-management-summary-grid span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-management-summary-grid strong {
+  color: var(--primary-dark);
+  font-size: 22px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.user-management-layout {
+  display: grid;
+  max-width: 1280px;
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.48fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.user-management-layout > .registered-launches-panel,
+.user-management-layout > .selection-panel {
+  margin-top: 0;
+}
+
+.user-management-table-wrap {
+  max-height: 470px;
+}
+
+.user-management-table {
+  min-width: 780px;
+}
+
+.user-management-table tbody tr {
+  cursor: pointer;
+}
+
+.user-management-row--selected,
+.user-management-table tbody tr.user-management-row--selected:hover {
+  background: #eef7f6;
+}
+
+.user-link-button {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.user-link-button strong,
+.user-link-button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-link-button strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.user-link-button span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.user-link-button:hover,
+.user-link-button:focus-visible {
+  color: var(--primary-dark);
+  outline: none;
+}
+
+.user-role-pill,
+.user-status-pill {
+  display: inline-flex;
+  min-height: 23px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.user-role-pill {
+  background: #e8f3f2;
+  color: var(--primary-dark);
+}
+
+.user-status-pill {
+  background: #ecf8ef;
+  color: #1f6b38;
+}
+
+.user-status-pill--inactive {
+  background: #ededed;
+  color: #666666;
+}
+
+.user-management-form-body {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.user-management-form-body .form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.user-activity-note {
+  display: grid;
+  gap: 4px;
+  padding: 9px 10px;
+  border: 1px solid #e1c56c;
+  border-radius: 5px;
+  background: #fff8df;
+}
+
+.user-activity-note strong {
+  color: #66510b;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.user-activity-note span {
+  color: #66510b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.user-management-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.user-access-panel {
+  max-width: 1280px;
+  margin-top: 16px;
+}
+
+.user-access-panel .registered-launches-header div {
+  display: inline-flex;
+  align-items: center;
+}
+
+.user-access-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.user-access-toolbar .lookup-field {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.user-access-toolbar input {
+  padding-right: 36px;
+}
+
+.user-access-admin-lock {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #f8fbfb;
+  color: var(--primary-dark);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.user-access-groups {
+  display: grid;
+  gap: 8px;
+  max-height: 520px;
+  overflow: auto;
+  padding: 12px;
+  background: #ffffff;
+}
+
+.user-access-node {
+  min-width: 0;
+  border: 1px solid #dce5e3;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.user-access-node .user-access-node {
+  border-radius: 5px;
+}
+
+.user-access-node-header,
+.user-access-leaf {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 9px 10px;
+}
+
+.user-access-node-header {
+  padding-left: calc(10px + (var(--access-level, 0) * 18px));
+}
+
+.user-access-leaf {
+  margin-left: calc(var(--access-level, 0) * 18px);
+  border-top: 1px solid #edf0ef;
+  cursor: pointer;
+}
+
+.user-access-leaf:hover {
+  background: #f6fbfa;
+}
+
+.user-access-expand-button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--primary);
+  cursor: pointer;
+}
+
+.user-access-expand-button:hover,
+.user-access-expand-button:focus-visible {
+  background: #eef5f4;
+  outline: none;
+}
+
+.user-access-node-check,
+.user-access-leaf {
+  min-width: 0;
+}
+
+.user-access-node-check {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  cursor: pointer;
+}
+
+.user-access-node-check--partial div {
+  color: var(--primary-dark);
+}
+
+.user-access-node-check input,
+.user-access-leaf input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--primary);
+}
+
+.user-access-node-check div,
+.user-access-leaf div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.user-access-node-check strong,
+.user-access-node-check span,
+.user-access-leaf strong,
+.user-access-leaf span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-access-node-check strong,
+.user-access-leaf strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.user-access-node-check span,
+.user-access-leaf span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.user-access-node-children {
+  display: grid;
+  border-top: 1px solid #edf0ef;
+  background: #fbfdfd;
 }
 
 .shortcut-manager-layout {
@@ -3693,6 +4022,58 @@
   white-space: nowrap;
 }
 
+.warehouse-group-mode {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.warehouse-group-mode > span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.warehouse-group-mode > div {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.warehouse-group-mode button {
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  background: #ffffff;
+  color: var(--text-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.warehouse-group-mode button:last-child {
+  border-right: 0;
+}
+
+.warehouse-group-mode button:hover,
+.warehouse-group-mode button:focus-visible {
+  background: #eef5f4;
+  color: var(--primary-dark);
+  outline: none;
+}
+
+.warehouse-group-mode button.active {
+  background: var(--primary);
+  color: #ffffff;
+}
+
 .warehouse-invoice-list {
   max-height: 336px;
   overflow: auto;
@@ -3708,6 +4089,7 @@
   border-bottom: 0;
 }
 
+.warehouse-customer-header,
 .warehouse-invoice-header {
   display: grid;
   width: 100%;
@@ -3723,24 +4105,42 @@
   text-align: left;
 }
 
+.warehouse-customer-header {
+  background: #f8fbfb;
+}
+
+.warehouse-customer-card {
+  border-bottom: 1px solid #eeeeee;
+}
+
+.warehouse-customer-card:last-child {
+  border-bottom: 0;
+}
+
+.warehouse-customer-header:hover,
+.warehouse-customer-header:focus-visible,
 .warehouse-invoice-header:hover,
 .warehouse-invoice-header:focus-visible {
   background: #eef7fb;
   outline: none;
 }
 
+.warehouse-customer-header > span,
 .warehouse-invoice-header > span {
   display: grid;
   place-items: center;
   color: var(--primary);
 }
 
+.warehouse-customer-header div,
 .warehouse-invoice-header div {
   display: grid;
   gap: 3px;
   min-width: 0;
 }
 
+.warehouse-customer-header strong,
+.warehouse-customer-header small,
 .warehouse-invoice-header strong,
 .warehouse-invoice-header small {
   overflow: hidden;
@@ -3748,18 +4148,21 @@
   white-space: nowrap;
 }
 
+.warehouse-customer-header strong,
 .warehouse-invoice-header strong {
   color: var(--text);
   font-size: 13px;
   font-weight: 900;
 }
 
+.warehouse-customer-header small,
 .warehouse-invoice-header small {
   color: var(--text-muted);
   font-size: 11px;
   font-weight: 700;
 }
 
+.warehouse-customer-header em,
 .warehouse-invoice-header em {
   padding: 4px 7px;
   border-radius: 999px;
@@ -3769,6 +4172,20 @@
   font-style: normal;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.warehouse-customer-invoices {
+  display: grid;
+  padding-left: 14px;
+  background: #fbfdfd;
+}
+
+.warehouse-customer-invoices .warehouse-invoice-card {
+  border-left: 1px solid #dce5e3;
+}
+
+.warehouse-customer-invoices .warehouse-invoice-items {
+  padding-left: 34px;
 }
 
 .warehouse-invoice-items {
@@ -4366,6 +4783,14 @@
     grid-template-columns: 1fr;
   }
 
+  .user-management-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .user-management-layout {
+    grid-template-columns: 1fr;
+  }
+
   .warehouse-metrics-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4415,6 +4840,7 @@
 
   .bi-metrics-grid,
   .fleet-metrics-grid,
+  .user-management-summary-grid,
   .warehouse-metrics-grid,
   .receivable-settlement-summary,
   .receivable-balance-grid,
@@ -4447,6 +4873,15 @@
 
   .fiscal-document-row {
     grid-template-columns: 1fr;
+  }
+
+  .user-management-form-body .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-access-toolbar {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .warehouse-sector-summary,

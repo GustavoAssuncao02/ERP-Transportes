@@ -35,6 +35,7 @@ const SettlementReversalPage = lazy(() => import('./SettlementReversalPage.jsx')
 const SupplierRegistrationPage = lazy(() => import('./SupplierRegistrationPage.jsx'));
 const SystemUpdatesPage = lazy(() => import('./SystemUpdatesPage.jsx'));
 const UnitRegistrationPage = lazy(() => import('./UnitRegistrationPage.jsx'));
+const UserManagementPage = lazy(() => import('./UserManagementPage.jsx'));
 const VehicleRegistrationPage = lazy(() => import('./VehicleRegistrationPage.jsx'));
 const WarehouseManagementPage = lazy(() => import('./WarehouseManagementPage.jsx'));
 
@@ -271,6 +272,10 @@ export default function DashboardPage() {
 
     if (activeTabId === 'system-updates') {
       return <SystemUpdatesPage />;
+    }
+
+    if (activeTabId === 'user-management') {
+      return <UserManagementPage />;
     }
 
     return (

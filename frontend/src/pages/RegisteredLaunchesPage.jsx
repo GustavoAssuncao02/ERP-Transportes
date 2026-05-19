@@ -3,7 +3,6 @@ import {
   accountingTypeNames,
   businessUnits,
   currency,
-  documentNumbers,
   financeLaunches,
   normalizeText,
   paymentBanks,
@@ -31,8 +30,10 @@ function numberValue(value) {
 
 function MultiCheckField({ label, options, selected, onChange, placeholder }) {
   const [query, setQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
   const allSelected = selected.length === options.length;
   const visibleOptions = options.filter((option) => normalizeText(option).includes(normalizeText(query)));
+  const summaryText = allSelected ? 'Todos selecionados' : `${selected.length} selecionado(s)`;
 
   function toggleAll() {
     onChange(allSelected ? [] : options);
@@ -48,34 +49,46 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
   }
 
   return (
-    <div className="field field--span-4 multi-check-field">
+    <div className={`field field--span-4 multi-check-field ${isOpen ? '' : 'multi-check-field--collapsed'}`}>
       <span>{label}</span>
       <div className="multi-check-box">
         <div className="multi-check-toolbar">
-          <input
-            type="search"
-            placeholder={placeholder}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          <button
+            type="button"
+            className="multi-check-summary-button"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((current) => !current)}
+          >
+            {summaryText}
+          </button>
+          {isOpen && (
+            <input
+              type="search"
+              placeholder={placeholder}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          )}
           <label>
             <input type="checkbox" checked={allSelected} onChange={toggleAll} />
             Todos
           </label>
         </div>
-        <div className="multi-check-list">
-          {visibleOptions.map((option) => (
-            <label className="multi-check-row" key={option}>
-              <input
-                type="checkbox"
-                checked={selected.includes(option)}
-                onChange={() => toggleOption(option)}
-              />
-              <span>{option}</span>
-            </label>
-          ))}
-          {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
-        </div>
+        {isOpen && (
+          <div className="multi-check-list">
+            {visibleOptions.map((option) => (
+              <label className="multi-check-row" key={option}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(option)}
+                  onChange={() => toggleOption(option)}
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+            {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -87,7 +100,6 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
   const [statusFilter, setStatusFilter] = useState('Ambos');
   const [selectedSuppliers, setSelectedSuppliers] = useState(supplierNames);
   const [selectedTypes, setSelectedTypes] = useState(accountingTypeNames);
-  const [selectedDocuments, setSelectedDocuments] = useState(documentNumbers);
   const [selectedBanks, setSelectedBanks] = useState(bankOptions);
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
@@ -106,15 +118,14 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
       const bankMatches = selectedBanks.includes(bankLabel(launch));
       const supplierMatches = selectedSuppliers.includes(launch.supplier);
       const typeMatches = selectedTypes.includes(launch.type);
-      const documentMatches = selectedDocuments.includes(launch.document);
       const startMatches = !dateStart || (dateValue && dateValue >= dateStart);
       const endMatches = !dateEnd || (dateValue && dateValue <= dateEnd);
       const minMatches = Number.isNaN(min) || launch.amount >= min;
       const maxMatches = Number.isNaN(max) || launch.amount <= max;
 
-      return unitMatches && statusMatches && bankMatches && supplierMatches && typeMatches && documentMatches && startMatches && endMatches && minMatches && maxMatches;
+      return unitMatches && statusMatches && bankMatches && supplierMatches && typeMatches && startMatches && endMatches && minMatches && maxMatches;
     });
-  }, [businessUnit, dateEnd, dateStart, maxValue, minValue, searchType, selectedBanks, selectedDocuments, selectedSuppliers, selectedTypes, statusFilter]);
+  }, [businessUnit, dateEnd, dateStart, maxValue, minValue, searchType, selectedBanks, selectedSuppliers, selectedTypes, statusFilter]);
 
   const filteredTotal = filteredLaunches.reduce((total, launch) => total + launch.amount, 0);
 
@@ -124,7 +135,6 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
     setStatusFilter('Ambos');
     setSelectedSuppliers(supplierNames);
     setSelectedTypes(accountingTypeNames);
-    setSelectedDocuments(documentNumbers);
     setSelectedBanks(bankOptions);
     setDateStart('');
     setDateEnd('');
@@ -203,14 +213,6 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
             selected={selectedBanks}
             onChange={setSelectedBanks}
             placeholder="Pesquisar banco"
-          />
-
-          <MultiCheckField
-            label="Selecionar Documento"
-            options={documentNumbers}
-            selected={selectedDocuments}
-            onChange={setSelectedDocuments}
-            placeholder="Pesquisar documento"
           />
 
           <label className="field">

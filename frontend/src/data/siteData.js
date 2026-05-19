@@ -36,10 +36,6 @@ export const navigationItems = [
     ],
   },
   {
-    id: 'recursos',
-    label: 'Recursos',
-  },
-  {
     id: 'operacao',
     label: 'Operação',
     children: [
@@ -149,13 +145,14 @@ export const navigationItems = [
     ],
   },
   {
-    id: 'fiscal',
-    label: 'Fiscal',
-  },
-  {
     id: 'sistema',
     label: 'Sistema',
     children: [
+      {
+        id: 'usuarios',
+        label: 'Usuários',
+        pageId: 'user-management',
+      },
       {
         id: 'gerenciar-atalhos-inicio',
         label: 'Gerenciar Atalhos de Início',

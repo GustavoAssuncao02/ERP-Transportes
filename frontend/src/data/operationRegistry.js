@@ -511,11 +511,11 @@ export function deactivateMinuta(id) {
 
 export function getRegisteredManifests() {
   return mergeSeedManifests(readRecords(manifestStorageKey, defaultManifests))
-    .map((manifest) => ({ status: 'Emitido', ...manifest }));
+    .map((manifest) => ({ manifestType: 'Manifesto de Trânsito', status: 'Emitido', ...manifest }));
 }
 
 export function saveManifest(record) {
-  return upsertRecord(manifestStorageKey, defaultManifests, { status: 'Emitido', ...record });
+  return upsertRecord(manifestStorageKey, defaultManifests, { manifestType: 'Manifesto de Trânsito', status: 'Emitido', ...record });
 }
 
 export function deleteManifest(id) {

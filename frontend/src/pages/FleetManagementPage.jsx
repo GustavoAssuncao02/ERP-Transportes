@@ -26,6 +26,12 @@ const mapStatusFilters = [
   { value: 'canceled', label: 'Cancelados' },
 ];
 
+const manifestTypeFilters = [
+  { value: 'all', label: 'Todos os tipos' },
+  { value: 'Manifesto de Controle', label: 'Manifesto de Controle' },
+  { value: 'Manifesto de Trânsito', label: 'Manifesto de Trânsito' },
+];
+
 const driverTypeFilters = [
   { value: 'fleet', label: 'Motorista da frota' },
   { value: 'third-party', label: 'Motorista terceiro' },
@@ -455,6 +461,7 @@ export default function FleetManagementPage({ onNavigate }) {
   const [plateFilter, setPlateFilter] = useState('');
   const [mapDateFilter, setMapDateFilter] = useState('');
   const [mapStatusFilter, setMapStatusFilter] = useState('active');
+  const [manifestTypeFilter, setManifestTypeFilter] = useState('Manifesto de Trânsito');
   const [selectedManifestId, setSelectedManifestId] = useState('');
   const [cityGeoCache, setCityGeoCache] = useState(readStoredGeoCache);
   const [geocodingCities, setGeocodingCities] = useState([]);
@@ -579,6 +586,8 @@ export default function FleetManagementPage({ onNavigate }) {
         const statusMatches = mapStatusFilter === 'all'
           || (mapStatusFilter === 'active' && currentTransit)
           || (mapStatusFilter === 'canceled' && canceled);
+        const manifestType = manifest.manifestType || 'Manifesto de Trânsito';
+        const typeMatches = manifestTypeFilter === 'all' || manifestType === manifestTypeFilter;
         const originMatches = !originFilter || manifest.origin === originFilter;
         const destinationMatches = !destinationFilter || manifest.destination === destinationFilter;
         const driverMatches = !driverFilter || manifestDriverKey(manifest) === driverFilter;
@@ -593,6 +602,7 @@ export default function FleetManagementPage({ onNavigate }) {
           || (statusFilter !== 'transit' && false);
         const queryMatches = !normalizedQuery || normalizeText([
           manifest.id,
+          manifestType,
           manifest.origin,
           manifest.destination,
           manifest.driverName,
@@ -603,6 +613,7 @@ export default function FleetManagementPage({ onNavigate }) {
         ].join(' ')).includes(normalizedQuery);
 
         return statusMatches
+          && typeMatches
           && originMatches
           && destinationMatches
           && driverMatches
@@ -622,6 +633,7 @@ export default function FleetManagementPage({ onNavigate }) {
     manifests,
     mapDateFilter,
     mapStatusFilter,
+    manifestTypeFilter,
     originFilter,
     plateFilter,
     query,
@@ -1210,6 +1222,15 @@ export default function FleetManagementPage({ onNavigate }) {
             <span>Status</span>
             <select value={mapStatusFilter} onChange={(event) => setMapStatusFilter(event.target.value)}>
               {mapStatusFilters.map((filter) => (
+                <option value={filter.value} key={filter.value}>{filter.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Tipo manifesto</span>
+            <select value={manifestTypeFilter} onChange={(event) => setManifestTypeFilter(event.target.value)}>
+              {manifestTypeFilters.map((filter) => (
                 <option value={filter.value} key={filter.value}>{filter.label}</option>
               ))}
             </select>

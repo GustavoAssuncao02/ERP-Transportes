@@ -58,6 +58,11 @@ const openCtes = [
 
 const manifestStorageKey = 'transportManifests';
 
+const manifestTypeOptions = [
+  'Manifesto de Controle',
+  'Manifesto de Trânsito',
+];
+
 const defaultManifests = [
   {
     id: 'MDFE-202605-00001',
@@ -74,6 +79,7 @@ const defaultManifests = [
     hasInsurance: 'Sim',
     insuranceCompany: 'Seguradora Atlântica',
     insurancePolicy: 'AP-2026-00184',
+    manifestType: 'Manifesto de Trânsito',
     createdAt: '2026-05-18T08:30',
   },
 ];
@@ -183,6 +189,7 @@ export default function GenerateManifestPage() {
   const [hasInsurance, setHasInsurance] = useState(() => defaultManifestInsurance().hasInsurance);
   const [insuranceCompany, setInsuranceCompany] = useState(() => defaultManifestInsurance().insuranceCompany);
   const [insurancePolicy, setInsurancePolicy] = useState(() => defaultManifestInsurance().insurancePolicy);
+  const [manifestType, setManifestType] = useState('Manifesto de Trânsito');
   const [manifestStatus, setManifestStatus] = useState('Emitido');
   const [status, setStatus] = useAutoClearMessage();
 
@@ -236,7 +243,7 @@ export default function GenerateManifestPage() {
     if (!query) return manifestsByClosestDate;
 
     return manifestsByClosestDate.filter((manifest) => (
-      normalizeText(`${manifest.id} ${manifest.origin} ${manifest.destination} ${manifest.driverName} ${manifest.truckPlate}`).includes(query)
+      normalizeText(`${manifest.id} ${manifest.manifestType} ${manifest.origin} ${manifest.destination} ${manifest.driverName} ${manifest.truckPlate}`).includes(query)
     ));
   }, [manifestLookupSearch, manifestsByClosestDate]);
 
@@ -265,6 +272,7 @@ export default function GenerateManifestPage() {
     setHasInsurance(manifest.hasInsurance || 'Não');
     setInsuranceCompany(manifest.insuranceCompany || '');
     setInsurancePolicy(manifest.insurancePolicy || '');
+    setManifestType(manifest.manifestType || 'Manifesto de Trânsito');
     setManifestStatus(manifest.status || 'Emitido');
     setStatus(`Manifesto ${manifest.id} carregado para edição`);
   }
@@ -361,6 +369,7 @@ export default function GenerateManifestPage() {
       hasInsurance,
       insuranceCompany,
       insurancePolicy,
+      manifestType,
       status: manifestStatus,
       createdAt: new Date().toISOString(),
     };
@@ -390,6 +399,7 @@ export default function GenerateManifestPage() {
     setHasInsurance(insurance.hasInsurance);
     setInsuranceCompany(insurance.insuranceCompany);
     setInsurancePolicy(insurance.insurancePolicy);
+    setManifestType('Manifesto de Trânsito');
     setManifestStatus('Emitido');
     setStatus('');
   }
@@ -461,6 +471,15 @@ export default function GenerateManifestPage() {
               </button>
             </div>
           </div>
+
+          <label className="field">
+            <span>Tipo do manifesto</span>
+            <select value={manifestType} onChange={(event) => setManifestType(event.target.value)}>
+              {manifestTypeOptions.map((typeOption) => (
+                <option value={typeOption} key={typeOption}>{typeOption}</option>
+              ))}
+            </select>
+          </label>
 
           <label className="field">
             <span>Status do manifesto</span>
@@ -694,6 +713,7 @@ export default function GenerateManifestPage() {
                 <thead>
                   <tr>
                     <th>Manifesto</th>
+                    <th>Tipo</th>
                     <th>Data</th>
                     <th>Origem</th>
                     <th>Destino</th>
@@ -705,6 +725,7 @@ export default function GenerateManifestPage() {
                   {manifestLookupItems.map((manifest) => (
                     <tr key={manifest.id} onClick={() => selectManifest(manifest)}>
                       <td>{manifest.id}</td>
+                      <td>{manifest.manifestType || 'Manifesto de Trânsito'}</td>
                       <td>{manifest.createdAt ? new Date(manifest.createdAt).toLocaleString('pt-BR') : ''}</td>
                       <td>{manifest.origin}</td>
                       <td>{manifest.destination}</td>

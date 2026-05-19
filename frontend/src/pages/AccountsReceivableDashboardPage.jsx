@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Search, X } from 'lucide-react';
 import { LineChart, PieChart } from '../components/FinanceCharts.jsx';
 import { currency, normalizeText, paymentBanks, toNumber, todayValue } from '../data/financeData.js';
 import {
@@ -137,6 +138,26 @@ function ChartButton({ title, subtitle, children, onClick }) {
   );
 }
 
+function LookupFilterField({ className = 'field', label, value, onOpen }) {
+  return (
+    <div className={className}>
+      <span>{label}</span>
+      <div className="lookup-field">
+        <input type="text" value={value} readOnly />
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={`Pesquisar ${label.toLocaleLowerCase('pt-BR')}`}
+          title={`Pesquisar ${label.toLocaleLowerCase('pt-BR')}`}
+          onClick={onOpen}
+        >
+          <Search size={17} strokeWidth={2.2} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function AccountsReceivableDashboardPage() {
   const today = todayValue();
   const [receivables] = useState(readReceivables);
@@ -146,11 +167,14 @@ export default function AccountsReceivableDashboardPage() {
   const [statusFilter, setStatusFilter] = useState('todos');
   const [customerFilter, setCustomerFilter] = useState('todos');
   const [bankFilter, setBankFilter] = useState('todos');
-  const [documentQuery, setDocumentQuery] = useState('');
+  const [documentFilter, setDocumentFilter] = useState('todos');
   const [freeSearch, setFreeSearch] = useState('');
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   const [reportKey, setReportKey] = useState('open');
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [activeLookup, setActiveLookup] = useState(null);
+  const [lookupSearch, setLookupSearch] = useState('');
 
   const filterOptions = useMemo(() => {
     const statusOptions = uniqueOptions([...defaultStatuses, ...receivables.map((receivable) => receivable.status)]);
@@ -160,13 +184,13 @@ export default function AccountsReceivableDashboardPage() {
       ...paymentBanks,
       ...receivables.flatMap(bankLabels),
     ]);
+    const documentOptions = uniqueOptions(receivables.map(documentLabel));
 
-    return { statusOptions, customerOptions, banks };
+    return { statusOptions, customerOptions, banks, documentOptions };
   }, [receivables]);
 
   const filteredReceivables = useMemo(() => {
     const search = normalizeText(freeSearch);
-    const documentSearch = normalizeText(documentQuery);
     const minValue = toNumber(minAmount);
     const maxValue = toNumber(maxAmount);
 
@@ -177,7 +201,7 @@ export default function AccountsReceivableDashboardPage() {
       const statusMatches = statusFilter === 'todos' || receivable.status === statusFilter;
       const customerMatches = customerFilter === 'todos' || (receivable.customerName || 'Sem cliente') === customerFilter;
       const bankMatches = bankFilter === 'todos' || bankLabels(receivable).includes(bankFilter);
-      const documentMatches = !documentSearch || normalizeText(documentLabel(receivable)).includes(documentSearch);
+      const documentMatches = documentFilter === 'todos' || documentLabel(receivable) === documentFilter;
       const searchMatches = !search || normalizeText(`${receivableSearchText(receivable)} ${receivable.address} ${documentLabel(receivable)} ${bankLabels(receivable).join(' ')}`).includes(search);
       const amount = toNumber(receivable.openBalance);
       const minMatches = !minAmount || amount >= minValue;
@@ -196,7 +220,7 @@ export default function AccountsReceivableDashboardPage() {
   }, [
     bankFilter,
     customerFilter,
-    documentQuery,
+    documentFilter,
     freeSearch,
     maxAmount,
     minAmount,
@@ -248,6 +272,34 @@ export default function AccountsReceivableDashboardPage() {
   };
   const selectedReport = reportMap[reportKey] || reportMap.open;
   const averageTicket = filteredReceivables.length ? total(filteredReceivables, 'originalValue') / filteredReceivables.length : 0;
+  const lookupConfigs = {
+    customer: {
+      title: 'Pesquisar cliente / tomador',
+      column: 'Cliente / tomador',
+      placeholder: 'Pesquisar cliente / tomador',
+      options: [{ value: 'todos', label: 'Todos' }, ...filterOptions.customerOptions.map((option) => ({ value: option, label: option }))],
+    },
+    bank: {
+      title: 'Pesquisar banco da baixa',
+      column: 'Banco da baixa',
+      placeholder: 'Pesquisar banco',
+      options: [{ value: 'todos', label: 'Todos' }, ...filterOptions.banks.map((option) => ({ value: option, label: option }))],
+    },
+    document: {
+      title: 'Pesquisar documento vinculado',
+      column: 'Documento vinculado',
+      placeholder: 'Pesquisar documento',
+      options: [{ value: 'todos', label: 'Todos' }, ...filterOptions.documentOptions.map((option) => ({ value: option, label: option }))],
+    },
+  };
+  const activeLookupConfig = activeLookup ? lookupConfigs[activeLookup] : null;
+  const visibleLookupOptions = activeLookupConfig
+    ? activeLookupConfig.options.filter((option) => normalizeText(option.label).includes(normalizeText(lookupSearch)))
+    : [];
+
+  function selectedFilterLabel(options, value) {
+    return options.find((option) => option.value === value)?.label || 'Todos';
+  }
 
   function clearFilters() {
     setSearchType('paymentForecastDate');
@@ -256,10 +308,36 @@ export default function AccountsReceivableDashboardPage() {
     setStatusFilter('todos');
     setCustomerFilter('todos');
     setBankFilter('todos');
-    setDocumentQuery('');
+    setDocumentFilter('todos');
     setFreeSearch('');
     setMinAmount('');
     setMaxAmount('');
+  }
+
+  function openLookup(type) {
+    setActiveLookup(type);
+    setLookupSearch('');
+  }
+
+  function closeLookup() {
+    setActiveLookup(null);
+    setLookupSearch('');
+  }
+
+  function selectLookupOption(value) {
+    if (activeLookup === 'customer') {
+      setCustomerFilter(value);
+    }
+
+    if (activeLookup === 'bank') {
+      setBankFilter(value);
+    }
+
+    if (activeLookup === 'document') {
+      setDocumentFilter(value);
+    }
+
+    closeLookup();
   }
 
   return (
@@ -271,89 +349,90 @@ export default function AccountsReceivableDashboardPage() {
         </div>
       </header>
 
-      <section className="bi-filter-panel">
-        <div className="bi-filter-header receivable-dashboard-filter-title">
+      <section className={`bi-filter-panel ${filtersOpen ? 'bi-filter-panel--open' : ''}`}>
+        <button
+          type="button"
+          className="bi-filter-header receivable-dashboard-filter-title"
+          aria-expanded={filtersOpen}
+          onClick={() => setFiltersOpen((current) => !current)}
+        >
           <span>Filtros</span>
           <strong>{filteredReceivables.length} titulo(s) considerados</strong>
-        </div>
+        </button>
 
-        <div className="bi-filter-body">
-          <div className="form-grid">
-            <label className="field">
-              <span>Data considerada</span>
-              <select value={searchType} onChange={(event) => setSearchType(event.target.value)}>
-                {searchTypes.map((type) => (
-                  <option value={type.value} key={type.value}>{type.label}</option>
-                ))}
-              </select>
-            </label>
+        {filtersOpen && (
+          <div className="bi-filter-body">
+            <div className="form-grid">
+              <label className="field">
+                <span>Data considerada</span>
+                <select value={searchType} onChange={(event) => setSearchType(event.target.value)}>
+                  {searchTypes.map((type) => (
+                    <option value={type.value} key={type.value}>{type.label}</option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="field">
-              <span>Periodo inicial</span>
-              <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} />
-            </label>
+              <label className="field">
+                <span>Periodo inicial</span>
+                <input type="date" value={periodStart} onChange={(event) => setPeriodStart(event.target.value)} />
+              </label>
 
-            <label className="field">
-              <span>Periodo final</span>
-              <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} />
-            </label>
+              <label className="field">
+                <span>Periodo final</span>
+                <input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} />
+              </label>
 
-            <label className="field">
-              <span>Status</span>
-              <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                <option value="todos">Todos</option>
-                {filterOptions.statusOptions.map((status) => (
-                  <option value={status} key={status}>{status}</option>
-                ))}
-              </select>
-            </label>
+              <label className="field">
+                <span>Status</span>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                  <option value="todos">Todos</option>
+                  {filterOptions.statusOptions.map((status) => (
+                    <option value={status} key={status}>{status}</option>
+                  ))}
+                </select>
+              </label>
 
-            <label className="field">
-              <span>Cliente / tomador</span>
-              <select value={customerFilter} onChange={(event) => setCustomerFilter(event.target.value)}>
-                <option value="todos">Todos</option>
-                {filterOptions.customerOptions.map((customer) => (
-                  <option value={customer} key={customer}>{customer}</option>
-                ))}
-              </select>
-            </label>
+              <LookupFilterField
+                label="Cliente / tomador"
+                value={selectedFilterLabel(lookupConfigs.customer.options, customerFilter)}
+                onOpen={() => openLookup('customer')}
+              />
 
-            <label className="field">
-              <span>Banco da baixa</span>
-              <select value={bankFilter} onChange={(event) => setBankFilter(event.target.value)}>
-                <option value="todos">Todos</option>
-                {filterOptions.banks.map((bank) => (
-                  <option value={bank} key={bank}>{bank}</option>
-                ))}
-              </select>
-            </label>
+              <LookupFilterField
+                label="Banco da baixa"
+                value={selectedFilterLabel(lookupConfigs.bank.options, bankFilter)}
+                onOpen={() => openLookup('bank')}
+              />
 
-            <label className="field">
-              <span>Saldo minimo</span>
-              <input type="number" min="0" step="0.01" value={minAmount} onChange={(event) => setMinAmount(event.target.value)} placeholder="0,00" />
-            </label>
+              <label className="field">
+                <span>Saldo minimo</span>
+                <input type="number" min="0" step="0.01" value={minAmount} onChange={(event) => setMinAmount(event.target.value)} placeholder="0,00" />
+              </label>
 
-            <label className="field">
-              <span>Saldo maximo</span>
-              <input type="number" min="0" step="0.01" value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} placeholder="0,00" />
-            </label>
+              <label className="field">
+                <span>Saldo maximo</span>
+                <input type="number" min="0" step="0.01" value={maxAmount} onChange={(event) => setMaxAmount(event.target.value)} placeholder="0,00" />
+              </label>
 
-            <label className="field field--span-2">
-              <span>Documento vinculado</span>
-              <input type="search" value={documentQuery} onChange={(event) => setDocumentQuery(event.target.value)} placeholder="CT-e, NF-e, MDF-e ou ordem" />
-            </label>
+              <LookupFilterField
+                className="field field--span-2"
+                label="Documento vinculado"
+                value={selectedFilterLabel(lookupConfigs.document.options, documentFilter)}
+                onOpen={() => openLookup('document')}
+              />
 
-            <label className="field field--span-2">
-              <span>Busca livre</span>
-              <input type="search" value={freeSearch} onChange={(event) => setFreeSearch(event.target.value)} placeholder="Titulo, cliente, documento ou status" />
-            </label>
+              <label className="field field--span-2">
+                <span>Busca livre</span>
+                <input type="search" value={freeSearch} onChange={(event) => setFreeSearch(event.target.value)} placeholder="Titulo, cliente, documento ou status" />
+              </label>
 
-            <div className="field registered-launches-actions">
-              <span>&nbsp;</span>
-              <button type="button" className="secondary-button" onClick={clearFilters}>Limpar filtros</button>
+              <div className="field registered-launches-actions">
+                <span>&nbsp;</span>
+                <button type="button" className="secondary-button" onClick={clearFilters}>Limpar filtros</button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </section>
 
       <div className="bi-metrics-grid receivable-dashboard-metrics">
@@ -431,6 +510,50 @@ export default function AccountsReceivableDashboardPage() {
           {!selectedReport.receivables.length && <div className="empty-list">Nenhum titulo encontrado para os filtros aplicados</div>}
         </div>
       </section>
+
+      {activeLookupConfig && (
+        <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="receivable-dashboard-lookup-title">
+          <button type="button" className="lookup-modal-backdrop" aria-label="Fechar pesquisa" onClick={closeLookup} />
+          <div className="lookup-modal-panel">
+            <header className="lookup-modal-header">
+              <h2 id="receivable-dashboard-lookup-title">{activeLookupConfig.title}</h2>
+              <button type="button" className="modal-close-button" aria-label="Fechar" onClick={closeLookup}>
+                <X size={18} strokeWidth={2.4} />
+              </button>
+            </header>
+
+            <div className="lookup-modal-toolbar">
+              <input
+                type="search"
+                className="lookup-search"
+                placeholder={activeLookupConfig.placeholder}
+                value={lookupSearch}
+                onChange={(event) => setLookupSearch(event.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div className="lookup-table-wrap">
+              <table className="lookup-table">
+                <thead>
+                  <tr>
+                    <th>{activeLookupConfig.column}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visibleLookupOptions.map((option) => (
+                    <tr key={option.value} onClick={() => selectLookupOption(option.value)}>
+                      <td>{option.label}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {!visibleLookupOptions.length && <div className="lookup-empty">Nenhuma opcao encontrada</div>}
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

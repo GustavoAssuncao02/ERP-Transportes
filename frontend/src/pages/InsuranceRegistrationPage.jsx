@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import AddressFields from '../components/AddressFields.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import { getInsuranceDeletionBlockers } from '../data/deletionRules.js';
@@ -11,6 +12,8 @@ import {
   saveInsurance,
 } from '../data/managementRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
+import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
+import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
 
 const initialForm = {
   id: '',
@@ -19,6 +22,8 @@ const initialForm = {
   policyNumber: '',
   endorsementNumber: '',
   contact: '',
+  email: '',
+  ...blankAddressFields(),
   active: true,
   defaultInsurance: false,
 };
@@ -29,6 +34,7 @@ export default function InsuranceRegistrationPage() {
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
   const [message, setMessage] = useAutoClearMessage();
+  const companyLookupRequestRef = useRef(0);
 
   const sortedInsurances = useMemo(
     () => [...insurances].sort((left, right) => (
@@ -47,6 +53,7 @@ export default function InsuranceRegistrationPage() {
       insurance.policyNumber,
       insurance.endorsementNumber,
       insurance.contact,
+      insurance.email,
     ].join(' ')).includes(query));
   }, [lookupSearch, sortedInsurances]);
 
@@ -59,8 +66,65 @@ export default function InsuranceRegistrationPage() {
     setMessage('');
   }
 
+  function updateFields(updates) {
+    setForm((current) => ({ ...current, ...updates }));
+    setMessage('');
+  }
+
+  async function handleCnpjBlur() {
+    const cnpj = onlyDigits(form.cnpj);
+
+    if (!cnpj) {
+      return;
+    }
+
+    if (cnpj.length !== 14) {
+      setMessage('Informe um CNPJ com 14 digitos');
+      return;
+    }
+
+    const requestId = companyLookupRequestRef.current + 1;
+    companyLookupRequestRef.current = requestId;
+    setMessage('Consultando CNPJ...');
+
+    try {
+      const company = await fetchCompanyByCnpj(cnpj);
+
+      if (companyLookupRequestRef.current !== requestId) {
+        return;
+      }
+
+      if (!company) {
+        setMessage('CNPJ nao encontrado');
+        return;
+      }
+
+      setForm((current) => ({
+        ...current,
+        cnpj: formatCnpj(company.cnpj || cnpj),
+        companyName: company.name || company.legalName || current.companyName,
+        contact: company.phone || current.contact,
+        email: company.email || current.email,
+        zipCode: company.zipCode || current.zipCode,
+        street: company.street || current.street,
+        addressNumber: company.addressNumber || current.addressNumber,
+        district: company.district || current.district,
+      }));
+
+      setMessage(
+        company.city && company.state
+          ? `CNPJ localizado: ${company.city}/${company.state}`
+          : 'Dados preenchidos pelo CNPJ',
+      );
+    } catch {
+      if (companyLookupRequestRef.current === requestId) {
+        setMessage('Nao foi possivel consultar o CNPJ agora');
+      }
+    }
+  }
+
   function loadInsurance(insurance) {
-    setForm({ ...initialForm, ...insurance });
+    setForm({ ...initialForm, ...normalizeAddressFields(insurance) });
     setMessage(`Seguro ${insurance.companyName} carregado para edicao`);
   }
 
@@ -184,6 +248,7 @@ export default function InsuranceRegistrationPage() {
               placeholder="00.000.000/0000-00"
               value={form.cnpj}
               onChange={(event) => updateField('cnpj', formatCnpj(event.target.value))}
+              onBlur={handleCnpjBlur}
               required
             />
           </label>
@@ -202,6 +267,18 @@ export default function InsuranceRegistrationPage() {
             <span>Contato</span>
             <input type="text" value={form.contact} onChange={(event) => updateField('contact', event.target.value)} />
           </label>
+
+          <label className="field field--span-2">
+            <span>E-mail</span>
+            <input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} />
+          </label>
+
+          <AddressFields
+            values={form}
+            onChange={updateField}
+            onChangeMany={updateFields}
+            onStatus={setMessage}
+          />
 
           <div className="field inline-check-field">
             <input
@@ -251,6 +328,8 @@ export default function InsuranceRegistrationPage() {
                 <th>CNPJ</th>
                 <th>Apolice</th>
                 <th>Averbacao</th>
+                <th>Contato</th>
+                <th>E-mail</th>
                 <th>Ativo</th>
                 <th>Padrao</th>
               </tr>
@@ -262,6 +341,8 @@ export default function InsuranceRegistrationPage() {
                   <td>{insurance.cnpj}</td>
                   <td>{insurance.policyNumber}</td>
                   <td>{insurance.endorsementNumber || '-'}</td>
+                  <td>{insurance.contact || '-'}</td>
+                  <td>{insurance.email || '-'}</td>
                   <td>{insurance.active ? 'Sim' : 'Nao'}</td>
                   <td>{insurance.defaultInsurance ? 'Sim' : 'Nao'}</td>
                 </tr>

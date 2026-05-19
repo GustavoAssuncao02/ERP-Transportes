@@ -100,7 +100,7 @@ export function getRegisteredSuppliers() {
 }
 
 export function getRegisteredInsurances() {
-  return readRecords(insuranceStorageKey, defaultInsurances);
+  return readRecords(insuranceStorageKey, defaultInsurances).map((insurance) => normalizeAddressFields(insurance));
 }
 
 export function getDefaultInsurance() {
@@ -160,13 +160,13 @@ export function saveInsurance(record) {
       && String(insurance.policyNumber || '').trim() === String(record.policyNumber || '').trim()
     )
   ));
-  const nextRecord = {
+  const nextRecord = normalizeAddressFields({
     ...record,
     id: record.id || `INS-${String(insurances.length + 1).padStart(3, '0')}`,
     cnpj: formatCnpj(record.cnpj),
     active: record.active !== false,
     defaultInsurance: Boolean(record.defaultInsurance),
-  };
+  });
   const nextInsurances = insurances.map((insurance, index) => {
     if (existingIndex >= 0 && index === existingIndex) {
       return nextRecord;

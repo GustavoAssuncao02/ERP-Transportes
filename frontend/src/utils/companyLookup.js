@@ -52,6 +52,57 @@ function companyStreet(data) {
   return `${streetType} ${street}`;
 }
 
+function companyPhoneFromCnpja(data) {
+  const phone = Array.isArray(data?.phones) ? data.phones[0] : null;
+
+  if (!phone) {
+    return '';
+  }
+
+  return formatBrazilPhone(`${phone.area || ''}${phone.number || ''}`);
+}
+
+function companyEmailFromCnpja(data) {
+  const email = Array.isArray(data?.emails) ? data.emails[0] : null;
+  return compactText(email?.address).toLocaleLowerCase('pt-BR');
+}
+
+function normalizeBrasilApiCompany(data, cnpj) {
+  return {
+    cnpj: cnpjDigits(data.cnpj || cnpj),
+    name: compactText(data.nome_fantasia) || compactText(data.razao_social),
+    legalName: compactText(data.razao_social),
+    zipCode: formatZipCode(data.cep || ''),
+    street: companyStreet(data),
+    addressNumber: compactText(data.numero),
+    district: compactText(data.bairro),
+    city: compactText(data.municipio),
+    state: compactText(data.uf),
+    email: compactText(data.email).toLocaleLowerCase('pt-BR'),
+    phone: formatBrazilPhone(data.ddd_telefone_1 || data.ddd_telefone_2),
+    cnae: data.cnae_fiscal ? String(data.cnae_fiscal) : '',
+    cnaeDescription: compactText(data.cnae_fiscal_descricao),
+  };
+}
+
+function normalizeCnpjaCompany(data, cnpj) {
+  return {
+    cnpj: cnpjDigits(data.taxId || cnpj),
+    name: compactText(data.alias) || compactText(data.company?.name),
+    legalName: compactText(data.company?.name),
+    zipCode: formatZipCode(data.address?.zip || ''),
+    street: compactText(data.address?.street),
+    addressNumber: compactText(data.address?.number),
+    district: compactText(data.address?.district),
+    city: compactText(data.address?.city),
+    state: compactText(data.address?.state),
+    email: companyEmailFromCnpja(data),
+    phone: companyPhoneFromCnpja(data),
+    cnae: data.mainActivity?.id ? String(data.mainActivity.id) : '',
+    cnaeDescription: compactText(data.mainActivity?.text),
+  };
+}
+
 function readCachedCompany(cnpj) {
   try {
     const cache = JSON.parse(localStorage.getItem(companyLookupCacheKey) || '{}');
@@ -83,6 +134,22 @@ function writeCachedCompany(cnpj, company) {
   }
 }
 
+async function requestCompany(url) {
+  const response = await fetch(url, {
+    headers: { Accept: 'application/json' },
+  });
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Falha ao consultar CNPJ: ${response.status}`);
+  }
+
+  return response.json();
+}
+
 export async function fetchCompanyByCnpj(value) {
   const cnpj = cnpjDigits(value);
 
@@ -95,35 +162,45 @@ export async function fetchCompanyByCnpj(value) {
     return cachedCompany;
   }
 
-  const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`, {
-    headers: { Accept: 'application/json' },
-  });
+  const providers = [
+    {
+      url: `https://open.cnpja.com/office/${cnpj}`,
+      normalize: (data) => normalizeCnpjaCompany(data, cnpj),
+    },
+    {
+      url: `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`,
+      normalize: (data) => normalizeBrasilApiCompany(data, cnpj),
+    },
+    {
+      url: `https://minhareceita.org/${cnpj}`,
+      normalize: (data) => normalizeBrasilApiCompany(data, cnpj),
+    },
+  ];
 
-  if (response.status === 404) {
-    return null;
+  let lastError = null;
+
+  for (const provider of providers) {
+    try {
+      const data = await requestCompany(provider.url);
+
+      if (!data) {
+        continue;
+      }
+
+      const company = provider.normalize(data);
+
+      if (company?.name || company?.legalName) {
+        writeCachedCompany(cnpj, company);
+        return company;
+      }
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  if (!response.ok) {
-    throw new Error('Falha ao consultar CNPJ');
+  if (lastError) {
+    throw lastError;
   }
 
-  const data = await response.json();
-  const company = {
-    cnpj: cnpjDigits(data.cnpj || cnpj),
-    name: compactText(data.nome_fantasia) || compactText(data.razao_social),
-    legalName: compactText(data.razao_social),
-    zipCode: formatZipCode(data.cep || ''),
-    street: companyStreet(data),
-    addressNumber: compactText(data.numero),
-    district: compactText(data.bairro),
-    city: compactText(data.municipio),
-    state: compactText(data.uf),
-    email: compactText(data.email).toLocaleLowerCase('pt-BR'),
-    phone: formatBrazilPhone(data.ddd_telefone_1 || data.ddd_telefone_2),
-    cnae: data.cnae_fiscal ? String(data.cnae_fiscal) : '',
-    cnaeDescription: compactText(data.cnae_fiscal_descricao),
-  };
-
-  writeCachedCompany(cnpj, company);
-  return company;
+  return null;
 }

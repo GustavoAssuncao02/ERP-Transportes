@@ -2250,12 +2250,12 @@
 }
 
 .receivable-dashboard-filter-title {
-  cursor: default;
+  cursor: pointer;
 }
 
 .receivable-dashboard-filter-title:hover,
 .receivable-dashboard-filter-title:focus-visible {
-  background: #f8f8f8;
+  background: #eef5f4;
   outline: none;
 }
 

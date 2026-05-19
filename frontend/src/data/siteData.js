@@ -71,9 +71,20 @@ export const navigationItems = [
     label: 'Financeiro',
     children: [
       {
-        id: 'pagamento-avulso',
-        label: 'Pagamento Avulso',
-        pageId: 'one-off-payment',
+        id: 'tesouraria',
+        label: 'Tesouraria',
+        children: [
+          {
+            id: 'banco',
+            label: 'Banco',
+            pageId: 'bank-management',
+          },
+          {
+            id: 'movimentacao',
+            label: 'Movimentação',
+            pageId: 'one-off-payment',
+          },
+        ],
       },
       {
         id: 'consultar-lancamentos',

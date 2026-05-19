@@ -5,6 +5,7 @@ import { normalizeAddressFields } from '../utils/address.js';
 export const unitStorageKey = 'managementUnits';
 export const supplierStorageKey = 'managementSuppliers';
 export const insuranceStorageKey = 'managementInsurances';
+export const bankStorageKey = 'treasuryBanks';
 
 export const defaultUnits = businessUnits.map((unit) => normalizeAddressFields({
   id: unit.code,
@@ -37,6 +38,15 @@ export const defaultInsurances = [
     active: true,
     defaultInsurance: true,
   },
+];
+
+export const defaultBanks = [
+  { id: 'BCO-001', unit: '001', name: 'Banco do Brasil', agency: '0001-9', account: '12345-6', active: true },
+  { id: 'BCO-002', unit: '001', name: 'Bradesco', agency: '0345-2', account: '98765-1', active: true },
+  { id: 'BCO-003', unit: '001', name: 'Itau', agency: '1122', account: '45678-0', active: true },
+  { id: 'BCO-004', unit: '002', name: 'Santander', agency: '2030', account: '77889-4', active: true },
+  { id: 'BCO-005', unit: '002', name: 'Caixa Economica', agency: '1042', account: '003.00001234-5', active: true },
+  { id: 'BCO-006', unit: '003', name: 'Sicoob', agency: '3025', account: '220015-8', active: true },
 ];
 
 export function formatCnpj(value) {
@@ -101,6 +111,17 @@ export function getRegisteredSuppliers() {
 
 export function getRegisteredInsurances() {
   return readRecords(insuranceStorageKey, defaultInsurances).map((insurance) => normalizeAddressFields(insurance));
+}
+
+export function getRegisteredBanks() {
+  return readRecords(bankStorageKey, defaultBanks).map((bank, index) => ({
+    id: bank.id || `BCO-${String(index + 1).padStart(3, '0')}`,
+    unit: bank.unit || '001',
+    name: bank.name || '',
+    agency: bank.agency || '',
+    account: bank.account || '',
+    active: bank.active !== false,
+  }));
 }
 
 export function getDefaultInsurance() {
@@ -188,6 +209,37 @@ export function saveInsurance(record) {
 
   writeRecords(insuranceStorageKey, nextInsurances);
   return nextInsurances;
+}
+
+export function saveBank(record) {
+  const banks = getRegisteredBanks();
+  const existingIndex = banks.findIndex((bank) => bank.id === record.id);
+  const nextRecord = {
+    ...record,
+    id: record.id || `BCO-${String(banks.length + 1).padStart(3, '0')}`,
+    unit: String(record.unit || '001').trim(),
+    name: String(record.name || '').trim(),
+    agency: String(record.agency || '').trim(),
+    account: String(record.account || '').trim(),
+    active: record.active !== false,
+  };
+
+  if (existingIndex >= 0) {
+    banks[existingIndex] = nextRecord;
+  } else {
+    banks.push(nextRecord);
+  }
+
+  writeRecords(bankStorageKey, banks);
+  return banks;
+}
+
+export function deleteBank(record) {
+  const banks = getRegisteredBanks();
+  const nextBanks = banks.filter((bank) => bank.id !== record.id);
+
+  writeRecords(bankStorageKey, nextBanks);
+  return nextBanks;
 }
 
 export function deleteUnit(record) {

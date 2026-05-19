@@ -20,6 +20,7 @@ const AccountsPayableSettlementPage = lazy(() => import('./AccountsPayableSettle
 const AccountsReceivableDashboardPage = lazy(() => import('./AccountsReceivableDashboardPage.jsx'));
 const AccountsReceivablePage = lazy(() => import('./AccountsReceivablePage.jsx'));
 const AccountsReceivableSettlementPage = lazy(() => import('./AccountsReceivableSettlementPage.jsx'));
+const BankManagementPage = lazy(() => import('./BankManagementPage.jsx'));
 const BusinessIntelligencePage = lazy(() => import('./BusinessIntelligencePage.jsx'));
 const CollectionOrderPage = lazy(() => import('./CollectionOrderPage.jsx'));
 const CreateMinutaPage = lazy(() => import('./CreateMinutaPage.jsx'));
@@ -176,6 +177,10 @@ export default function DashboardPage() {
   function renderContent() {
     if (activeTabId === 'one-off-payment') {
       return <OneOffPaymentPage />;
+    }
+
+    if (activeTabId === 'bank-management') {
+      return <BankManagementPage />;
     }
 
     if (activeTabId === 'generate-manifest') {

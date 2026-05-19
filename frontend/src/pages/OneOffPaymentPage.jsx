@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import AttachmentPanel from '../components/AttachmentPanel.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
-import { chargeTypes, currency, financeLaunches, paymentBanks } from '../data/financeData.js';
+import { chargeTypes, currency, financeLaunches } from '../data/financeData.js';
+import { getRegisteredBanks } from '../data/managementRegistry.js';
 
 const units = [
   { code: '001', name: 'JTD Transportes LTDA' },
@@ -27,7 +28,6 @@ const accountingTypes = [
   { code: '05', name: 'Administrativo' },
 ];
 
-const settlementTypeOptions = ['Baixa avulsa', 'Baixa manual', 'Reembolso', 'Complemento de pagamento'];
 const paymentTypeOptions = ['Total', 'Desconto', 'Juros'];
 const paymentMethodOptions = chargeTypes;
 
@@ -77,6 +77,10 @@ function numberValue(value) {
   return Number.parseFloat(String(value).replace(',', '.')) || 0;
 }
 
+function unitCodeFromValue(value) {
+  return String(value || '').match(/\d{3}/)?.[0] || String(value || '');
+}
+
 function nextPaymentNumber() {
   const now = new Date();
   const key = 'oneOffPaymentSequence';
@@ -116,7 +120,6 @@ export default function OneOffPaymentPage() {
   const [paymentNumber, setPaymentNumber] = useState('');
   const [supplier, setSupplier] = useState('');
   const [accountingType, setAccountingType] = useState('');
-  const [settlementType, setSettlementType] = useState(settlementTypeOptions[0]);
   const [paymentMethod, setPaymentMethod] = useState('');
   const [paymentType, setPaymentType] = useState('Total');
   const [paymentBank, setPaymentBank] = useState('');
@@ -132,6 +135,14 @@ export default function OneOffPaymentPage() {
   const [status, setStatus] = useAutoClearMessage();
 
   const activeLookup = lookupType ? lookupConfig[lookupType] : null;
+  const selectedUnitCode = unitCodeFromValue(unit);
+  const bankOptions = useMemo(() => getRegisteredBanks()
+    .filter((bank) => bank.active && bank.unit === selectedUnitCode)
+    .map((bank) => {
+      const label = `${bank.name} - Ag. ${bank.agency} / Conta ${bank.account}`;
+      return { value: label, label };
+    }), [selectedUnitCode]);
+  const selectedBankOptionExists = bankOptions.some((bank) => bank.value === paymentBank);
   const paymentAmount = numberValue(paymentValue);
   const adjustmentValue = numberValue(adjustmentAmount);
   const finalPaymentValue = paymentType === 'Desconto'
@@ -178,7 +189,10 @@ export default function OneOffPaymentPage() {
       return;
     }
 
-    if (lookupType === 'unit') setUnit(value);
+    if (lookupType === 'unit') {
+      setUnit(value);
+      setPaymentBank('');
+    }
     if (lookupType === 'supplier') setSupplier(value);
     if (lookupType === 'accountingType') setAccountingType(value);
 
@@ -205,7 +219,6 @@ export default function OneOffPaymentPage() {
     setPaymentNumber(payment.id);
     setSupplier(formatSupplierLabel(payment));
     setAccountingType(formatAccountingTypeLabel(payment));
-    setSettlementType(settlementTypeOptions[0]);
     setPaymentMethod(payment.chargeType || '');
     setPaymentBank(payment.paymentBank || '');
     if (payment.discountAmount) {
@@ -236,7 +249,7 @@ export default function OneOffPaymentPage() {
     const generatedPaymentNumber = paymentNumber || nextPaymentNumber();
 
     setPaymentNumber(generatedPaymentNumber);
-    setStatus(`Pagamento avulso ${generatedPaymentNumber} baixado em ${paymentDate} no valor final de ${currency(finalPaymentValue)} com ${attachments.length} anexo(s)`);
+    setStatus(`Movimentação ${generatedPaymentNumber} baixada em ${paymentDate} no valor final de ${currency(finalPaymentValue)} com ${attachments.length} anexo(s)`);
   }
 
   function handleReset() {
@@ -244,7 +257,6 @@ export default function OneOffPaymentPage() {
     setPaymentNumber('');
     setSupplier('');
     setAccountingType('');
-    setSettlementType(settlementTypeOptions[0]);
     setPaymentMethod('');
     setPaymentType('Total');
     setPaymentBank('');
@@ -267,8 +279,8 @@ export default function OneOffPaymentPage() {
     <section className="one-off-payment-page">
       <header className="page-header">
         <div>
-          <h1 className="page-title">Pagamento Avulso</h1>
-          <p className="page-kicker">Lançamento e baixa de pagamento em um único fluxo</p>
+          <h1 className="page-title">Movimentação</h1>
+          <p className="page-kicker">Lançamento e baixa de movimentação em um único fluxo</p>
         </div>
       </header>
 
@@ -281,7 +293,10 @@ export default function OneOffPaymentPage() {
                 type="text"
                 placeholder="Código da empresa"
                 value={unit}
-                onChange={(event) => setUnit(event.target.value)}
+                onChange={(event) => {
+                  setUnit(event.target.value);
+                  setPaymentBank('');
+                }}
                 required
               />
               <button
@@ -361,20 +376,17 @@ export default function OneOffPaymentPage() {
           </div>
 
           <label className="field">
-            <span>Tipo de baixa</span>
-            <select value={settlementType} onChange={(event) => setSettlementType(event.target.value)} required>
-              {settlementTypeOptions.map((type) => (
-                <option value={type} key={type}>{type}</option>
-              ))}
-            </select>
-          </label>
-
-          <label className="field">
             <span>Banco</span>
             <select value={paymentBank} onChange={(event) => setPaymentBank(event.target.value)} required>
               <option value="">Selecione</option>
-              {paymentBanks.map((bank) => (
-                <option value={bank} key={bank}>{bank}</option>
+              {!bankOptions.length && (
+                <option value="" disabled>Nenhum banco ativo para esta unidade</option>
+              )}
+              {paymentBank && !selectedBankOptionExists && (
+                <option value={paymentBank}>{paymentBank}</option>
+              )}
+              {bankOptions.map((bank) => (
+                <option value={bank.value} key={bank.value}>{bank.label}</option>
               ))}
             </select>
           </label>
@@ -450,7 +462,7 @@ export default function OneOffPaymentPage() {
           <label className="field field--span-4">
             <span>Observação</span>
             <textarea
-              placeholder="Observação do pagamento avulso"
+              placeholder="Observação da movimentação"
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
             />
@@ -460,7 +472,7 @@ export default function OneOffPaymentPage() {
         <AttachmentPanel attachments={attachments} onAddFiles={handleAddAttachments} />
 
         <div className="form-actions">
-          <button type="submit" className="primary-button">Lançar Baixado</button>
+          <button type="submit" className="primary-button">Lançar movimentação</button>
           <button type="reset" className="secondary-button">Limpar</button>
           <span className="status-line" aria-live="polite">{status}</span>
         </div>

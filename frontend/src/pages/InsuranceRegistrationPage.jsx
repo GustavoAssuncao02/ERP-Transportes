@@ -203,15 +203,25 @@ export default function InsuranceRegistrationPage() {
             <input type="text" value={form.contact} onChange={(event) => updateField('contact', event.target.value)} />
           </label>
 
-          <label className="field inline-check-field">
-            <input type="checkbox" checked={form.active} onChange={(event) => updateField('active', event.target.checked)} />
+          <div className="field inline-check-field">
+            <input
+              type="checkbox"
+              aria-label="Ativo"
+              checked={form.active}
+              onChange={(event) => updateField('active', event.target.checked)}
+            />
             <span>Ativo</span>
-          </label>
+          </div>
 
-          <label className="field inline-check-field">
-            <input type="checkbox" checked={form.defaultInsurance} onChange={(event) => updateField('defaultInsurance', event.target.checked)} />
+          <div className="field inline-check-field">
+            <input
+              type="checkbox"
+              aria-label="Seguro padrao"
+              checked={form.defaultInsurance}
+              onChange={(event) => updateField('defaultInsurance', event.target.checked)}
+            />
             <span>Seguro padrao</span>
-          </label>
+          </div>
         </div>
 
         <div className="form-actions">

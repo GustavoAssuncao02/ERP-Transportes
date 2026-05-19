@@ -1,16 +1,19 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import AddressFields from '../components/AddressFields.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   deactivateSupplier,
   deleteSupplier,
-  formatCnpj,
+  formatCpfCnpj,
   getRegisteredSuppliers,
   saveSupplier,
 } from '../data/managementRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
 import { normalizeText } from '../data/financeData.js';
 import { getSupplierDeletionBlockers } from '../data/deletionRules.js';
+import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
+import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
 
 const initialForm = {
   id: '',
@@ -18,7 +21,7 @@ const initialForm = {
   cnpj: '',
   contact: '',
   email: '',
-  address: '',
+  ...blankAddressFields(),
   active: true,
 };
 
@@ -28,6 +31,7 @@ export default function SupplierRegistrationPage() {
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
   const [message, setMessage] = useAutoClearMessage();
+  const companyLookupRequestRef = useRef(0);
 
   const sortedSuppliers = useMemo(
     () => [...suppliers].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
@@ -45,8 +49,70 @@ export default function SupplierRegistrationPage() {
     setMessage('');
   }
 
+  function updateFields(updates) {
+    setForm((current) => ({ ...current, ...updates }));
+    setMessage('');
+  }
+
+  async function handleDocumentBlur() {
+    const documentDigits = onlyDigits(form.cnpj);
+
+    if (!documentDigits) {
+      return;
+    }
+
+    if (documentDigits.length === 11) {
+      setForm((current) => ({ ...current, cnpj: formatCpfCnpj(current.cnpj) }));
+      return;
+    }
+
+    if (documentDigits.length !== 14) {
+      setMessage('Informe um CPF com 11 digitos ou CNPJ com 14 digitos');
+      return;
+    }
+
+    const requestId = companyLookupRequestRef.current + 1;
+    companyLookupRequestRef.current = requestId;
+    setMessage('Consultando CNPJ...');
+
+    try {
+      const company = await fetchCompanyByCnpj(documentDigits);
+
+      if (companyLookupRequestRef.current !== requestId) {
+        return;
+      }
+
+      if (!company) {
+        setMessage('CNPJ nao encontrado');
+        return;
+      }
+
+      setForm((current) => ({
+        ...current,
+        cnpj: formatCpfCnpj(company.cnpj || documentDigits),
+        name: company.name || company.legalName || current.name,
+        contact: company.phone || current.contact,
+        email: company.email || current.email,
+        zipCode: company.zipCode || current.zipCode,
+        street: company.street || current.street,
+        addressNumber: company.addressNumber || current.addressNumber,
+        district: company.district || current.district,
+      }));
+
+      setMessage(
+        company.city && company.state
+          ? `CNPJ localizado: ${company.city}/${company.state}`
+          : 'Dados preenchidos pelo CNPJ',
+      );
+    } catch {
+      if (companyLookupRequestRef.current === requestId) {
+        setMessage('Nao foi possivel consultar o CNPJ agora');
+      }
+    }
+  }
+
   function loadSupplier(supplier) {
-    setForm(supplier);
+    setForm(normalizeAddressFields(supplier));
     setMessage(`Fornecedor ${supplier.name} carregado para edição`);
   }
 
@@ -68,14 +134,16 @@ export default function SupplierRegistrationPage() {
   function handleSubmit(event) {
     event.preventDefault();
 
-    if (onlyDigits(form.cnpj).length !== 14) {
-      setMessage('Informe um CNPJ válido para o fornecedor');
+    const documentLength = onlyDigits(form.cnpj).length;
+
+    if (documentLength !== 11 && documentLength !== 14) {
+      setMessage('Informe um CPF ou CNPJ valido para o fornecedor');
       return;
     }
 
     const nextSuppliers = saveSupplier(form);
     setSuppliers(nextSuppliers);
-    setForm((current) => ({ ...current, cnpj: formatCnpj(current.cnpj) }));
+    setForm((current) => ({ ...current, cnpj: formatCpfCnpj(current.cnpj) }));
     setMessage(`Fornecedor ${form.name} salvo`);
   }
 
@@ -141,13 +209,14 @@ export default function SupplierRegistrationPage() {
           </div>
 
           <label className="field">
-            <span>CNPJ</span>
+            <span>CNPJ/CPF</span>
             <input
               type="text"
               inputMode="numeric"
-              placeholder="00.000.000/0000-00"
+              placeholder="CPF ou CNPJ"
               value={form.cnpj}
-              onChange={(event) => updateField('cnpj', formatCnpj(event.target.value))}
+              onChange={(event) => updateField('cnpj', formatCpfCnpj(event.target.value))}
+              onBlur={handleDocumentBlur}
               required
             />
           </label>
@@ -162,15 +231,22 @@ export default function SupplierRegistrationPage() {
             <input type="email" value={form.email} onChange={(event) => updateField('email', event.target.value)} />
           </label>
 
-          <label className="field field--span-2">
-            <span>Endereço</span>
-            <input type="text" value={form.address} onChange={(event) => updateField('address', event.target.value)} />
-          </label>
+          <AddressFields
+            values={form}
+            onChange={updateField}
+            onChangeMany={updateFields}
+            onStatus={setMessage}
+          />
 
-          <label className="field inline-check-field">
-            <input type="checkbox" checked={form.active} onChange={(event) => updateField('active', event.target.checked)} />
+          <div className="field inline-check-field">
+            <input
+              type="checkbox"
+              aria-label="Ativo"
+              checked={form.active}
+              onChange={(event) => updateField('active', event.target.checked)}
+            />
             <span>Ativo</span>
-          </label>
+          </div>
         </div>
 
         <div className="form-actions">
@@ -197,7 +273,7 @@ export default function SupplierRegistrationPage() {
             <thead>
               <tr>
                 <th>Nome</th>
-                <th>CNPJ</th>
+                <th>CNPJ/CPF</th>
                 <th>Contato</th>
                 <th>E-mail</th>
                 <th>Ativo</th>
@@ -233,7 +309,7 @@ export default function SupplierRegistrationPage() {
               <input
                 type="search"
                 className="lookup-search"
-                placeholder="Pesquisar por nome, CNPJ ou contato"
+                placeholder="Pesquisar por nome, CPF/CNPJ ou contato"
                 value={lookupSearch}
                 onChange={(event) => setLookupSearch(event.target.value)}
                 autoFocus
@@ -245,7 +321,7 @@ export default function SupplierRegistrationPage() {
                 <thead>
                   <tr>
                     <th>Nome</th>
-                    <th>CNPJ</th>
+                    <th>CNPJ/CPF</th>
                     <th>Contato</th>
                     <th>Ativo</th>
                   </tr>

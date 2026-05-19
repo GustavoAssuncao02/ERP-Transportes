@@ -1,28 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import AccountsPayableSchedulePage from './AccountsPayableSchedulePage.jsx';
-import AccountsPayableDeletionPage from './AccountsPayableDeletionPage.jsx';
-import AccountsPayablePage from './AccountsPayablePage.jsx';
-import AccountsPayableReportPage from './AccountsPayableReportPage.jsx';
-import AccountsPayableSettlementPage from './AccountsPayableSettlementPage.jsx';
-import AccountsReceivableDashboardPage from './AccountsReceivableDashboardPage.jsx';
-import AccountsReceivablePage from './AccountsReceivablePage.jsx';
-import AccountsReceivableSettlementPage from './AccountsReceivableSettlementPage.jsx';
-import BusinessIntelligencePage from './BusinessIntelligencePage.jsx';
-import CollectionOrderPage from './CollectionOrderPage.jsx';
-import CreateMinutaPage from './CreateMinutaPage.jsx';
-import DriverRegistrationPage from './DriverRegistrationPage.jsx';
-import FleetManagementPage from './FleetManagementPage.jsx';
-import GenerateManifestPage from './GenerateManifestPage.jsx';
-import HomeShortcutsPage from './HomeShortcutsPage.jsx';
-import InsuranceRegistrationPage from './InsuranceRegistrationPage.jsx';
-import IssueCtePage from './IssueCtePage.jsx';
-import OneOffPaymentPage from './OneOffPaymentPage.jsx';
-import RegisteredLaunchesPage from './RegisteredLaunchesPage.jsx';
-import SettlementReversalPage from './SettlementReversalPage.jsx';
-import SupplierRegistrationPage from './SupplierRegistrationPage.jsx';
-import SystemUpdatesPage from './SystemUpdatesPage.jsx';
-import UnitRegistrationPage from './UnitRegistrationPage.jsx';
-import VehicleRegistrationPage from './VehicleRegistrationPage.jsx';
+import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import CardGrid from '../components/CardGrid.jsx';
 import DashboardSection from '../components/DashboardSection.jsx';
 import Navbar from '../components/Navbar.jsx';
@@ -35,6 +11,32 @@ import {
   saveHomeShortcutIds,
 } from '../data/homeShortcuts.js';
 import { quickQueryCards, tabs as initialTabs } from '../data/siteData.js';
+
+const AccountsPayableDeletionPage = lazy(() => import('./AccountsPayableDeletionPage.jsx'));
+const AccountsPayablePage = lazy(() => import('./AccountsPayablePage.jsx'));
+const AccountsPayableReportPage = lazy(() => import('./AccountsPayableReportPage.jsx'));
+const AccountsPayableSchedulePage = lazy(() => import('./AccountsPayableSchedulePage.jsx'));
+const AccountsPayableSettlementPage = lazy(() => import('./AccountsPayableSettlementPage.jsx'));
+const AccountsReceivableDashboardPage = lazy(() => import('./AccountsReceivableDashboardPage.jsx'));
+const AccountsReceivablePage = lazy(() => import('./AccountsReceivablePage.jsx'));
+const AccountsReceivableSettlementPage = lazy(() => import('./AccountsReceivableSettlementPage.jsx'));
+const BusinessIntelligencePage = lazy(() => import('./BusinessIntelligencePage.jsx'));
+const CollectionOrderPage = lazy(() => import('./CollectionOrderPage.jsx'));
+const CreateMinutaPage = lazy(() => import('./CreateMinutaPage.jsx'));
+const DriverRegistrationPage = lazy(() => import('./DriverRegistrationPage.jsx'));
+const FleetManagementPage = lazy(() => import('./FleetManagementPage.jsx'));
+const GenerateManifestPage = lazy(() => import('./GenerateManifestPage.jsx'));
+const HomeShortcutsPage = lazy(() => import('./HomeShortcutsPage.jsx'));
+const InsuranceRegistrationPage = lazy(() => import('./InsuranceRegistrationPage.jsx'));
+const IssueCtePage = lazy(() => import('./IssueCtePage.jsx'));
+const OneOffPaymentPage = lazy(() => import('./OneOffPaymentPage.jsx'));
+const RegisteredLaunchesPage = lazy(() => import('./RegisteredLaunchesPage.jsx'));
+const SettlementReversalPage = lazy(() => import('./SettlementReversalPage.jsx'));
+const SupplierRegistrationPage = lazy(() => import('./SupplierRegistrationPage.jsx'));
+const SystemUpdatesPage = lazy(() => import('./SystemUpdatesPage.jsx'));
+const UnitRegistrationPage = lazy(() => import('./UnitRegistrationPage.jsx'));
+const VehicleRegistrationPage = lazy(() => import('./VehicleRegistrationPage.jsx'));
+const WarehouseManagementPage = lazy(() => import('./WarehouseManagementPage.jsx'));
 
 export default function DashboardPage() {
   const [openTabs, setOpenTabs] = useState(initialTabs);
@@ -199,6 +201,10 @@ export default function DashboardPage() {
       return <VehicleRegistrationPage />;
     }
 
+    if (activeTabId === 'warehouse-management') {
+      return <WarehouseManagementPage />;
+    }
+
     if (activeTabId === 'driver-registration') {
       return <DriverRegistrationPage />;
     }
@@ -295,7 +301,9 @@ export default function DashboardPage() {
 
       <main className="main-layout">
         <div className="content-area" ref={contentAreaRef}>
-          {renderContent()}
+          <Suspense fallback={<div className="empty-list">Carregando tela...</div>}>
+            {renderContent()}
+          </Suspense>
         </div>
 
         {activeTabId === 'home' && <SidebarBrand />}

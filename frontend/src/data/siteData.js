@@ -19,6 +19,11 @@ export const navigationItems = [
         pageId: 'insurance-registration',
       },
       {
+        id: 'gestao-galpao',
+        label: 'Gestão de Galpão',
+        pageId: 'warehouse-management',
+      },
+      {
         id: 'cadastrar-veiculo',
         label: 'Cadastrar Veículo',
         pageId: 'vehicle-registration',

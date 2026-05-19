@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
+import AddressFields from '../components/AddressFields.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, toNumber } from '../data/financeData.js';
 import { getRegisteredSuppliers } from '../data/managementRegistry.js';
@@ -20,6 +21,7 @@ import {
   saveReceivable,
 } from '../data/accountsReceivableRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
+import { copyAddressFields, defaultAddressFields, formatAddress, normalizeAddressFields } from '../utils/address.js';
 
 export default function AccountsReceivablePage() {
   const [receivables, setReceivables] = useState(readReceivables);
@@ -29,13 +31,17 @@ export default function AccountsReceivablePage() {
   const [message, setMessage] = useAutoClearMessage();
 
   const customers = useMemo(
-    () => getRegisteredSuppliers().map((supplier) => ({
-      id: supplier.id || supplier.cnpj,
-      name: supplier.name,
-      document: supplier.cnpj,
-      address: supplier.address,
-      status: supplier.active ? 'Ativo' : 'Inativo',
-    })),
+    () => getRegisteredSuppliers().map((supplier) => {
+      const normalizedSupplier = normalizeAddressFields(supplier);
+
+      return {
+        id: normalizedSupplier.id || normalizedSupplier.cnpj,
+        name: normalizedSupplier.name,
+        document: normalizedSupplier.cnpj,
+        status: normalizedSupplier.active ? 'Ativo' : 'Inativo',
+        ...normalizedSupplier,
+      };
+    }),
     [],
   );
   const ctes = useMemo(() => getRegisteredCtes(), []);
@@ -97,12 +103,20 @@ export default function AccountsReceivablePage() {
     setMessage('');
   }
 
+  function updateFields(updates) {
+    setForm((current) => ({ ...current, ...updates }));
+    setMessage('');
+  }
+
   function applyCustomer(customer) {
+    const addressUpdates = copyAddressFields(customer, defaultAddressFields);
+
     setForm((current) => ({
       ...current,
       customerName: customer.name,
       customerDocument: customer.document,
-      address: customer.address || current.address,
+      ...addressUpdates,
+      address: addressUpdates.address || current.address,
     }));
   }
 
@@ -209,7 +223,8 @@ export default function AccountsReceivablePage() {
         nfeNumber: current.nfeNumber || item.invoiceKey || '',
         customerName: current.customerName || customer?.name || item.senderName || '',
         customerDocument: current.customerDocument || customer?.document || '',
-        address: current.address || customer?.address || '',
+        ...(customer ? copyAddressFields(customer, defaultAddressFields) : {}),
+        address: current.address || (customer ? formatAddress(customer) : ''),
       }));
     }
 
@@ -314,10 +329,12 @@ export default function AccountsReceivablePage() {
             <input type="text" value={titleStatus} readOnly tabIndex={-1} />
           </label>
 
-          <label className="field field--span-4">
-            <span>Endereco</span>
-            <input type="text" value={form.address} onChange={(event) => updateField('address', event.target.value)} />
-          </label>
+          <AddressFields
+            values={form}
+            onChange={updateField}
+            onChangeMany={updateFields}
+            onStatus={setMessage}
+          />
 
           <div className="form-section-title field--span-4">Documentos vinculados</div>
 

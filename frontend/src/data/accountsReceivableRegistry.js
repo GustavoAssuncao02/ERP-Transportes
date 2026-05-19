@@ -1,10 +1,11 @@
 import { normalizeText, toNumber, todayValue } from './financeData.js';
 import { formatCpf, onlyDigits } from './transportRegistry.js';
+import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
 
 export const receivableStorageKey = 'accountsReceivableTitles';
 
 export const defaultReceivables = [
-  {
+  normalizeAddressFields({
     id: 'CR-202605-00001',
     customerName: 'Auto Posto Central LTDA',
     customerDocument: '12.345.678/0001-90',
@@ -29,16 +30,17 @@ export const defaultReceivables = [
     dueTermDays: 10,
     status: 'Aberto',
     settlements: [],
-  },
+  }),
 ];
 
 function withReceivableDefaults(receivable) {
-  const originalValue = toNumber(receivable.originalValue) || calculateTotal(receivable);
+  const normalizedReceivable = normalizeAddressFields(receivable);
+  const originalValue = toNumber(normalizedReceivable.originalValue) || calculateTotal(normalizedReceivable);
   const paidValue = Math.min(toNumber(receivable.paidValue), originalValue);
   const openBalance = Math.max(0, originalValue - paidValue);
 
   return {
-    ...receivable,
+    ...normalizedReceivable,
     originalValue: originalValue.toFixed(2),
     paidValue: paidValue.toFixed(2),
     openBalance: openBalance.toFixed(2),
@@ -84,7 +86,7 @@ export function blankReceivable() {
     id: '',
     customerName: '',
     customerDocument: '',
-    address: '',
+    ...blankAddressFields(),
     paymentForecastDate: '',
     cteId: '',
     nfeNumber: '',

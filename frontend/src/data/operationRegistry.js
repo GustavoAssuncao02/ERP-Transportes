@@ -1,3 +1,5 @@
+import { addressFieldSet, normalizeAddressFields } from '../utils/address.js';
+
 export const cteStorageKey = 'transportCtes';
 export const collectionOrderStorageKey = 'collectionOrders';
 export const minutaStorageKey = 'transportMinutas';
@@ -5,6 +7,8 @@ export const manifestStorageKey = 'transportManifests';
 export const pendingManifestIdKey = 'pendingManifestId';
 const manifestSeedVersionKey = 'transportManifestSeedVersion';
 const manifestSeedVersion = 'fleet-map-demo-v1';
+const pickupAddressFields = addressFieldSet('pickup', 'pickupAddress');
+const deliveryAddressFields = addressFieldSet('delivery', 'deliveryAddress');
 
 export const defaultCtes = [
   {
@@ -90,15 +94,30 @@ export const defaultCollectionOrders = [
   },
 ];
 
+function normalizeMinutaAddressFields(minuta) {
+  return normalizeAddressFields(
+    normalizeAddressFields(minuta, pickupAddressFields),
+    deliveryAddressFields,
+  );
+}
+
 export const defaultMinutas = [
-  {
+  normalizeMinutaAddressFields({
     id: 'MIN-202605-00001',
     issueDate: '2026-05-18',
     senderName: 'Auto Posto Central LTDA',
     senderDocument: '12.345.678/0001-90',
     recipientName: 'Transportes Parceiros SA',
     recipientDocument: '45.678.901/0001-33',
+    pickupZipCode: '',
+    pickupStreet: 'Av. Tancredo Neves',
+    pickupNumber: '1000',
+    pickupDistrict: '',
     pickupAddress: 'Av. Tancredo Neves, 1000 - Salvador - BA',
+    deliveryZipCode: '',
+    deliveryStreet: 'Rua Sao Bento',
+    deliveryNumber: '440',
+    deliveryDistrict: '',
     deliveryAddress: 'Rua Sao Bento, 440 - Feira de Santana - BA',
     originCity: 'Salvador - BA',
     destinationCity: 'Feira de Santana - BA',
@@ -116,7 +135,7 @@ export const defaultMinutas = [
     notes: 'Minuta criada para coleta programada.',
     status: 'Emitida',
     createdAt: '2026-05-18T08:30:00.000Z',
-  },
+  }),
 ];
 
 export const defaultManifests = [
@@ -475,11 +494,11 @@ export function deactivateCollectionOrder(id) {
 }
 
 export function getRegisteredMinutas() {
-  return readRecords(minutaStorageKey, defaultMinutas);
+  return readRecords(minutaStorageKey, defaultMinutas).map(normalizeMinutaAddressFields);
 }
 
 export function saveMinuta(record) {
-  return upsertRecord(minutaStorageKey, defaultMinutas, record);
+  return upsertRecord(minutaStorageKey, defaultMinutas, normalizeMinutaAddressFields(record));
 }
 
 export function deleteMinuta(id) {

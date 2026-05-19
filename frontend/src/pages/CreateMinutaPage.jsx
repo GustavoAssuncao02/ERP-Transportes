@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import AddressFields from '../components/AddressFields.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, todayValue } from '../data/financeData.js';
 import { getRegisteredSuppliers } from '../data/managementRegistry.js';
@@ -12,9 +13,20 @@ import {
 } from '../data/transportRegistry.js';
 import { getMinutaDeletionBlockers } from '../data/deletionRules.js';
 import { deactivateMinuta, deleteMinuta } from '../data/operationRegistry.js';
+import {
+  addressFieldSet,
+  blankAddressFields,
+  copyAddressFields,
+  defaultAddressFields,
+  normalizeAddressFields,
+} from '../utils/address.js';
 
 const minutaStorageKey = 'transportMinutas';
 const cityApiUrl = 'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome';
+const cityCacheKey = 'ibgeCityOptionsCache';
+const cityCacheTtlMs = 15 * 24 * 60 * 60 * 1000;
+const pickupAddressFields = addressFieldSet('pickup', 'pickupAddress');
+const deliveryAddressFields = addressFieldSet('delivery', 'deliveryAddress');
 
 const fallbackCities = [
   'Aracaju - SE',
@@ -60,7 +72,15 @@ const defaultMinutas = [
     senderDocument: '12.345.678/0001-90',
     recipientName: 'Transportes Parceiros SA',
     recipientDocument: '45.678.901/0001-33',
+    pickupZipCode: '',
+    pickupStreet: 'Av. Tancredo Neves',
+    pickupNumber: '1000',
+    pickupDistrict: '',
     pickupAddress: 'Av. Tancredo Neves, 1000 - Salvador - BA',
+    deliveryZipCode: '',
+    deliveryStreet: 'Rua Sao Bento',
+    deliveryNumber: '440',
+    deliveryDistrict: '',
     deliveryAddress: 'Rua Sao Bento, 440 - Feira de Santana - BA',
     originCity: 'Salvador - BA',
     destinationCity: 'Feira de Santana - BA',
@@ -89,22 +109,51 @@ function cityLabel(city) {
   return uf ? `${city.nome} - ${uf}` : city.nome;
 }
 
+function readCachedCities() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(cityCacheKey) || 'null');
+
+    if (cached?.options?.length) {
+      return cached;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function writeCachedCities(options) {
+  try {
+    localStorage.setItem(cityCacheKey, JSON.stringify({
+      updatedAt: Date.now(),
+      options,
+    }));
+  } catch {
+    // O cache é apenas otimização; a tela segue usando fallback ou dados carregados.
+  }
+}
+
+function shouldRefreshCities(cache) {
+  return !cache?.updatedAt || Date.now() - cache.updatedAt > cityCacheTtlMs;
+}
+
 function readMinutas() {
   try {
     const rawValue = localStorage.getItem(minutaStorageKey);
     if (rawValue !== null) {
       const stored = JSON.parse(rawValue);
-      return Array.isArray(stored) ? stored : defaultMinutas;
+      return Array.isArray(stored) ? stored.map(normalizeMinutaAddressFields) : defaultMinutas.map(normalizeMinutaAddressFields);
     }
   } catch {
-    return defaultMinutas;
+    return defaultMinutas.map(normalizeMinutaAddressFields);
   }
 
-  return defaultMinutas;
+  return defaultMinutas.map(normalizeMinutaAddressFields);
 }
 
 function writeMinutas(minutas) {
-  localStorage.setItem(minutaStorageKey, JSON.stringify(minutas));
+  localStorage.setItem(minutaStorageKey, JSON.stringify(minutas.map(normalizeMinutaAddressFields)));
 }
 
 function nextMinutaNumber() {
@@ -139,8 +188,8 @@ function blankMinuta() {
     senderDocument: '',
     recipientName: '',
     recipientDocument: '',
-    pickupAddress: '',
-    deliveryAddress: '',
+    ...blankAddressFields(pickupAddressFields),
+    ...blankAddressFields(deliveryAddressFields),
     originCity: '',
     destinationCity: '',
     cargoType: 'Carga geral',
@@ -160,16 +209,34 @@ function blankMinuta() {
   };
 }
 
+function normalizeMinutaAddressFields(minuta) {
+  return normalizeAddressFields(
+    normalizeAddressFields(minuta, pickupAddressFields),
+    deliveryAddressFields,
+  );
+}
+
+function copySupplierAddressTo(targetFields, supplier) {
+  return copyAddressFields(supplier, targetFields, defaultAddressFields);
+}
+
 export default function CreateMinutaPage() {
   const [minutas, setMinutas] = useState(readMinutas);
   const [form, setForm] = useState(blankMinuta);
-  const [cities, setCities] = useState(fallbackCities);
+  const [cities, setCities] = useState(() => readCachedCities()?.options || fallbackCities);
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
   const [message, setMessage] = useAutoClearMessage();
 
   useEffect(() => {
     let ignore = false;
+    const cache = readCachedCities();
+
+    if (!shouldRefreshCities(cache)) {
+      return () => {
+        ignore = true;
+      };
+    }
 
     async function loadCities() {
       try {
@@ -186,9 +253,10 @@ export default function CreateMinutaPage() {
 
         if (!ignore) {
           setCities(nextCities);
+          writeCachedCities(nextCities);
         }
       } catch {
-        if (!ignore) {
+        if (!ignore && !cache?.options?.length) {
           setCities(fallbackCities);
         }
       }
@@ -202,13 +270,17 @@ export default function CreateMinutaPage() {
   }, []);
 
   const suppliers = useMemo(
-    () => getRegisteredSuppliers().map((supplier) => ({
-      id: supplier.id || supplier.cnpj,
-      name: supplier.name,
-      document: supplier.cnpj,
-      address: supplier.address,
-      status: supplier.active ? 'Ativo' : 'Inativo',
-    })),
+    () => getRegisteredSuppliers().map((supplier) => {
+      const normalizedSupplier = normalizeAddressFields(supplier);
+
+      return {
+        id: normalizedSupplier.id || normalizedSupplier.cnpj,
+        name: normalizedSupplier.name,
+        document: normalizedSupplier.cnpj,
+        status: normalizedSupplier.active ? 'Ativo' : 'Inativo',
+        ...normalizedSupplier,
+      };
+    }),
     [],
   );
   const drivers = useMemo(() => getRegisteredDrivers(), []);
@@ -271,8 +343,13 @@ export default function CreateMinutaPage() {
     setMessage('');
   }
 
+  function updateFields(updates) {
+    setForm((current) => ({ ...current, ...updates }));
+    setMessage('');
+  }
+
   function loadMinuta(minuta) {
-    setForm({ ...blankMinuta(), ...minuta });
+    setForm({ ...blankMinuta(), ...normalizeMinutaAddressFields(minuta) });
     setMessage(`Minuta ${minuta.id} carregada para edicao`);
   }
 
@@ -311,7 +388,7 @@ export default function CreateMinutaPage() {
         ...current,
         senderName: item.name,
         senderDocument: item.document,
-        pickupAddress: current.pickupAddress || item.address || '',
+        ...copySupplierAddressTo(pickupAddressFields, item),
       }));
     }
 
@@ -320,7 +397,7 @@ export default function CreateMinutaPage() {
         ...current,
         recipientName: item.name,
         recipientDocument: item.document,
-        deliveryAddress: current.deliveryAddress || item.address || '',
+        ...copySupplierAddressTo(deliveryAddressFields, item),
       }));
     }
 
@@ -372,11 +449,11 @@ export default function CreateMinutaPage() {
     }
 
     const id = form.id.trim().toUpperCase() || nextMinutaNumber();
-    const nextMinuta = {
+    const nextMinuta = normalizeMinutaAddressFields({
       ...form,
       id,
       createdAt: form.createdAt || new Date().toISOString(),
-    };
+    });
     const existingIndex = minutas.findIndex((minuta) => normalizeText(minuta.id) === normalizeText(id));
     const nextMinutas = [...minutas];
 
@@ -499,15 +576,29 @@ export default function CreateMinutaPage() {
             </div>
           </div>
 
-          <label className="field field--span-2">
-            <span>Endereco de coleta</span>
-            <input type="text" value={form.pickupAddress} onChange={(event) => updateField('pickupAddress', event.target.value)} required />
-          </label>
+          <div className="form-section-title field--span-4">Endereço de coleta</div>
 
-          <label className="field field--span-2">
-            <span>Endereco de entrega</span>
-            <input type="text" value={form.deliveryAddress} onChange={(event) => updateField('deliveryAddress', event.target.value)} required />
-          </label>
+          <AddressFields
+            values={form}
+            fields={pickupAddressFields}
+            context="de coleta"
+            onChange={updateField}
+            onChangeMany={updateFields}
+            onStatus={setMessage}
+            required
+          />
+
+          <div className="form-section-title field--span-4">Endereço de entrega</div>
+
+          <AddressFields
+            values={form}
+            fields={deliveryAddressFields}
+            context="de entrega"
+            onChange={updateField}
+            onChangeMany={updateFields}
+            onStatus={setMessage}
+            required
+          />
 
           <label className="field field--span-2">
             <span>Cidade/UF de origem</span>

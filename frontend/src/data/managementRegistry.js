@@ -1,11 +1,12 @@
 import { businessUnits, suppliers } from './financeData.js';
 import { onlyDigits } from './transportRegistry.js';
+import { normalizeAddressFields } from '../utils/address.js';
 
 export const unitStorageKey = 'managementUnits';
 export const supplierStorageKey = 'managementSuppliers';
 export const insuranceStorageKey = 'managementInsurances';
 
-export const defaultUnits = businessUnits.map((unit) => ({
+export const defaultUnits = businessUnits.map((unit) => normalizeAddressFields({
   id: unit.code,
   name: unit.name,
   cnpj: unit.code === '001' ? '12.345.678/0001-90' : unit.code === '002' ? '56.789.012/0001-44' : '78.901.234/0001-66',
@@ -15,7 +16,7 @@ export const defaultUnits = businessUnits.map((unit) => ({
   cnae: '4930-2/02',
 }));
 
-export const defaultSuppliers = suppliers.map((supplier) => ({
+export const defaultSuppliers = suppliers.map((supplier) => normalizeAddressFields({
   id: supplier.code,
   name: supplier.name,
   cnpj: supplier.cnpj,
@@ -53,6 +54,25 @@ export function formatCnpj(value) {
   return first;
 }
 
+export function formatCpf(value) {
+  const digits = onlyDigits(value).slice(0, 11);
+  const first = digits.slice(0, 3);
+  const second = digits.slice(3, 6);
+  const third = digits.slice(6, 9);
+  const last = digits.slice(9, 11);
+
+  if (digits.length > 9) return `${first}.${second}.${third}-${last}`;
+  if (digits.length > 6) return `${first}.${second}.${third}`;
+  if (digits.length > 3) return `${first}.${second}`;
+  return first;
+}
+
+export function formatCpfCnpj(value) {
+  const digits = onlyDigits(value);
+
+  return digits.length <= 11 ? formatCpf(digits) : formatCnpj(digits);
+}
+
 function readRecords(key, fallback) {
   try {
     const rawValue = localStorage.getItem(key);
@@ -72,11 +92,11 @@ function writeRecords(key, records) {
 }
 
 export function getRegisteredUnits() {
-  return readRecords(unitStorageKey, defaultUnits);
+  return readRecords(unitStorageKey, defaultUnits).map((unit) => normalizeAddressFields(unit));
 }
 
 export function getRegisteredSuppliers() {
-  return readRecords(supplierStorageKey, defaultSuppliers);
+  return readRecords(supplierStorageKey, defaultSuppliers).map((supplier) => normalizeAddressFields(supplier));
 }
 
 export function getRegisteredInsurances() {
@@ -93,11 +113,11 @@ export function saveUnit(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const units = getRegisteredUnits();
   const existingIndex = units.findIndex((unit) => onlyDigits(unit.cnpj) === cnpjDigits);
-  const nextRecord = {
+  const nextRecord = normalizeAddressFields({
     ...record,
     id: record.id || String(units.length + 1).padStart(3, '0'),
     cnpj: formatCnpj(record.cnpj),
-  };
+  });
 
   if (existingIndex >= 0) {
     units[existingIndex] = nextRecord;
@@ -113,11 +133,11 @@ export function saveSupplier(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const suppliersList = getRegisteredSuppliers();
   const existingIndex = suppliersList.findIndex((supplier) => onlyDigits(supplier.cnpj) === cnpjDigits);
-  const nextRecord = {
+  const nextRecord = normalizeAddressFields({
     ...record,
     id: record.id || String(1000 + suppliersList.length + 1),
-    cnpj: formatCnpj(record.cnpj),
-  };
+    cnpj: formatCpfCnpj(record.cnpj),
+  });
 
   if (existingIndex >= 0) {
     suppliersList[existingIndex] = nextRecord;

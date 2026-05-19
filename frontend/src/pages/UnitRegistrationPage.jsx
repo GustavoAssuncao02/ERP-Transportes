@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Trash2 } from 'lucide-react';
+import AddressFields from '../components/AddressFields.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   deactivateUnit,
@@ -10,6 +11,8 @@ import {
 } from '../data/managementRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
 import { getUnitDeletionBlockers } from '../data/deletionRules.js';
+import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
+import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
 
 const cnaeApiUrl = 'https://servicodados.ibge.gov.br/api/v2/cnae/subclasses';
 const cnaeCacheKey = 'ibgeCnaeOptionsCache';
@@ -39,7 +42,7 @@ const initialForm = {
   name: '',
   cnpj: '',
   description: '',
-  address: '',
+  ...blankAddressFields(),
   active: true,
   cnae: '',
 };
@@ -100,6 +103,7 @@ export default function UnitRegistrationPage() {
   const [form, setForm] = useState(initialForm);
   const [cnaeOptions, setCnaeOptions] = useState(() => readCachedCnaes()?.options || fallbackCnaes);
   const [message, setMessage] = useAutoClearMessage();
+  const companyLookupRequestRef = useRef(0);
 
   const sortedUnits = useMemo(
     () => [...units].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
@@ -159,8 +163,67 @@ export default function UnitRegistrationPage() {
     setMessage('');
   }
 
+  function updateFields(updates) {
+    setForm((current) => ({ ...current, ...updates }));
+    setMessage('');
+  }
+
+  async function handleCnpjBlur() {
+    const cnpj = onlyDigits(form.cnpj);
+
+    if (!cnpj) {
+      return;
+    }
+
+    if (cnpj.length !== 14) {
+      setMessage('Informe um CNPJ com 14 digitos');
+      return;
+    }
+
+    const requestId = companyLookupRequestRef.current + 1;
+    companyLookupRequestRef.current = requestId;
+    setMessage('Consultando CNPJ...');
+
+    try {
+      const company = await fetchCompanyByCnpj(cnpj);
+
+      if (companyLookupRequestRef.current !== requestId) {
+        return;
+      }
+
+      if (!company) {
+        setMessage('CNPJ nao encontrado');
+        return;
+      }
+
+      const companyCnae = formatCnaeCode(company.cnae);
+
+      setForm((current) => ({
+        ...current,
+        cnpj: formatCnpj(company.cnpj || cnpj),
+        name: company.name || company.legalName || current.name,
+        cnae: companyCnae || current.cnae,
+        description: company.cnaeDescription || company.legalName || current.description,
+        zipCode: company.zipCode || current.zipCode,
+        street: company.street || current.street,
+        addressNumber: company.addressNumber || current.addressNumber,
+        district: company.district || current.district,
+      }));
+
+      setMessage(
+        company.city && company.state
+          ? `CNPJ localizado: ${company.city}/${company.state}`
+          : 'Dados preenchidos pelo CNPJ',
+      );
+    } catch {
+      if (companyLookupRequestRef.current === requestId) {
+        setMessage('Nao foi possivel consultar o CNPJ agora');
+      }
+    }
+  }
+
   function loadUnit(unit) {
-    setForm({ ...unit, cnae: formatCnaeCode(unit.cnae) });
+    setForm({ ...normalizeAddressFields(unit), cnae: formatCnaeCode(unit.cnae) });
     setMessage(`Unidade ${unit.name} carregada para edição`);
   }
 
@@ -239,6 +302,7 @@ export default function UnitRegistrationPage() {
               placeholder="00.000.000/0000-00"
               value={form.cnpj}
               onChange={(event) => updateField('cnpj', formatCnpj(event.target.value))}
+              onBlur={handleCnpjBlur}
               required
             />
           </label>
@@ -258,15 +322,23 @@ export default function UnitRegistrationPage() {
             <textarea value={form.description} onChange={(event) => updateField('description', event.target.value)} required />
           </label>
 
-          <label className="field field--span-4">
-            <span>Endereço</span>
-            <input type="text" value={form.address} onChange={(event) => updateField('address', event.target.value)} required />
-          </label>
+          <AddressFields
+            values={form}
+            onChange={updateField}
+            onChangeMany={updateFields}
+            onStatus={setMessage}
+            required
+          />
 
-          <label className="field inline-check-field">
-            <input type="checkbox" checked={form.active} onChange={(event) => updateField('active', event.target.checked)} />
+          <div className="field inline-check-field">
+            <input
+              type="checkbox"
+              aria-label="Ativo"
+              checked={form.active}
+              onChange={(event) => updateField('active', event.target.checked)}
+            />
             <span>Ativo</span>
-          </label>
+          </div>
         </div>
 
         <div className="form-actions">
@@ -295,7 +367,10 @@ export default function UnitRegistrationPage() {
                 <th>Nome</th>
                 <th>CNPJ</th>
                 <th>CNAE</th>
-                <th>Endereço</th>
+                <th>CEP</th>
+                <th>Rua</th>
+                <th>Número</th>
+                <th>Bairro</th>
                 <th>Ativo</th>
               </tr>
             </thead>
@@ -305,7 +380,10 @@ export default function UnitRegistrationPage() {
                   <td><strong>{unit.name}</strong></td>
                   <td>{unit.cnpj}</td>
                   <td>{unit.cnae}</td>
-                  <td>{unit.address}</td>
+                  <td>{unit.zipCode || '-'}</td>
+                  <td>{unit.street || '-'}</td>
+                  <td>{unit.addressNumber || '-'}</td>
+                  <td>{unit.district || '-'}</td>
                   <td>{unit.active ? 'Sim' : 'Não'}</td>
                 </tr>
               ))}

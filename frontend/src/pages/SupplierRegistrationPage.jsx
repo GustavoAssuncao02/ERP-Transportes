@@ -41,7 +41,9 @@ export default function SupplierRegistrationPage() {
     const query = normalizeText(lookupSearch);
     if (!query) return sortedSuppliers;
 
-    return sortedSuppliers.filter((supplier) => normalizeText(`${supplier.name} ${supplier.cnpj} ${supplier.contact}`).includes(query));
+    return sortedSuppliers.filter((supplier) => (
+      normalizeText(`${supplier.name} ${supplier.cnpj} ${supplier.contact} ${supplier.email} ${supplier.address}`).includes(query)
+    ));
   }, [lookupSearch, sortedSuppliers]);
 
   function updateField(field, value) {
@@ -276,6 +278,7 @@ export default function SupplierRegistrationPage() {
                 <th>CNPJ/CPF</th>
                 <th>Contato</th>
                 <th>E-mail</th>
+                <th>Endereço</th>
                 <th>Ativo</th>
               </tr>
             </thead>
@@ -286,6 +289,7 @@ export default function SupplierRegistrationPage() {
                   <td>{supplier.cnpj}</td>
                   <td>{supplier.contact}</td>
                   <td>{supplier.email}</td>
+                  <td>{supplier.address}</td>
                   <td>{supplier.active ? 'Sim' : 'Não'}</td>
                 </tr>
               ))}

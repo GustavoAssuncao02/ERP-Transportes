@@ -1,9 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Box, ChevronDown, ChevronRight, PackagePlus, Plus, Search, Warehouse, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
+import {
+  blueprintSectors,
+  blueprintViewBox,
+  defaultSectorId,
+  getSectorWeightLimit,
+  readWarehouseWeightSettings,
+  sectorDepotMap,
+  validSectorIds,
+  warehouseCargoStorageKey,
+  warehouseColumnCount,
+  warehouseDepots,
+  warehouseRowCount,
+  warehouseWalls,
+} from '../data/warehouseRegistry.js';
 
-const cargoStorageKey = 'warehouseManagementCargoItems';
-const blueprintViewBox = '0 0 441 138';
+const warehouseExitStatus = 'Concluído';
 
 const statusOptions = [
   'Aguardando roteirização',
@@ -14,6 +27,8 @@ const statusOptions = [
   'Roteirizado',
   'Bloqueio fiscal',
 ];
+
+const invoiceStatusOptions = [...statusOptions, warehouseExitStatus];
 
 const customerOptions = [
   'Atlas Equipamentos',
@@ -43,177 +58,6 @@ function createCargoForm() {
     items: [createCargoFormItem()],
   };
 }
-
-const warehouseWalls = [
-  { id: 'upper-right-block', type: 'rect', x: 228.628, y: 17.5, width: 96, height: 5 },
-  { id: 'outer-shell', type: 'rect', x: 1.50095, y: 22.5, width: 437.772, height: 114 },
-  { id: 'upper-shell', type: 'rect', x: 45.6279, y: 1.5, width: 334, height: 21 },
-  { id: 'upper-center-block', type: 'rect', x: 157.628, y: 17.5, width: 56, height: 5 },
-  { id: 'upper-left-block', type: 'rect', x: 55.6279, y: 17.5, width: 56, height: 5 },
-  { id: 'central-corridor-divider', type: 'line', x1: 226.14, y1: 138.003, x2: 226.14, y2: 23.9986 },
-  { id: 'side-access', type: 'rect', x: 435.128, y: 97, width: 15, height: 4, transform: 'rotate(-90 435.128 97)', strokeWidth: 2 },
-];
-
-const rawStorageSectors = [
-  { x: 412.628, y: 22.5, width: 21, height: 19 },
-  { x: 385.628, y: 22.5, width: 21, height: 19 },
-  { x: 358.628, y: 22.5, width: 21, height: 19 },
-  { x: 331.628, y: 23.5, width: 21, height: 19 },
-  { x: 306.628, y: 22.5, width: 18, height: 16 },
-  { x: 281.628, y: 22.5, width: 18, height: 16 },
-  { x: 306.628, y: 39.5, width: 18, height: 16 },
-  { x: 281.628, y: 39.5, width: 18, height: 16 },
-  { x: 188.628, y: 59.5, width: 18, height: 16 },
-  { x: 181.628, y: 22.5, width: 18, height: 16 },
-  { x: 157.628, y: 22.5, width: 18, height: 16 },
-  { x: 133.628, y: 22.5, width: 18, height: 16 },
-  { x: 109.628, y: 22.5, width: 18, height: 16 },
-  { x: 85.6279, y: 22.5, width: 18, height: 16 },
-  { x: 45.6279, y: 22.5, width: 18, height: 16 },
-  { x: 36.6279, y: 59.5, width: 17, height: 16 },
-  { x: 11.6279, y: 59.5, width: 17, height: 16 },
-  { x: 11.6279, y: 81.5, width: 17, height: 16 },
-  { x: 11.6279, y: 97.5, width: 17, height: 16 },
-  { x: 36.6279, y: 81.5, width: 17, height: 16 },
-  { x: 36.6279, y: 97.5, width: 17, height: 16 },
-  { x: 86.6279, y: 96.5, width: 17, height: 16 },
-  { x: 61.6279, y: 81.5, width: 17, height: 16 },
-  { x: 61.6279, y: 97.5, width: 17, height: 16 },
-  { x: 111.628, y: 96.5, width: 17, height: 16 },
-  { x: 111.628, y: 120.5, width: 17, height: 16 },
-  { x: 136.628, y: 120.5, width: 17, height: 16 },
-  { x: 87.6279, y: 120.5, width: 17, height: 16 },
-  { x: 36.6279, y: 120.5, width: 17, height: 16 },
-  { x: 61.6279, y: 120.5, width: 17, height: 16 },
-  { x: 11.6279, y: 120.5, width: 17, height: 16 },
-  { x: 136.628, y: 97.5, width: 17, height: 16 },
-  { x: 86.6279, y: 81.5, width: 17, height: 16 },
-  { x: 111.628, y: 81.5, width: 17, height: 16 },
-  { x: 136.628, y: 81.5, width: 17, height: 16 },
-  { x: 161.628, y: 81.5, width: 13, height: 16 },
-  { x: 61.6279, y: 59.5, width: 17, height: 16 },
-  { x: 87.6279, y: 59.5, width: 16, height: 16 },
-  { x: 111.628, y: 59.5, width: 17, height: 16 },
-  { x: 136.628, y: 59.5, width: 18, height: 16 },
-  { x: 23.6279, y: 22.5, width: 15, height: 16 },
-  { x: 5.6279, y: 22.5, width: 12, height: 16 },
-  { x: 161.628, y: 59.5, width: 18, height: 16 },
-  { x: 174.628, y: 75.5, width: 52, height: 60 },
-  { x: 412.628, y: 42.5, width: 21, height: 18 },
-  { x: 385.628, y: 42.5, width: 21, height: 18 },
-  { x: 358.628, y: 42.5, width: 21, height: 18 },
-  { x: 331.628, y: 43.5, width: 21, height: 18 },
-  { x: 331.628, y: 61.5, width: 21, height: 18 },
-  { x: 385.628, y: 61.5, width: 21, height: 18 },
-  { x: 412.628, y: 60.5, width: 21, height: 18 },
-  { x: 358.628, y: 61.5, width: 21, height: 18 },
-  { x: 411.628, y: 100.5, width: 21, height: 19 },
-  { x: 385.628, y: 100.5, width: 21, height: 19 },
-  { x: 358.628, y: 100.5, width: 21, height: 19 },
-  { x: 333.628, y: 100.5, width: 19, height: 19 },
-  { x: 308.628, y: 100.5, width: 19, height: 19 },
-  { x: 282.628, y: 97.5, width: 21, height: 22 },
-  { x: 254.628, y: 97.5, width: 21, height: 22 },
-  { x: 226.628, y: 97.5, width: 21, height: 22 },
-  { x: 282.628, y: 75.5, width: 21, height: 22 },
-  { x: 254.628, y: 75.5, width: 21, height: 22 },
-  { x: 226.628, y: 75.5, width: 21, height: 22 },
-  { x: 411.628, y: 119.5, width: 21, height: 17 },
-  { x: 385.628, y: 119.5, width: 21, height: 17 },
-  { x: 358.628, y: 119.5, width: 21, height: 17 },
-  { x: 333.628, y: 119.5, width: 19, height: 17 },
-  { x: 308.628, y: 119.5, width: 19, height: 17 },
-  { x: 282.628, y: 119.5, width: 21, height: 17 },
-  { x: 254.628, y: 119.5, width: 21, height: 17 },
-  { x: 226.628, y: 119.5, width: 21, height: 17 },
-];
-
-function createAxisClusters(values, tolerance) {
-  return [...values].sort((first, second) => first - second).reduce((clusters, value) => {
-    const previousCluster = clusters[clusters.length - 1];
-
-    if (previousCluster && Math.abs(value - previousCluster.center) <= tolerance) {
-      previousCluster.values.push(value);
-      previousCluster.center = previousCluster.values.reduce((sum, clusterValue) => sum + clusterValue, 0) / previousCluster.values.length;
-      return clusters;
-    }
-
-    clusters.push({ center: value, values: [value] });
-    return clusters;
-  }, []);
-}
-
-function columnLabel(index) {
-  let label = '';
-  let currentIndex = index + 1;
-
-  while (currentIndex > 0) {
-    const remainder = (currentIndex - 1) % 26;
-    label = `${String.fromCharCode(65 + remainder)}${label}`;
-    currentIndex = Math.floor((currentIndex - 1) / 26);
-  }
-
-  return label;
-}
-
-function columnLabelIndex(label) {
-  return String(label).split('').reduce((index, character) => (
-    (index * 26) + character.charCodeAt(0) - 64
-  ), 0);
-}
-
-function closestClusterIndex(clusters, value) {
-  return clusters.reduce((closestIndex, cluster, index) => {
-    const closestDistance = Math.abs(value - clusters[closestIndex].center);
-    const currentDistance = Math.abs(value - cluster.center);
-    return currentDistance < closestDistance ? index : closestIndex;
-  }, 0);
-}
-
-function createBlueprintSectors(sectors) {
-  const xClusters = createAxisClusters(sectors.map((sector) => sector.x + (sector.width / 2)), 6);
-  const yClusters = createAxisClusters(sectors.map((sector) => sector.y + (sector.height / 2)), 6);
-
-  return sectors.map((sector) => {
-    const centerX = sector.x + (sector.width / 2);
-    const centerY = sector.y + (sector.height / 2);
-    const columnIndex = closestClusterIndex(xClusters, centerX);
-    const rowIndex = closestClusterIndex(yClusters, centerY);
-    const id = `${columnLabel(columnIndex)}${rowIndex + 1}`;
-
-    return {
-      ...sector,
-      id,
-      centerX,
-      centerY,
-      row: rowIndex + 1,
-      column: columnLabel(columnIndex),
-    };
-  }).sort((first, second) => first.centerY - second.centerY || first.centerX - second.centerX);
-}
-
-const blueprintSectors = createBlueprintSectors(rawStorageSectors);
-const validSectorIds = new Set(blueprintSectors.map((sector) => sector.id));
-const defaultSectorId = validSectorIds.has('H4') ? 'H4' : blueprintSectors[0].id;
-const warehouseColumnCount = new Set(blueprintSectors.map((sector) => sector.column)).size;
-const warehouseRowCount = new Set(blueprintSectors.map((sector) => sector.row)).size;
-const depotSplitColumnIndex = columnLabelIndex('M');
-const warehouseDepots = [
-  {
-    id: 'deposit-2',
-    label: 'Depósito 2',
-    columns: '',
-  },
-  {
-    id: 'deposit-1',
-    label: 'Depósito 1',
-    columns: '',
-  },
-];
-const sectorDepotMap = new Map(blueprintSectors.map((sector) => [
-  sector.id,
-  columnLabelIndex(sector.column) >= depotSplitColumnIndex ? 'deposit-1' : 'deposit-2',
-]));
 
 const demoWarehouseSectors = [
   'A1', 'C1', 'E1', 'G1', 'H1', 'I1', 'J1', 'K1', 'O1', 'P1',
@@ -267,6 +111,14 @@ const extraDemoEmptySectorInvoices = [
   { sectorId: 'S6', invoice: 'NF-3010', customer: 'Auto Peças Camaçari', description: 'Kits de amortecedores', quantity: 4, weight: 240, status: 'Separação' },
 ];
 
+const demoCompletedInvoiceSectors = [
+  'H4', 'H4', 'H4', 'A1', 'C1', 'E1', 'G1', 'I1', 'J1', 'K1',
+  'O1', 'P1', 'Q1', 'R1', 'S1', 'T1', 'O2', 'P2', 'Q2', 'R2',
+  'S2', 'T2', 'B3', 'D3', 'F3', 'G3', 'H3', 'I3', 'J3', 'L3',
+  'Q3', 'R3', 'S3', 'T3', 'B4', 'D4', 'F4', 'G4', 'I4', 'J4',
+];
+const demoCompletedInvoiceCount = 160;
+
 function getSectorOrDefault(sectorId) {
   return validSectorIds.has(sectorId) ? sectorId : defaultSectorId;
 }
@@ -291,8 +143,27 @@ function createDemoWarehouseInvoices() {
   });
 }
 
+function createDemoCompletedInvoices() {
+  return Array.from({ length: demoCompletedInvoiceCount }, (_, index) => {
+    const sectorId = demoCompletedInvoiceSectors[index % demoCompletedInvoiceSectors.length];
+
+    return {
+      invoice: `NF-${String(9001 + index).padStart(4, '0')}`,
+      sectorId: getSectorOrDefault(sectorId),
+      customer: demoWarehouseCustomers[(index + 2) % demoWarehouseCustomers.length],
+      status: warehouseExitStatus,
+      items: [{
+        description: demoWarehouseProducts[(index + 5) % demoWarehouseProducts.length],
+        quantity: (index % 4) + 1,
+        weight: Number((0.6 + (((index * 7) % 22) / 10)).toFixed(1)),
+      }],
+    };
+  });
+}
+
 const demoWarehouseInvoices = [
   ...createDemoWarehouseInvoices(),
+  ...createDemoCompletedInvoices(),
   ...extraDemoEmptySectorInvoices.map((invoice) => ({
     ...invoice,
     sectorId: getSectorOrDefault(invoice.sectorId),
@@ -321,6 +192,65 @@ const weightFormatter = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 1,
 });
 
+const reportTextSorter = new Intl.Collator('pt-BR', {
+  numeric: true,
+  sensitivity: 'base',
+});
+
+const reportSortColumns = [
+  { key: 'sectorId', label: 'Setor', type: 'text', getValue: (item) => item.sectorId },
+  { key: 'invoice', label: 'NF', type: 'text', getValue: (item) => item.invoice },
+  { key: 'customer', label: 'Cliente', type: 'text', getValue: (item) => item.customer },
+  { key: 'description', label: 'Item', type: 'text', getValue: (item) => item.description },
+  { key: 'quantity', label: 'Quantidade', type: 'number', getValue: (item) => item.quantity },
+  { key: 'weight', label: 'Peso', type: 'number', getValue: (item) => item.weight },
+  { key: 'status', label: 'Status', type: 'text', getValue: (item) => item.status },
+];
+
+function getReportDefaultDirection(column) {
+  return column.type === 'number' ? 'desc' : 'asc';
+}
+
+function getReportSortLabel(column, direction) {
+  if (column.type === 'number') {
+    return direction === 'asc' ? '1-9' : '9-1';
+  }
+
+  return direction === 'asc' ? 'A-Z' : 'Z-A';
+}
+
+function compareReportFallback(first, second) {
+  return reportTextSorter.compare(first.sectorId, second.sectorId)
+    || reportTextSorter.compare(first.invoice, second.invoice)
+    || reportTextSorter.compare(first.description, second.description);
+}
+
+function compareReportItems(first, second, column) {
+  const firstValue = column.getValue(first);
+  const secondValue = column.getValue(second);
+
+  if (column.type === 'number') {
+    return (Number(firstValue) || 0) - (Number(secondValue) || 0);
+  }
+
+  return reportTextSorter.compare(String(firstValue || ''), String(secondValue || ''));
+}
+
+function sortReportItems(items, sort) {
+  const column = reportSortColumns.find((option) => option.key === sort.key) || reportSortColumns[0];
+  const direction = sort.direction === 'desc' ? 'desc' : 'asc';
+
+  return [...items].sort((first, second) => {
+    const result = compareReportItems(first, second, column);
+
+    if (result !== 0) {
+      return direction === 'asc' ? result : -result;
+    }
+
+    return compareReportFallback(first, second);
+  });
+}
+
 function normalizeStoredItems(items) {
   if (!Array.isArray(items)) return initialCargoItems;
 
@@ -345,7 +275,7 @@ function loadCargoItems() {
   if (typeof window === 'undefined') return initialCargoItems;
 
   try {
-    const storedCargoItems = window.localStorage.getItem(cargoStorageKey);
+    const storedCargoItems = window.localStorage.getItem(warehouseCargoStorageKey);
     return storedCargoItems ? normalizeStoredItems(JSON.parse(storedCargoItems)) : initialCargoItems;
   } catch {
     return initialCargoItems;
@@ -355,6 +285,23 @@ function loadCargoItems() {
 function parseDecimal(value) {
   const number = Number(String(value).replace(',', '.'));
   return Number.isFinite(number) ? number : 0;
+}
+
+function normalizeStatusKey(status) {
+  return String(status || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function isWarehouseExitStatus(status) {
+  return normalizeStatusKey(status) === 'concluido';
+}
+
+function getInvoiceStatus(items) {
+  const statuses = [...new Set(items.map((item) => item.status).filter(Boolean))];
+  return statuses.length === 1 ? statuses[0] : 'Status misto';
 }
 
 function getSectorStats(items) {
@@ -557,24 +504,52 @@ export default function WarehouseManagementPage() {
   const [cargoItems, setCargoItems] = useState(loadCargoItems);
   const [selectedSectorId, setSelectedSectorId] = useState(defaultSectorId);
   const [sectorGroupingMode, setSectorGroupingMode] = useState('invoice');
+  const [showCompletedInvoices, setShowCompletedInvoices] = useState(false);
   const [expandedInvoices, setExpandedInvoices] = useState({ 'NF-2': true });
   const [expandedCustomers, setExpandedCustomers] = useState({});
+  const [isAddFormOpen, setIsAddFormOpen] = useState(false);
   const [cargoForm, setCargoForm] = useState(createCargoForm);
+  const [weightSettings, setWeightSettings] = useState(readWarehouseWeightSettings);
+  const [reportSort, setReportSort] = useState({ key: 'sectorId', direction: 'asc' });
   const [status, setStatus] = useAutoClearMessage();
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(cargoStorageKey, JSON.stringify(cargoItems));
+      window.localStorage.setItem(warehouseCargoStorageKey, JSON.stringify(cargoItems));
     } catch {
       // Storage is optional; the screen still works during the current session.
     }
   }, [cargoItems]);
 
-  const sectorItemsMap = useMemo(() => cargoItems.reduce((map, item) => {
+  useEffect(() => {
+    function syncWeightSettings() {
+      setWeightSettings(readWarehouseWeightSettings());
+    }
+
+    window.addEventListener('focus', syncWeightSettings);
+    window.addEventListener('storage', syncWeightSettings);
+
+    return () => {
+      window.removeEventListener('focus', syncWeightSettings);
+      window.removeEventListener('storage', syncWeightSettings);
+    };
+  }, []);
+
+  const activeCargoItems = useMemo(
+    () => cargoItems.filter((item) => !isWarehouseExitStatus(item.status)),
+    [cargoItems],
+  );
+  const completedSectorInvoices = useMemo(() => (
+    groupItemsByInvoice(cargoItems.filter((item) => (
+      item.sectorId === selectedSectorId && isWarehouseExitStatus(item.status)
+    )))
+  ), [cargoItems, selectedSectorId]);
+
+  const sectorItemsMap = useMemo(() => activeCargoItems.reduce((map, item) => {
     const currentItems = map.get(item.sectorId) || [];
     map.set(item.sectorId, [...currentItems, item]);
     return map;
-  }, new Map()), [cargoItems]);
+  }, new Map()), [activeCargoItems]);
 
   const selectedItems = useMemo(
     () => sectorItemsMap.get(selectedSectorId) || [],
@@ -585,40 +560,56 @@ export default function WarehouseManagementPage() {
   const groupedInvoices = useMemo(() => groupItemsByInvoice(selectedItems), [selectedItems]);
   const groupedCustomers = useMemo(() => groupItemsByCustomer(selectedItems), [selectedItems]);
   const depotUsageStats = useMemo(
-    () => getDepotUsageStats(cargoItems, sectorItemsMap),
-    [cargoItems, sectorItemsMap],
+    () => getDepotUsageStats(activeCargoItems, sectorItemsMap),
+    [activeCargoItems, sectorItemsMap],
   );
   const totalDepotQuantity = Math.max(1, depotUsageStats.reduce((sum, depot) => sum + depot.quantity, 0));
   const totalDepotWeight = Math.max(1, depotUsageStats.reduce((sum, depot) => sum + depot.weight, 0));
   const maxDepotWeight = Math.max(1, ...depotUsageStats.map((depot) => depot.weight));
   const maxDepotQuantity = Math.max(1, ...depotUsageStats.map((depot) => depot.quantity));
+  const sectorWeightStats = useMemo(() => (
+    blueprintSectors.map((sector) => {
+      const sectorItems = sectorItemsMap.get(sector.id) || [];
+      const stats = getSectorStats(sectorItems);
+      const limit = getSectorWeightLimit(weightSettings, sector.id);
 
-  useEffect(() => {
-    if (sectorGroupingMode !== 'customer') return;
+      return {
+        ...sector,
+        ...stats,
+        limit,
+        isOccupied: stats.itemCount > 0,
+        isOverLimit: stats.itemCount > 0 && stats.weight > limit,
+      };
+    })
+  ), [sectorItemsMap, weightSettings]);
 
-    setExpandedCustomers((currentExpanded) => {
-      const nextExpanded = { ...currentExpanded };
-      groupedCustomers.forEach((group) => {
-        if (nextExpanded[group.customer] === undefined) {
-          nextExpanded[group.customer] = true;
-        }
-      });
-      return nextExpanded;
-    });
-  }, [groupedCustomers, sectorGroupingMode]);
-
-  const warehouseDashboards = useMemo(() => getWarehouseDashboards(cargoItems), [cargoItems]);
+  const warehouseDashboards = useMemo(() => getWarehouseDashboards(activeCargoItems), [activeCargoItems]);
+  const sortedReportItems = useMemo(
+    () => sortReportItems(warehouseDashboards.reportItems, reportSort),
+    [warehouseDashboards.reportItems, reportSort],
+  );
   const clientSelectOptions = useMemo(() => (
     [...new Set([...customerOptions, ...cargoItems.map((item) => item.customer).filter(Boolean)])]
       .sort((first, second) => first.localeCompare(second))
   ), [cargoItems]);
   const occupiedSectors = sectorItemsMap.size;
-  const totalWeight = cargoItems.reduce((sum, item) => sum + item.weight, 0);
+  const totalWeight = activeCargoItems.reduce((sum, item) => sum + item.weight, 0);
+  const overweightSectors = sectorWeightStats.filter((sector) => sector.isOverLimit).length;
+  const compliantSectors = sectorWeightStats.length - overweightSectors;
+  const customLimitCount = Object.keys(weightSettings.sectorLimits || {}).length;
+  const selectedSectorLimit = getSectorWeightLimit(weightSettings, selectedSectorId);
+  const selectedSectorOverLimit = selectedStats.itemCount > 0 && selectedStats.weight > selectedSectorLimit;
+  const selectedSectorUsagePercent = selectedSectorLimit
+    ? Math.round((selectedStats.weight / selectedSectorLimit) * 100)
+    : 0;
+  const selectedSectorMeterWidth = Math.min(100, selectedSectorUsagePercent);
 
   function selectSector(sectorId) {
     setSelectedSectorId(sectorId);
     setExpandedInvoices({});
     setExpandedCustomers({});
+    setShowCompletedInvoices(false);
+    setIsAddFormOpen(false);
     setCargoForm(createCargoForm());
     setStatus(`Setor ${sectorId} selecionado`);
   }
@@ -697,8 +688,108 @@ export default function WarehouseManagementPage() {
     }));
   }
 
+  function changeGroupingMode(mode) {
+    setSectorGroupingMode(mode);
+
+    if (mode === 'customer') {
+      setExpandedCustomers({});
+    }
+  }
+
+  function changeReportSort(column) {
+    setReportSort((currentSort) => {
+      if (currentSort.key === column.key) {
+        return {
+          key: column.key,
+          direction: currentSort.direction === 'asc' ? 'desc' : 'asc',
+        };
+      }
+
+      return {
+        key: column.key,
+        direction: getReportDefaultDirection(column),
+      };
+    });
+  }
+
+  function renderReportHeader(column) {
+    const isActive = reportSort.key === column.key;
+    const direction = isActive ? reportSort.direction : getReportDefaultDirection(column);
+    const nextDirection = isActive
+      ? reportSort.direction === 'asc' ? 'desc' : 'asc'
+      : getReportDefaultDirection(column);
+    const ariaSort = isActive
+      ? reportSort.direction === 'asc' ? 'ascending' : 'descending'
+      : 'none';
+
+    return (
+      <th key={column.key} aria-sort={ariaSort}>
+        <span className="warehouse-sort-header">
+          <span>{column.label}</span>
+          <button
+            type="button"
+            className={isActive ? 'warehouse-sort-button warehouse-sort-button--active' : 'warehouse-sort-button'}
+            title={`Ordenar ${column.label} ${getReportSortLabel(column, nextDirection)}`}
+            aria-label={`Ordenar ${column.label} ${getReportSortLabel(column, nextDirection)}`}
+            onClick={() => changeReportSort(column)}
+          >
+            {getReportSortLabel(column, direction)}
+          </button>
+        </span>
+      </th>
+    );
+  }
+
+  function renderCompletedInvoiceRow(group) {
+    const invoiceStatus = getInvoiceStatus(group.items);
+    const invoiceStatusValue = invoiceStatusOptions.includes(invoiceStatus) ? invoiceStatus : warehouseExitStatus;
+
+    return (
+      <div className="warehouse-completed-row" key={group.invoice}>
+        <div>
+          <strong>{group.invoice}</strong>
+          <span>{group.customer} - {group.items.length} item(s) - {weightFormatter.format(group.weight)} kg</span>
+        </div>
+        <label className="field">
+          <span>Status</span>
+          <select
+            value={invoiceStatusValue}
+            onChange={(event) => changeInvoiceStatus(group.invoice, event.target.value)}
+          >
+            {invoiceStatusOptions.map((statusOption) => (
+              <option value={statusOption} key={statusOption}>{statusOption}</option>
+            ))}
+          </select>
+        </label>
+      </div>
+    );
+  }
+
+  function changeInvoiceStatus(invoice, nextStatus) {
+    if (!nextStatus) return;
+
+    setCargoItems((currentItems) => (
+      currentItems.map((item) => (
+        item.invoice === invoice ? { ...item, status: nextStatus } : item
+      ))
+    ));
+
+    if (isWarehouseExitStatus(nextStatus)) {
+      setExpandedInvoices((currentExpanded) => {
+        const { [invoice]: _removedInvoice, ...nextExpanded } = currentExpanded;
+        return nextExpanded;
+      });
+      setStatus(`${invoice} concluída e retirada da gestão ativa do galpão`);
+      return;
+    }
+
+    setStatus(`Status da ${invoice} atualizado para ${nextStatus}`);
+  }
+
   function renderInvoiceGroup(group) {
     const expanded = Boolean(expandedInvoices[group.invoice]);
+    const invoiceStatus = getInvoiceStatus(group.items);
+    const invoiceStatusValue = invoiceStatusOptions.includes(invoiceStatus) ? invoiceStatus : '';
 
     return (
       <article className="warehouse-invoice-card" key={group.invoice}>
@@ -724,6 +815,21 @@ export default function WarehouseManagementPage() {
 
         {expanded && (
           <div className="warehouse-invoice-items">
+            <div className="warehouse-invoice-status-row">
+              <label className="field">
+                <span>Status da NF</span>
+                <select
+                  value={invoiceStatusValue}
+                  onChange={(event) => changeInvoiceStatus(group.invoice, event.target.value)}
+                >
+                  {!invoiceStatusValue && <option value="">{invoiceStatus}</option>}
+                  {invoiceStatusOptions.map((statusOption) => (
+                    <option value={statusOption} key={statusOption}>{statusOption}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
             {group.items.map((item) => (
               <div className="warehouse-cargo-row" key={item.id}>
                 <Box size={16} strokeWidth={2.2} aria-hidden="true" />
@@ -756,6 +862,14 @@ export default function WarehouseManagementPage() {
       return;
     }
 
+    const newItemsWeight = validFormItems.reduce((sum, item) => sum + parseDecimal(item.weight), 0);
+    const projectedSectorWeight = selectedStats.weight + newItemsWeight;
+
+    if (projectedSectorWeight > selectedSectorLimit) {
+      setStatus(`Setor ${selectedSectorId} excede o limite de ${weightFormatter.format(selectedSectorLimit)} kg`);
+      return;
+    }
+
     const timestamp = Date.now();
     const nextCargoItems = validFormItems.map((item, index) => ({
       id: `cargo-${timestamp}-${index}`,
@@ -772,6 +886,7 @@ export default function WarehouseManagementPage() {
     setExpandedInvoices((currentExpanded) => ({ ...currentExpanded, [invoice]: true }));
     setExpandedCustomers((currentExpanded) => ({ ...currentExpanded, [customer]: true }));
     setCargoForm(createCargoForm());
+    setIsAddFormOpen(false);
     setStatus(`${nextCargoItems.length} item(s) da ${invoice} adicionados ao setor ${selectedSectorId}`);
   }
 
@@ -795,13 +910,31 @@ export default function WarehouseManagementPage() {
         </div>
         <div>
           <span>Itens no galpão</span>
-          <strong>{cargoItems.length}</strong>
+          <strong>{activeCargoItems.length}</strong>
         </div>
         <div>
           <span>Peso total</span>
           <strong>{weightFormatter.format(totalWeight)} kg</strong>
         </div>
       </div>
+
+      <section className="warehouse-weight-dashboard" aria-label="Controle de peso por setor">
+        <article className="warehouse-weight-card warehouse-weight-card--danger">
+          <span>Acima do peso</span>
+          <strong>{overweightSectors}</strong>
+          <small>de {sectorWeightStats.length} setor(es)</small>
+        </article>
+        <article className="warehouse-weight-card warehouse-weight-card--success">
+          <span>Dentro da métrica</span>
+          <strong>{compliantSectors}</strong>
+          <small>de {sectorWeightStats.length} setor(es)</small>
+        </article>
+        <article className="warehouse-weight-card">
+          <span>Limite global</span>
+          <strong>{weightFormatter.format(weightSettings.globalLimitKg)} kg</strong>
+          <small>{customLimitCount} ajuste(s)</small>
+        </article>
+      </section>
 
       <div className="warehouse-management-layout">
         <section className="registered-launches-panel warehouse-map-panel" aria-labelledby="warehouse-map-title">
@@ -848,16 +981,18 @@ export default function WarehouseManagementPage() {
                   {blueprintSectors.map((sector) => {
                     const sectorItems = sectorItemsMap.get(sector.id) || [];
                     const stats = getSectorStats(sectorItems);
+                    const limit = getSectorWeightLimit(weightSettings, sector.id);
                     const selected = selectedSectorId === sector.id;
                     const occupied = stats.itemCount > 0;
+                    const overLimit = occupied && stats.weight > limit;
 
                     return (
                       <g
                         key={sector.id}
-                        className={`warehouse-blueprint-sector${selected ? ' warehouse-blueprint-sector--selected' : ''}${occupied ? ' warehouse-blueprint-sector--occupied' : ''}`}
+                        className={`warehouse-blueprint-sector${selected ? ' warehouse-blueprint-sector--selected' : ''}${occupied ? ' warehouse-blueprint-sector--occupied' : ''}${overLimit ? ' warehouse-blueprint-sector--over-limit' : ''}`}
                         role="button"
                         tabIndex={0}
-                        aria-label={`Setor ${sector.id}, ${stats.itemCount} item(s), ${stats.invoiceCount} NF(s)`}
+                        aria-label={`Setor ${sector.id}, ${stats.itemCount} item(s), ${stats.invoiceCount} NF(s), ${weightFormatter.format(stats.weight)} de ${weightFormatter.format(limit)} kg`}
                         aria-pressed={selected}
                         onClick={() => selectSector(sector.id)}
                         onKeyDown={(event) => handleSectorKeyDown(event, sector.id, selectSector)}
@@ -922,6 +1057,23 @@ export default function WarehouseManagementPage() {
               <span>Peso</span>
               <strong>{weightFormatter.format(selectedStats.weight)} kg</strong>
             </div>
+            <div className={selectedSectorOverLimit ? 'warehouse-sector-limit-card warehouse-sector-limit-card--danger' : 'warehouse-sector-limit-card'}>
+              <span>Limite</span>
+              <strong>{weightFormatter.format(selectedSectorLimit)} kg</strong>
+            </div>
+          </div>
+
+          <div className="warehouse-limit-meter">
+            <header>
+              <span>{selectedSectorOverLimit ? 'Acima do limite' : 'Dentro da métrica'}</span>
+              <strong>{selectedSectorUsagePercent}%</strong>
+            </header>
+            <div>
+              <span
+                className={selectedSectorOverLimit ? 'warehouse-limit-meter-fill warehouse-limit-meter-fill--danger' : 'warehouse-limit-meter-fill'}
+                style={{ width: `${selectedSectorMeterWidth}%` }}
+              />
+            </div>
           </div>
 
           <div className="warehouse-group-mode" aria-label="Agrupamento das cargas do setor">
@@ -931,7 +1083,7 @@ export default function WarehouseManagementPage() {
                 type="button"
                 className={sectorGroupingMode === 'invoice' ? 'active' : ''}
                 aria-pressed={sectorGroupingMode === 'invoice'}
-                onClick={() => setSectorGroupingMode('invoice')}
+                onClick={() => changeGroupingMode('invoice')}
               >
                 NF
               </button>
@@ -939,12 +1091,40 @@ export default function WarehouseManagementPage() {
                 type="button"
                 className={sectorGroupingMode === 'customer' ? 'active' : ''}
                 aria-pressed={sectorGroupingMode === 'customer'}
-                onClick={() => setSectorGroupingMode('customer')}
+                onClick={() => changeGroupingMode('customer')}
               >
                 Fornecedor
               </button>
             </div>
           </div>
+
+          <section className="warehouse-completed-invoices" aria-label={`NF's concluídas do setor ${selectedSectorId}`}>
+            <button
+              type="button"
+              className="warehouse-completed-toggle"
+              aria-expanded={showCompletedInvoices}
+              onClick={() => setShowCompletedInvoices((currentValue) => !currentValue)}
+            >
+              <span aria-hidden="true">
+                {showCompletedInvoices ? (
+                  <ChevronDown size={16} strokeWidth={2.3} />
+                ) : (
+                  <ChevronRight size={16} strokeWidth={2.3} />
+                )}
+              </span>
+              <strong>NF's concluídas</strong>
+              <em>{completedSectorInvoices.length}</em>
+            </button>
+
+            {showCompletedInvoices && (
+              <div className="warehouse-completed-list">
+                {completedSectorInvoices.map((group) => renderCompletedInvoiceRow(group))}
+                {!completedSectorInvoices.length && (
+                  <div className="empty-list">Nenhuma NF concluída neste setor</div>
+                )}
+              </div>
+            )}
+          </section>
 
           <div className="warehouse-invoice-list" aria-label={`Cargas do setor ${selectedSectorId}`}>
             {sectorGroupingMode === 'invoice' && groupedInvoices.map((group) => renderInvoiceGroup(group))}
@@ -989,12 +1169,27 @@ export default function WarehouseManagementPage() {
           </div>
 
           <form className="warehouse-add-form" onSubmit={addCargoItem}>
-            <div className="warehouse-add-title">
+            <button
+              type="button"
+              className="warehouse-add-title"
+              aria-expanded={isAddFormOpen}
+              aria-controls="warehouse-add-form-body"
+              onClick={() => setIsAddFormOpen((currentOpen) => !currentOpen)}
+            >
+              <span aria-hidden="true">
+                {isAddFormOpen ? (
+                  <ChevronDown size={16} strokeWidth={2.3} />
+                ) : (
+                  <ChevronRight size={16} strokeWidth={2.3} />
+                )}
+              </span>
               <PackagePlus size={17} strokeWidth={2.2} aria-hidden="true" />
               <strong>Adicionar item ao setor {selectedSectorId}</strong>
-            </div>
+            </button>
 
-            <div className="warehouse-add-grid">
+            {isAddFormOpen && (
+              <div id="warehouse-add-form-body" className="warehouse-add-body">
+                <div className="warehouse-add-grid">
               <label className="field">
                 <span>NF</span>
                 <input
@@ -1102,8 +1297,10 @@ export default function WarehouseManagementPage() {
                 <PackagePlus size={15} strokeWidth={2.2} />
                 Guardar item(s)
               </button>
-              <span className="status-line" aria-live="polite">{status}</span>
             </div>
+              </div>
+            )}
+            {status && <span className="status-line warehouse-add-status" aria-live="polite">{status}</span>}
           </form>
         </aside>
       </div>
@@ -1281,23 +1478,17 @@ export default function WarehouseManagementPage() {
         <article className="registered-launches-panel warehouse-dashboard-card warehouse-dashboard-card--report">
           <div className="registered-launches-header">
             <h2>Relatório de itens guardados</h2>
-            <div><span>{warehouseDashboards.reportItems.length} item(s)</span></div>
+            <div><span>{sortedReportItems.length} item(s)</span></div>
           </div>
           <div className="registered-launches-table-wrap warehouse-report-wrap">
             <table className="registered-launches-table warehouse-report-table">
               <thead>
                 <tr>
-                  <th>Setor</th>
-                  <th>NF</th>
-                  <th>Cliente</th>
-                  <th>Item</th>
-                  <th>Quantidade</th>
-                  <th>Peso</th>
-                  <th>Status</th>
+                  {reportSortColumns.map((column) => renderReportHeader(column))}
                 </tr>
               </thead>
               <tbody>
-                {warehouseDashboards.reportItems.map((item) => (
+                {sortedReportItems.map((item) => (
                   <tr key={item.id}>
                     <td><strong>{item.sectorId}</strong></td>
                     <td>{item.invoice}</td>
@@ -1311,7 +1502,7 @@ export default function WarehouseManagementPage() {
               </tbody>
             </table>
 
-            {!warehouseDashboards.reportItems.length && <div className="empty-list">Nenhum item guardado</div>}
+            {!sortedReportItems.length && <div className="empty-list">Nenhum item guardado</div>}
           </div>
         </article>
 

@@ -39,6 +39,7 @@ const UnitRegistrationPage = lazy(() => import('./UnitRegistrationPage.jsx'));
 const UserManagementPage = lazy(() => import('./UserManagementPage.jsx'));
 const VehicleRegistrationPage = lazy(() => import('./VehicleRegistrationPage.jsx'));
 const WarehouseManagementPage = lazy(() => import('./WarehouseManagementPage.jsx'));
+const WarehouseSettingsPage = lazy(() => import('./WarehouseSettingsPage.jsx'));
 
 export default function DashboardPage() {
   const [openTabs, setOpenTabs] = useState(initialTabs);
@@ -209,6 +210,10 @@ export default function DashboardPage() {
 
     if (activeTabId === 'warehouse-management') {
       return <WarehouseManagementPage />;
+    }
+
+    if (activeTabId === 'warehouse-settings') {
+      return <WarehouseSettingsPage />;
     }
 
     if (activeTabId === 'driver-registration') {

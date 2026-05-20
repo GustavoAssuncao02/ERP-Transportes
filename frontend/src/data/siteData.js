@@ -170,6 +170,11 @@ export const navigationItems = [
         pageId: 'home-shortcuts',
       },
       {
+        id: 'configuracao-galpao',
+        label: 'Configuração de Galpão',
+        pageId: 'warehouse-settings',
+      },
+      {
         id: 'ultimas-atualizacoes',
         label: 'Últimas Atualizações',
         pageId: 'system-updates',

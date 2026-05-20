@@ -21,11 +21,57 @@ export const defaultSuppliers = suppliers.map((supplier) => normalizeAddressFiel
   id: supplier.code,
   name: supplier.name,
   cnpj: supplier.cnpj,
-  contact: '',
-  email: '',
-  address: '',
+  contact: supplier.contact || '',
+  email: supplier.email || '',
+  zipCode: supplier.zipCode || '',
+  street: supplier.street || '',
+  addressNumber: supplier.addressNumber || '',
+  district: supplier.district || '',
+  address: supplier.address || '',
   active: true,
 }));
+
+const supplierEnrichmentFields = [
+  'contact',
+  'email',
+  'zipCode',
+  'street',
+  'addressNumber',
+  'district',
+  'address',
+];
+
+function hasValue(value) {
+  return String(value || '').trim().length > 0;
+}
+
+function findDefaultSupplier(record) {
+  const recordCnpj = onlyDigits(record.cnpj);
+
+  return defaultSuppliers.find((supplier) => (
+    supplier.id === record.id
+    || (recordCnpj && onlyDigits(supplier.cnpj) === recordCnpj)
+  ));
+}
+
+function fillMissingSupplierDetails(record) {
+  const normalizedRecord = normalizeAddressFields(record);
+  const defaultSupplier = findDefaultSupplier(normalizedRecord);
+
+  if (!defaultSupplier) {
+    return normalizedRecord;
+  }
+
+  const enrichedRecord = supplierEnrichmentFields.reduce((nextRecord, field) => {
+    if (!hasValue(nextRecord[field]) && hasValue(defaultSupplier[field])) {
+      return { ...nextRecord, [field]: defaultSupplier[field] };
+    }
+
+    return nextRecord;
+  }, normalizedRecord);
+
+  return normalizeAddressFields(enrichedRecord);
+}
 
 export const defaultInsurances = [
   {
@@ -106,7 +152,7 @@ export function getRegisteredUnits() {
 }
 
 export function getRegisteredSuppliers() {
-  return readRecords(supplierStorageKey, defaultSuppliers).map((supplier) => normalizeAddressFields(supplier));
+  return readRecords(supplierStorageKey, defaultSuppliers).map((supplier) => fillMissingSupplierDetails(supplier));
 }
 
 export function getRegisteredInsurances() {

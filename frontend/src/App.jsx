@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
-import DashboardPage from './pages/DashboardPage.jsx';
-import LoginPage from './pages/LoginPage.jsx';
+import { lazy, Suspense, useEffect } from 'react';
+
+const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
+const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
 
 export default function App() {
   useEffect(() => {
@@ -46,9 +47,9 @@ export default function App() {
 
   const path = window.location.pathname;
 
-  if (path === '/login') {
-    return <LoginPage />;
-  }
-
-  return <DashboardPage />;
+  return (
+    <Suspense fallback={<div className="empty-list">Carregando sistema...</div>}>
+      {path === '/login' ? <LoginPage /> : <DashboardPage />}
+    </Suspense>
+  );
 }

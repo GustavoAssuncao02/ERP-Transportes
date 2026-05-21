@@ -13,6 +13,14 @@ function parseNumber(value, fallback) {
   return Number.isFinite(parsed) ? parsed : fallback;
 }
 
+function parseBoolean(value, fallback) {
+  if (value === undefined) {
+    return fallback;
+  }
+
+  return ['1', 'true', 'yes', 'sim'].includes(String(value).trim().toLowerCase());
+}
+
 function parseCorsOrigins(value) {
   if (!value) {
     return ['http://localhost:5173', 'http://localhost:5174'];
@@ -23,9 +31,11 @@ function parseCorsOrigins(value) {
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
+  host: process.env.HOST ?? '0.0.0.0',
   port: parseNumber(process.env.PORT, 3001),
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
   db: {
+    enabled: parseBoolean(process.env.DB_ENABLED, false),
     host: process.env.DB_HOST ?? 'localhost',
     port: parseNumber(process.env.DB_PORT, 3306),
     user: process.env.DB_USER ?? 'root',

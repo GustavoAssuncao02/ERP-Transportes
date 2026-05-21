@@ -4,6 +4,9 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   build: {
+    cssCodeSplit: true,
+    reportCompressedSize: false,
+    sourcemap: false,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -15,6 +18,10 @@ export default defineConfig({
 
           if (normalizedId.includes('/node_modules/leaflet/')) {
             return 'vendor-leaflet';
+          }
+
+          if (normalizedId.includes('/node_modules/lucide-react/')) {
+            return 'vendor-icons';
           }
 
           return undefined;

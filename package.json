@@ -3,11 +3,19 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
+  },
   "scripts": {
     "dev": "npm run dev:frontend",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend run dev",
+    "install:all": "npm --prefix backend install && npm --prefix frontend install --include=dev",
+    "postinstall": "npm run install:all && npm run build",
     "build": "npm --prefix frontend run build",
+    "start": "node server.js",
     "start:backend": "npm --prefix backend run start",
     "db:test": "npm --prefix backend run db:test"
   }

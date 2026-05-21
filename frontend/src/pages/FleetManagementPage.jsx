@@ -457,7 +457,7 @@ export default function FleetManagementPage({ onNavigate }) {
   const [originFilter, setOriginFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
   const [driverFilter, setDriverFilter] = useState('');
-  const [driverTypeFilter, setDriverTypeFilter] = useState('fleet');
+  const [driverTypeFilter, setDriverTypeFilter] = useState('both');
   const [plateFilter, setPlateFilter] = useState('');
   const [mapDateFilter, setMapDateFilter] = useState('');
   const [mapStatusFilter, setMapStatusFilter] = useState('active');
@@ -469,6 +469,10 @@ export default function FleetManagementPage({ onNavigate }) {
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
   const lastRouteSignatureRef = useRef('');
+  const heatMapElementRef = useRef(null);
+  const heatMapRef = useRef(null);
+  const heatLayerRef = useRef(null);
+  const lastHeatSignatureRef = useRef('');
 
   const vehicles = useMemo(() => getRegisteredVehicles(), []);
   const manifests = useMemo(() => getRegisteredManifests(), []);
@@ -760,6 +764,49 @@ export default function FleetManagementPage({ onNavigate }) {
     })
     .filter(Boolean), [cityGeoCache, filteredMapManifests]);
 
+  const heatPoints = useMemo(() => {
+    const points = new Map();
+
+    filteredMapManifests.forEach((manifest) => {
+      [
+        { field: 'origin', countKey: 'originCount' },
+        { field: 'destination', countKey: 'destinationCount' },
+      ].forEach(({ field, countKey }) => {
+        const label = manifest[field];
+        const key = cityKey(label);
+        const point = resolveCityCoordinates(label, cityGeoCache);
+
+        if (!key || !point) return;
+
+        const currentPoint = points.get(key) || {
+          key,
+          label,
+          point,
+          originCount: 0,
+          destinationCount: 0,
+          total: 0,
+        };
+
+        currentPoint[countKey] += 1;
+        currentPoint.total += 1;
+        currentPoint.point = point;
+        points.set(key, currentPoint);
+      });
+    });
+
+    return [...points.values()]
+      .sort((left, right) => right.total - left.total || left.label.localeCompare(right.label, 'pt-BR'));
+  }, [cityGeoCache, filteredMapManifests]);
+
+  const maxHeatCount = Math.max(1, ...heatPoints.map((point) => point.total));
+  const topOriginRegions = useMemo(() => countByCity(filteredMapManifests, 'origin').slice(0, 5), [filteredMapManifests]);
+  const topDestinationRegions = useMemo(() => countByCity(filteredMapManifests, 'destination').slice(0, 5), [filteredMapManifests]);
+  const heatSummary = useMemo(() => ({
+    origins: heatPoints.reduce((sum, point) => sum + point.originCount, 0),
+    destinations: heatPoints.reduce((sum, point) => sum + point.destinationCount, 0),
+    regions: heatPoints.length,
+  }), [heatPoints]);
+
   const selectedTrip = useMemo(() => {
     const matchedTrip = mapTrips.find((trip) => trip.manifest.id === selectedManifestId);
     return matchedTrip || mapTrips[0] || null;
@@ -928,6 +975,119 @@ export default function FleetManagementPage({ onNavigate }) {
 
     window.setTimeout(() => map.invalidateSize(), 0);
   }, [drivers, mapTrips, selectedManifestId]);
+
+  useEffect(() => {
+    if (!heatMapElementRef.current || heatMapRef.current) return undefined;
+
+    const map = L.map(heatMapElementRef.current, {
+      attributionControl: true,
+      maxBounds: brazilBounds,
+      maxBoundsViscosity: 0.35,
+      minZoom: 3,
+      scrollWheelZoom: false,
+      zoomControl: true,
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 18,
+    }).addTo(map);
+
+    L.control.scale({ imperial: false, metric: true }).addTo(map);
+    map.fitBounds(brazilBounds, { padding: [18, 18] });
+    heatMapRef.current = map;
+    window.setTimeout(() => map.invalidateSize(), 0);
+
+    return () => {
+      map.remove();
+      heatMapRef.current = null;
+      heatLayerRef.current = null;
+      lastHeatSignatureRef.current = '';
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = heatMapRef.current;
+    if (!map) return;
+
+    if (heatLayerRef.current) {
+      heatLayerRef.current.remove();
+    }
+
+    const layer = L.layerGroup().addTo(map);
+    const bounds = L.latLngBounds([]);
+
+    heatPoints.forEach((region) => {
+      const dominance = region.originCount === region.destinationCount
+        ? 'mixed'
+        : region.originCount > region.destinationCount ? 'origin' : 'destination';
+      const heatColor = dominance === 'origin' ? '#1a7a72' : dominance === 'destination' ? '#e87722' : '#4f46e5';
+      const heatRatio = region.total / maxHeatCount;
+      const radius = 12 + (Math.sqrt(heatRatio) * 34);
+      const latLng = pointToLatLng(region.point);
+      const tooltip = [
+        region.label,
+        `${region.total} ponto(s)`,
+        `Origem ${region.originCount}`,
+        `Destino ${region.destinationCount}`,
+        region.point.approximate ? 'coordenada aproximada' : '',
+      ].filter(Boolean).join(' | ');
+
+      L.circleMarker(latLng, {
+        color: heatColor,
+        fillColor: heatColor,
+        fillOpacity: 0.12,
+        opacity: 0.18,
+        radius: radius + 16,
+        weight: 1,
+      }).addTo(layer);
+
+      L.circleMarker(latLng, {
+        color: '#ffffff',
+        fillColor: heatColor,
+        fillOpacity: 0.48,
+        opacity: 0.96,
+        radius,
+        weight: 2,
+      })
+        .bindTooltip(tooltip, { sticky: true })
+        .addTo(layer);
+
+      L.marker(latLng, {
+        icon: L.divIcon({
+          className: `fleet-map-count-badge fleet-heatmap-badge fleet-heatmap-badge--${dominance}`,
+          html: `<span>${region.total}</span>`,
+          iconAnchor: [14, 14],
+          iconSize: [28, 28],
+        }),
+      })
+        .bindTooltip(tooltip, { sticky: true })
+        .addTo(layer);
+
+      bounds.extend(latLng);
+    });
+
+    heatLayerRef.current = layer;
+
+    const heatSignature = heatPoints
+      .map((point) => `${point.key}:${point.total}:${point.originCount}:${point.destinationCount}:${point.point.lat}:${point.point.lng}`)
+      .join('|');
+
+    if (heatSignature && bounds.isValid() && lastHeatSignatureRef.current !== heatSignature) {
+      map.fitBounds(bounds.pad(0.22), {
+        animate: true,
+        duration: 0.4,
+        maxZoom: 6,
+        padding: [24, 24],
+      });
+      lastHeatSignatureRef.current = heatSignature;
+    } else if (!heatSignature && lastHeatSignatureRef.current !== 'empty') {
+      map.fitBounds(brazilBounds, { padding: [18, 18] });
+      lastHeatSignatureRef.current = 'empty';
+    }
+
+    window.setTimeout(() => map.invalidateSize(), 0);
+  }, [heatPoints, maxHeatCount]);
 
   const selectedManifest = manifests.find((manifest) => manifest.id === selectedManifestId) || null;
 
@@ -1383,6 +1543,164 @@ export default function FleetManagementPage({ onNavigate }) {
             {geocodingCities.length > 0 && (
               <span>{`Localizando coordenadas: ${geocodingCities.join(', ')}`}</span>
             )}
+
+            {unmappedCities.length > 0 && (
+              <span>{`Sem coordenada: ${unmappedCities.join(', ')}`}</span>
+            )}
+          </aside>
+        </div>
+      </section>
+
+      <section className="registered-launches-panel fleet-map-panel fleet-heatmap-panel" aria-labelledby="fleet-heatmap-title">
+        <div className="registered-launches-header">
+          <h2 id="fleet-heatmap-title">Mapa de calor das principais regiões de origem e destino</h2>
+          <div>
+            <span>{heatSummary.regions} região(ões)</span>
+          </div>
+        </div>
+
+        <div className="fleet-map-filters">
+          <label>
+            <span>Status</span>
+            <select value={mapStatusFilter} onChange={(event) => setMapStatusFilter(event.target.value)}>
+              {mapStatusFilters.map((filter) => (
+                <option value={filter.value} key={filter.value}>{filter.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Tipo manifesto</span>
+            <select value={manifestTypeFilter} onChange={(event) => setManifestTypeFilter(event.target.value)}>
+              {manifestTypeFilters.map((filter) => (
+                <option value={filter.value} key={filter.value}>{filter.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Tipo motorista</span>
+            <select value={driverTypeFilter} onChange={(event) => setDriverTypeFilter(event.target.value)}>
+              {driverTypeFilters.map((filter) => (
+                <option value={filter.value} key={filter.value}>{filter.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Motorista</span>
+            <select value={driverFilter} onChange={(event) => setDriverFilter(event.target.value)}>
+              <option value="">Todos</option>
+              {driverOptions.map((driver) => (
+                <option value={driver.value} key={driver.value}>{driver.label}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Placa</span>
+            <select value={plateFilter} onChange={(event) => setPlateFilter(event.target.value)}>
+              <option value="">Todas</option>
+              {plateOptions.map((plate) => (
+                <option value={plate} key={plate}>{plate}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Data</span>
+            <input
+              type="date"
+              value={mapDateFilter}
+              onChange={(event) => setMapDateFilter(event.target.value)}
+            />
+          </label>
+
+          <label>
+            <span>Origem</span>
+            <select value={originFilter} onChange={(event) => setOriginFilter(event.target.value)}>
+              <option value="">Todas</option>
+              {originOptions.map((origin) => (
+                <option value={origin} key={origin}>{origin}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Destino</span>
+            <select value={destinationFilter} onChange={(event) => setDestinationFilter(event.target.value)}>
+              <option value="">Todos</option>
+              {destinationOptions.map((destination) => (
+                <option value={destination} key={destination}>{destination}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="fleet-map-wrap">
+          <div className="fleet-map-shell">
+            <div
+              className="fleet-route-map fleet-heatmap-map"
+              ref={heatMapElementRef}
+              role="region"
+              aria-label="Mapa de calor de origens e destinos dos manifestos"
+            />
+            {!heatPoints.length && (
+              <div className="fleet-map-empty">
+                Nenhuma região com coordenada para os filtros atuais
+              </div>
+            )}
+          </div>
+
+          <aside className="fleet-map-summary">
+            <div className="fleet-map-summary-title">
+              <MapPinned size={19} strokeWidth={2.2} />
+              <strong>Regiões mais movimentadas</strong>
+            </div>
+
+            <div className="fleet-route-highlight">
+              <h3>Concentração filtrada</h3>
+              <span>{`${filteredMapManifests.length} manifesto(s)`}</span>
+              <strong>{heatSummary.regions}</strong>
+              <small>{`Origem ${heatSummary.origins} | Destino ${heatSummary.destinations}`}</small>
+            </div>
+
+            <div className="fleet-map-insight-block">
+              <h3>Principais regiões</h3>
+              {heatPoints.slice(0, 8).map((region) => (
+                <div className="fleet-heat-region-card" key={region.key}>
+                  <div>
+                    <strong>{region.label}</strong>
+                    <span>{`${region.originCount} origem(ns) | ${region.destinationCount} destino(s)`}</span>
+                  </div>
+                  <div>
+                    <strong>{region.total}</strong>
+                    <span>pontos</span>
+                  </div>
+                </div>
+              ))}
+              {!heatPoints.length && <span>Nenhuma região encontrada</span>}
+            </div>
+
+            <div className="fleet-map-insight-block">
+              <h3>Origem x destino</h3>
+              <div className="fleet-point-columns">
+                <div>
+                  <strong>Origem</strong>
+                  {topOriginRegions.map((region) => (
+                    <span key={region.label}>{`${region.label}: ${region.count}`}</span>
+                  ))}
+                  {!topOriginRegions.length && <span>Nenhuma origem</span>}
+                </div>
+                <div>
+                  <strong>Destino</strong>
+                  {topDestinationRegions.map((region) => (
+                    <span key={region.label}>{`${region.label}: ${region.count}`}</span>
+                  ))}
+                  {!topDestinationRegions.length && <span>Nenhum destino</span>}
+                </div>
+              </div>
+            </div>
 
             {unmappedCities.length > 0 && (
               <span>{`Sem coordenada: ${unmappedCities.join(', ')}`}</span>

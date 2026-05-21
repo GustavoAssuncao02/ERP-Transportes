@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Save } from 'lucide-react';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
@@ -13,6 +14,7 @@ import {
   supplierNames,
   todayValue,
 } from '../data/financeData.js';
+import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
@@ -220,7 +222,7 @@ function MultiCheckFilter({ title, options, selected, onChange, searchable = fal
   );
 }
 
-export default function AccountsPayableReportPage() {
+export default function AccountsPayableReportPage({ initialSavedQuery = null, onSavedQueriesChange }) {
   const [businessUnit, setBusinessUnit] = useState('');
   const [searchType, setSearchType] = useState('issueDate');
   const [periodStart, setPeriodStart] = useState('');
@@ -232,9 +234,59 @@ export default function AccountsPayableReportPage() {
   const [selectedSuppliers, setSelectedSuppliers] = useState(supplierNames);
   const [selectedDocuments, setSelectedDocuments] = useState(documentNumbers);
   const [message, setMessage] = useAutoClearMessage();
+  const [quickQueryName, setQuickQueryName] = useState('');
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [generateMenuOpen, setGenerateMenuOpen] = useState(false);
   const [reportResultsSort, setReportResultsSort] = useState({ key: 'dueDate', direction: 'desc' });
+
+  function normalizeSelection(value, options) {
+    if (!Array.isArray(value)) return options;
+
+    const allowedOptions = new Set(options);
+    return value.filter((item) => allowedOptions.has(item));
+  }
+
+  function currentFilters() {
+    return {
+      businessUnit,
+      searchType,
+      periodStart,
+      periodEnd,
+      status,
+      selectedChargeTypes,
+      selectedBanks,
+      selectedTypes,
+      selectedSuppliers,
+      selectedDocuments,
+      reportResultsSort,
+    };
+  }
+
+  function applySavedFilters(filters) {
+    if (!filters || typeof filters !== 'object') return;
+
+    setBusinessUnit(filters.businessUnit || '');
+    setSearchType(searchTypes.some((type) => type.value === filters.searchType) ? filters.searchType : 'issueDate');
+    setPeriodStart(filters.periodStart || '');
+    setPeriodEnd(filters.periodEnd || '');
+    setStatus(['Aberto', 'Baixado', 'Ambos'].includes(filters.status) ? filters.status : 'Ambos');
+    setSelectedChargeTypes(normalizeSelection(filters.selectedChargeTypes, chargeTypes));
+    setSelectedBanks(normalizeSelection(filters.selectedBanks, bankOptions));
+    setSelectedTypes(normalizeSelection(filters.selectedTypes, accountingTypeNames));
+    setSelectedSuppliers(normalizeSelection(filters.selectedSuppliers, supplierNames));
+    setSelectedDocuments(normalizeSelection(filters.selectedDocuments, documentNumbers));
+    setReportResultsSort(filters.reportResultsSort || { key: 'dueDate', direction: 'desc' });
+    setFiltersApplied(true);
+    setGenerateMenuOpen(false);
+  }
+
+  useEffect(() => {
+    if (!initialSavedQuery?.filters) return;
+
+    applySavedFilters(initialSavedQuery.filters);
+    setQuickQueryName(initialSavedQuery.name || '');
+    setMessage(`Consulta rapida "${initialSavedQuery.name}" carregada`);
+  }, [initialSavedQuery?.id, initialSavedQuery?.updatedAt, initialSavedQuery?.appliedAt]);
 
   const summary = useMemo(() => ({
     chargeTypes: selectedChargeTypes.length,
@@ -442,6 +494,24 @@ export default function AccountsPayableReportPage() {
     setMessage('Filtros aplicados para o relatorio de contas a pagar');
   }
 
+  function handleSaveQuickQuery() {
+    const result = saveQuickQuery({
+      name: quickQueryName,
+      reportType: 'accounts-payable',
+      pageId: 'accounts-payable-report',
+      filters: currentFilters(),
+    });
+
+    if (result.error) {
+      setMessage(result.error);
+      return;
+    }
+
+    setQuickQueryName(result.quickQuery.name);
+    onSavedQueriesChange?.(result.queries);
+    setMessage(`Consulta rapida "${result.quickQuery.name}" salva`);
+  }
+
   const tableTotals = filteredLaunches.reduce((acc, launch) => ({
     amount: acc.amount + launch.amount,
     interest: acc.interest + (launch.interestAmount || 0),
@@ -545,6 +615,23 @@ export default function AccountsPayableReportPage() {
           <span>{summary.types} tipo(s)</span>
           <span>{summary.suppliers} fornecedor(es)</span>
           <span>{summary.documents} documento(s)</span>
+        </div>
+
+        <div className="report-save-query">
+          <label className="field">
+            <span>Nome da consulta rapida</span>
+            <input
+              type="text"
+              maxLength={maxQuickQueryNameLength}
+              placeholder="Ate 25 caracteres"
+              value={quickQueryName}
+              onChange={(event) => setQuickQueryName(event.target.value.slice(0, maxQuickQueryNameLength))}
+            />
+          </label>
+          <button type="button" className="secondary-button" onClick={handleSaveQuickQuery}>
+            <Save size={15} strokeWidth={2.2} />
+            Salvar consulta
+          </button>
         </div>
 
         <div className="form-actions">

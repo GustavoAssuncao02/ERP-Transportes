@@ -43,8 +43,20 @@ export default function LoginPage() {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const username = String(formData.get('usuario') || '').trim();
+    const actor = {
+      id: username || 'usuario-local',
+      username: username || 'usuario-local',
+      name: username || 'Usuario local',
+    };
+
+    try {
+      window.localStorage.setItem('currentAuditUser', JSON.stringify(actor));
+    } catch {
+      // A sessao local ainda pode seguir mesmo sem persistencia do navegador.
+    }
 
     recordAuditEvent({
+      actor,
       module: 'Sistema',
       action: auditActions.login,
       entityType: 'sessao',

@@ -461,6 +461,11 @@
   height: 68px;
 }
 
+.dashboard-card--short .dashboard-card-icon {
+  width: 22px;
+  height: 22px;
+}
+
 .dashboard-card-icon {
   width: 42px;
   height: 42px;
@@ -2134,6 +2139,18 @@
   background: #f8f8f8;
 }
 
+.report-save-query {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.report-save-query .field {
+  width: min(100%, 280px);
+}
+
 .report-generate-actions {
   display: inline-flex;
 }
@@ -3115,6 +3132,44 @@
   color: var(--text);
   font: inherit;
   font-size: 13px;
+}
+
+.fleet-map-save-query {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 0 12px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.fleet-map-save-query label {
+  display: flex;
+  width: min(100%, 280px);
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fleet-map-save-query span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.fleet-map-save-query input {
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.fleet-map-save-query .status-line {
+  align-self: center;
 }
 
 .fleet-map-wrap {
@@ -4456,6 +4511,10 @@
   background: #ffffff;
 }
 
+.warehouse-blueprint-shell--report-single {
+  min-width: 460px;
+}
+
 .warehouse-blueprint {
   display: block;
   width: 100%;
@@ -4468,6 +4527,10 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 12px;
   padding: 8px 0 0;
+}
+
+.warehouse-depot-labels--single {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .warehouse-depot-labels div {
@@ -5326,6 +5389,372 @@
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.warehouse-filter-report-panel {
+  max-width: 1280px;
+  margin-top: 16px;
+  overflow: visible;
+}
+
+.warehouse-filter-report-toggle {
+  display: flex;
+  width: 100%;
+  min-height: 54px;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 0;
+  background: #ffffff;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.warehouse-filter-report-toggle svg {
+  flex: 0 0 auto;
+  color: var(--primary);
+}
+
+.warehouse-filter-report-toggle span svg {
+  color: var(--text-muted);
+}
+
+.warehouse-filter-report-toggle strong {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.warehouse-filter-report-toggle:hover strong,
+.warehouse-filter-report-toggle:focus-visible strong {
+  color: var(--primary);
+}
+
+.warehouse-filter-report-toggle:focus-visible {
+  outline: 2px solid rgba(26, 119, 105, 0.34);
+  outline-offset: -2px;
+}
+
+.warehouse-filter-report-body {
+  border-top: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.warehouse-filter-report-form {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+}
+
+.warehouse-filter-report-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.warehouse-report-multiselect,
+.warehouse-report-filter-box {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.warehouse-report-multiselect > span,
+.warehouse-report-filter-box > span,
+.warehouse-report-weight-range label > span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.warehouse-report-search-field {
+  display: flex;
+  gap: 6px;
+}
+
+.warehouse-report-search-field input,
+.warehouse-report-options input,
+.warehouse-report-weight-range input {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.warehouse-report-search-field input[readonly] {
+  background: #f8f8f8;
+  color: var(--text);
+}
+
+.warehouse-report-options {
+  position: absolute;
+  top: 64px;
+  right: 0;
+  left: 0;
+  z-index: 35;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(17, 24, 39, 0.18);
+}
+
+.warehouse-report-options > div {
+  display: flex;
+  gap: 6px;
+}
+
+.warehouse-report-options button {
+  min-height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #f8f8f8;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.warehouse-report-options section {
+  display: grid;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.warehouse-report-options label,
+.warehouse-report-check-list label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 2px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.warehouse-report-options label span,
+.warehouse-report-check-list label span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.warehouse-report-options input[type='checkbox'],
+.warehouse-report-check-list input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--primary);
+}
+
+.warehouse-report-options em {
+  padding: 10px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-style: normal;
+  text-align: center;
+}
+
+.warehouse-report-filter-box {
+  padding: 10px;
+  border: 1px solid #dce5e3;
+  border-radius: 6px;
+  background: #f8fbfb;
+}
+
+.warehouse-report-check-list {
+  display: grid;
+  gap: 2px;
+}
+
+.warehouse-report-check-list--scroll {
+  max-height: 146px;
+  overflow: auto;
+}
+
+.warehouse-report-weight-range {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.warehouse-report-weight-range label {
+  display: grid;
+  gap: 5px;
+}
+
+.warehouse-filter-report-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.warehouse-filter-report-results {
+  margin: 0 14px 14px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.warehouse-filter-report-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(310px, 0.34fr);
+  gap: 12px;
+  padding: 0 12px 12px;
+}
+
+.warehouse-filter-report-map {
+  min-width: 0;
+}
+
+.warehouse-filter-report-map .warehouse-map-scroll {
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f7f9f9;
+}
+
+.warehouse-filter-report-map .warehouse-blueprint-shell {
+  border: 0;
+  border-radius: 0;
+}
+
+.warehouse-report-sector-panel {
+  align-self: start;
+  max-height: 560px;
+  overflow: hidden;
+}
+
+.warehouse-report-sector-panel .selection-panel-header h2 {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.warehouse-report-sector-panel .warehouse-invoice-list {
+  max-height: 260px;
+}
+
+.warehouse-report-sector-panel .warehouse-sector-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.warehouse-report-completed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eeeeee;
+  background: #ffffff;
+}
+
+.warehouse-report-completed-row:last-child {
+  border-bottom: 0;
+}
+
+.warehouse-report-completed-row > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.warehouse-report-completed-row strong,
+.warehouse-report-completed-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.warehouse-report-completed-row strong {
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.warehouse-report-completed-row span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.warehouse-report-completed-row em {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #e8f3f2;
+  color: var(--primary-dark);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.warehouse-blueprint-sector--report-match rect {
+  fill: #e1f2ef;
+  stroke: var(--primary-dark);
+  stroke-width: 1.2;
+}
+
+.warehouse-blueprint-sector--report-dimmed rect {
+  fill: #f1f1f1;
+  stroke: #cfcfcf;
+}
+
+.warehouse-blueprint-sector--report-dimmed text {
+  fill: #9a9a9a;
+}
+
+@media (max-width: 1100px) {
+  .warehouse-filter-report-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .warehouse-filter-report-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .warehouse-report-sector-panel {
+    max-height: none;
+  }
+}
+
+@media (max-width: 700px) {
+  .warehouse-filter-report-grid,
+  .warehouse-report-weight-range {
+    grid-template-columns: 1fr;
+  }
+
+  .warehouse-report-sector-panel .warehouse-sector-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .warehouse-filter-report-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .warehouse-filter-report-actions > *,
+  .warehouse-filter-report-actions .report-split-button,
+  .warehouse-filter-report-actions .report-generate-actions {
+    width: 100%;
+  }
 }
 
 .warehouse-depot-dashboard {

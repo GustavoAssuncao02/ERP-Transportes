@@ -138,7 +138,7 @@ const defaultSystemUsers = [
     hasSystemActivity: true,
     activityCount: 9,
     activitySummary: 'Lançamentos financeiros vinculados',
-    accessPageIds: ['registered-launches', 'accounts-payable', 'accounts-payable-report', 'accounts-payable-settlement', 'accounts-receivable-dashboard'],
+    accessPageIds: ['registered-launches', 'accounts-payable', 'accounts-payable-report', 'accounts-payable-settlement', 'accounts-receivable-dashboard', 'accounts-receivable-report'],
   },
   {
     id: 'USR-418',

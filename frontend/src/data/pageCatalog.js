@@ -22,6 +22,7 @@ export const pageCatalog = {
   'accounts-payable-settlement': { title: 'Baixa de Contas a Pagar', module: 'Financeiro' },
   'accounts-receivable-dashboard': { title: 'Dashboard de Contas a Receber', module: 'Financeiro' },
   'accounts-receivable': { title: 'Titulos a Receber', module: 'Financeiro' },
+  'accounts-receivable-report': { title: 'Relatorio de Contas a Receber', module: 'Financeiro' },
   'accounts-receivable-settlement': { title: 'Baixa de Titulos a Receber', module: 'Financeiro' },
   'settlement-reversal': { title: 'Estorno de Baixa', module: 'Financeiro' },
   'business-intelligence': { title: 'Business Intelligence', module: 'Financeiro' },

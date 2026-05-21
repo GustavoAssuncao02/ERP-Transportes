@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Box, ChevronDown, ChevronRight, PackagePlus, Plus, Search, Warehouse, X } from 'lucide-react';
+import { Box, ChevronDown, ChevronRight, PackagePlus, Plus, Save, Search, Warehouse, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   blueprintSectors,
@@ -15,6 +15,7 @@ import {
   warehouseRowCount,
   warehouseWalls,
 } from '../data/warehouseRegistry.js';
+import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
 
 const warehouseExitStatus = 'Concluído';
 
@@ -192,6 +193,99 @@ const weightFormatter = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 1,
 });
 
+function todayValue() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function htmlEscape(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function downloadBlob(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function pdfText(value) {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, ' ')
+    .replace(/[\\()]/g, '\\$&');
+}
+
+function fitPdfText(value, length) {
+  const text = String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\x20-\x7E]/g, ' ');
+
+  if (text.length <= length) return text.padEnd(length, ' ');
+  return `${text.slice(0, Math.max(0, length - 1))}~`;
+}
+
+function createPdfContent(lines) {
+  const pageWidth = 842;
+  const pageHeight = 595;
+  const linesPerPage = 41;
+  const objects = [];
+  const pageRefs = [];
+  let objectNumber = 3;
+
+  objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+
+  for (let index = 0; index < lines.length; index += linesPerPage) {
+    const pageLines = lines.slice(index, index + linesPerPage);
+    const stream = [
+      'BT',
+      '/F1 10 Tf',
+      '18 562 Td',
+      ...pageLines.map((line, lineIndex) => `${lineIndex ? '0 -13 Td ' : ''}(${pdfText(line)}) Tj`),
+      'ET',
+    ].join('\n');
+    const contentObject = objectNumber;
+    const pageObject = objectNumber + 1;
+
+    objectNumber += 2;
+    objects[contentObject] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+    objects[pageObject] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> >> >> /Contents ${contentObject} 0 R >>`;
+    pageRefs.push(`${pageObject} 0 R`);
+  }
+
+  objects[2] = `<< /Type /Pages /Kids [${pageRefs.join(' ')}] /Count ${pageRefs.length} >>`;
+
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+
+  for (let index = 1; index < objects.length; index += 1) {
+    offsets[index] = pdf.length;
+    pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
+  }
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length}\n`;
+  pdf += '0000000000 65535 f \n';
+
+  for (let index = 1; index < objects.length; index += 1) {
+    pdf += `${String(offsets[index]).padStart(10, '0')} 00000 n \n`;
+  }
+
+  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return pdf;
+}
+
 const reportTextSorter = new Intl.Collator('pt-BR', {
   numeric: true,
   sensitivity: 'base',
@@ -326,6 +420,25 @@ function normalizeStatusKey(status) {
 function isWarehouseExitStatus(status) {
   return normalizeStatusKey(status) === 'concluido';
 }
+
+function uniqueSortedOptions(values) {
+  return [...new Set(values.filter(Boolean))]
+    .sort((first, second) => first.localeCompare(second, 'pt-BR'));
+}
+
+function getWarehouseReportDepotId(sectorId) {
+  return sectorDepotMap.get(sectorId) || '';
+}
+
+const warehouseReportDepotOptions = [
+  { id: 'deposit-1', label: 'Deposito 1 (A ate L)' },
+  { id: 'deposit-2', label: 'Deposito 2 (M ate T)' },
+];
+
+const warehouseReportDepotViewBoxes = {
+  'deposit-1': '0 0 226.14 138',
+  'deposit-2': '226.14 0 214.86 138',
+};
 
 function getInvoiceStatus(items) {
   const statuses = [...new Set(items.map((item) => item.status).filter(Boolean))];
@@ -528,7 +641,73 @@ function handleSectorKeyDown(event, sectorId, onSelect) {
   onSelect(sectorId);
 }
 
-export default function WarehouseManagementPage() {
+function WarehouseReportMultiSelect({ label, options, selected, onChange, placeholder = 'Todos' }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const visibleOptions = query
+    ? options.filter((option) => normalizeStatusKey(option).includes(normalizeStatusKey(query)))
+    : options;
+  const summary = selected.length
+    ? selected.length === 1 ? selected[0] : `${selected.length} selecionados`
+    : placeholder;
+
+  function toggleOption(option) {
+    if (selected.includes(option)) {
+      onChange(selected.filter((item) => item !== option));
+      return;
+    }
+
+    onChange([...selected, option]);
+  }
+
+  return (
+    <div className="warehouse-report-multiselect">
+      <span>{label}</span>
+      <div className="warehouse-report-search-field">
+        <input type="text" value={summary} readOnly title={summary} />
+        <button
+          type="button"
+          className="icon-button"
+          aria-label={`Pesquisar ${label}`}
+          title={`Pesquisar ${label}`}
+          onClick={() => setIsOpen((currentOpen) => !currentOpen)}
+        >
+          <Search size={16} strokeWidth={2.2} />
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="warehouse-report-options">
+          <input
+            type="search"
+            placeholder={`Pesquisar ${label.toLowerCase()}`}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <div>
+            <button type="button" onClick={() => onChange(options)}>Selecionar todos</button>
+            <button type="button" onClick={() => onChange([])}>Limpar</button>
+          </div>
+          <section>
+            {visibleOptions.map((option) => (
+              <label key={option}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(option)}
+                  onChange={() => toggleOption(option)}
+                />
+                <span>{option}</span>
+              </label>
+            ))}
+            {!visibleOptions.length && <em>Nenhuma opcao encontrada</em>}
+          </section>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function WarehouseManagementPage({ initialSavedQuery = null, onSavedQueriesChange }) {
   const [cargoItems, setCargoItems] = useState(loadCargoItems);
   const [selectedSectorId, setSelectedSectorId] = useState(defaultSectorId);
   const [sectorGroupingMode, setSectorGroupingMode] = useState('invoice');
@@ -541,6 +720,24 @@ export default function WarehouseManagementPage() {
   const [reportSort, setReportSort] = useState({ key: 'sectorId', direction: 'asc' });
   const [inventorySort, setInventorySort] = useState({ key: 'quantity', direction: 'desc' });
   const [status, setStatus] = useAutoClearMessage();
+  const [warehouseReportOpen, setWarehouseReportOpen] = useState(false);
+  const [warehouseReportApplied, setWarehouseReportApplied] = useState(false);
+  const [warehouseReportMessage, setWarehouseReportMessage] = useAutoClearMessage();
+  const [warehouseReportGenerateMenuOpen, setWarehouseReportGenerateMenuOpen] = useState(false);
+  const [warehouseReportProducts, setWarehouseReportProducts] = useState([]);
+  const [warehouseReportSectors, setWarehouseReportSectors] = useState([]);
+  const [warehouseReportDepots, setWarehouseReportDepots] = useState([]);
+  const [warehouseReportInvoices, setWarehouseReportInvoices] = useState([]);
+  const [warehouseReportSuppliers, setWarehouseReportSuppliers] = useState([]);
+  const [warehouseReportStatuses, setWarehouseReportStatuses] = useState([]);
+  const [warehouseReportMinWeight, setWarehouseReportMinWeight] = useState('');
+  const [warehouseReportMaxWeight, setWarehouseReportMaxWeight] = useState('');
+  const [warehouseReportQuickQueryName, setWarehouseReportQuickQueryName] = useState('');
+  const [warehouseReportSelectedSectorId, setWarehouseReportSelectedSectorId] = useState(defaultSectorId);
+  const [warehouseReportGroupingMode, setWarehouseReportGroupingMode] = useState('invoice');
+  const [warehouseReportExpandedInvoices, setWarehouseReportExpandedInvoices] = useState({});
+  const [warehouseReportExpandedCustomers, setWarehouseReportExpandedCustomers] = useState({});
+  const [warehouseReportShowCompletedInvoices, setWarehouseReportShowCompletedInvoices] = useState(false);
 
   useEffect(() => {
     try {
@@ -625,6 +822,204 @@ export default function WarehouseManagementPage() {
     [...new Set([...customerOptions, ...cargoItems.map((item) => item.customer).filter(Boolean)])]
       .sort((first, second) => first.localeCompare(second))
   ), [cargoItems]);
+  const warehouseReportProductOptions = useMemo(
+    () => uniqueSortedOptions(activeCargoItems.map((item) => item.description)),
+    [activeCargoItems],
+  );
+  const warehouseReportSectorOptions = useMemo(
+    () => blueprintSectors.map((sector) => sector.id),
+    [],
+  );
+  const warehouseReportInvoiceOptions = useMemo(
+    () => uniqueSortedOptions(activeCargoItems.map((item) => item.invoice)),
+    [activeCargoItems],
+  );
+  const warehouseReportSupplierOptions = useMemo(
+    () => uniqueSortedOptions(activeCargoItems.map((item) => item.customer)),
+    [activeCargoItems],
+  );
+  const warehouseReportStatusOptions = useMemo(
+    () => uniqueSortedOptions([...invoiceStatusOptions, ...activeCargoItems.map((item) => item.status)]),
+    [activeCargoItems],
+  );
+  const filteredWarehouseReportItems = useMemo(() => {
+    const minimumWeight = String(warehouseReportMinWeight).trim() ? parseDecimal(warehouseReportMinWeight) : null;
+    const maximumWeight = String(warehouseReportMaxWeight).trim() ? parseDecimal(warehouseReportMaxWeight) : null;
+
+    return activeCargoItems.filter((item) => {
+      const productMatches = !warehouseReportProducts.length || warehouseReportProducts.includes(item.description);
+      const sectorMatches = !warehouseReportSectors.length || warehouseReportSectors.includes(item.sectorId);
+      const depotMatches = !warehouseReportDepots.length || warehouseReportDepots.includes(getWarehouseReportDepotId(item.sectorId));
+      const invoiceMatches = !warehouseReportInvoices.length || warehouseReportInvoices.includes(item.invoice);
+      const supplierMatches = !warehouseReportSuppliers.length || warehouseReportSuppliers.includes(item.customer);
+      const statusMatches = !warehouseReportStatuses.length || warehouseReportStatuses.includes(item.status);
+      const minMatches = minimumWeight === null || item.weight >= minimumWeight;
+      const maxMatches = maximumWeight === null || item.weight <= maximumWeight;
+
+      return productMatches
+        && sectorMatches
+        && depotMatches
+        && invoiceMatches
+        && supplierMatches
+        && statusMatches
+        && minMatches
+        && maxMatches;
+    });
+  }, [
+    activeCargoItems,
+    warehouseReportDepots,
+    warehouseReportInvoices,
+    warehouseReportMaxWeight,
+    warehouseReportMinWeight,
+    warehouseReportProducts,
+    warehouseReportSectors,
+    warehouseReportStatuses,
+    warehouseReportSuppliers,
+  ]);
+  const sortedWarehouseReportItems = useMemo(
+    () => sortReportItems(filteredWarehouseReportItems, reportSort),
+    [filteredWarehouseReportItems, reportSort],
+  );
+  const warehouseReportSectorItemsMap = useMemo(() => (
+    filteredWarehouseReportItems.reduce((map, item) => {
+      const currentItems = map.get(item.sectorId) || [];
+      map.set(item.sectorId, [...currentItems, item]);
+      return map;
+    }, new Map())
+  ), [filteredWarehouseReportItems]);
+  const warehouseReportStats = useMemo(
+    () => getSectorStats(filteredWarehouseReportItems),
+    [filteredWarehouseReportItems],
+  );
+  const warehouseReportVisibleDepotIds = useMemo(
+    () => (warehouseReportDepots.length === 1
+      ? warehouseReportDepots
+      : warehouseReportDepotOptions.map((depot) => depot.id)),
+    [warehouseReportDepots],
+  );
+  const warehouseReportVisibleSectors = useMemo(() => {
+    const visibleDepotSet = new Set(warehouseReportVisibleDepotIds);
+
+    return blueprintSectors.filter((sector) => (
+      visibleDepotSet.has(getWarehouseReportDepotId(sector.id))
+    ));
+  }, [warehouseReportVisibleDepotIds]);
+  const warehouseReportSelectedItems = useMemo(() => (
+    filteredWarehouseReportItems.filter((item) => item.sectorId === warehouseReportSelectedSectorId)
+  ), [filteredWarehouseReportItems, warehouseReportSelectedSectorId]);
+  const warehouseReportSelectedStats = useMemo(
+    () => getSectorStats(warehouseReportSelectedItems),
+    [warehouseReportSelectedItems],
+  );
+  const warehouseReportSelectedLimit = getSectorWeightLimit(weightSettings, warehouseReportSelectedSectorId);
+  const warehouseReportSelectedOverLimit = warehouseReportSelectedStats.itemCount > 0
+    && warehouseReportSelectedStats.weight > warehouseReportSelectedLimit;
+  const warehouseReportSelectedUsagePercent = warehouseReportSelectedLimit
+    ? Math.round((warehouseReportSelectedStats.weight / warehouseReportSelectedLimit) * 100)
+    : 0;
+  const warehouseReportSelectedMeterWidth = Math.min(100, warehouseReportSelectedUsagePercent);
+  const warehouseReportGroupedInvoices = useMemo(
+    () => groupItemsByInvoice(warehouseReportSelectedItems),
+    [warehouseReportSelectedItems],
+  );
+  const warehouseReportGroupedCustomers = useMemo(
+    () => groupItemsByCustomer(warehouseReportSelectedItems),
+    [warehouseReportSelectedItems],
+  );
+  const warehouseReportCompletedSectorInvoices = useMemo(() => (
+    groupItemsByInvoice(cargoItems.filter((item) => (
+      item.sectorId === warehouseReportSelectedSectorId && isWarehouseExitStatus(item.status)
+    )))
+  ), [cargoItems, warehouseReportSelectedSectorId]);
+
+  function normalizeWarehouseReportSelection(value, options) {
+    if (!Array.isArray(value)) return [];
+
+    const allowedOptions = new Set(options);
+    return value.filter((item) => allowedOptions.has(item));
+  }
+
+  function currentWarehouseReportFilters() {
+    return {
+      products: warehouseReportProducts,
+      sectors: warehouseReportSectors,
+      depots: warehouseReportDepots,
+      invoices: warehouseReportInvoices,
+      suppliers: warehouseReportSuppliers,
+      statuses: warehouseReportStatuses,
+      minWeight: warehouseReportMinWeight,
+      maxWeight: warehouseReportMaxWeight,
+      reportSort,
+    };
+  }
+
+  function firstWarehouseReportVisibleSectorId(depots = warehouseReportDepots, sectors = warehouseReportSectors) {
+    const visibleDepotIds = depots.length === 1
+      ? depots
+      : warehouseReportDepotOptions.map((depot) => depot.id);
+    const visibleDepotSet = new Set(visibleDepotIds);
+    const sectorFromFilter = sectors.find((sectorId) => visibleDepotSet.has(getWarehouseReportDepotId(sectorId)));
+
+    if (sectorFromFilter) return sectorFromFilter;
+
+    const sectorFromItems = filteredWarehouseReportItems.find((item) => (
+      visibleDepotSet.has(getWarehouseReportDepotId(item.sectorId))
+    ))?.sectorId;
+
+    if (sectorFromItems) return sectorFromItems;
+
+    return blueprintSectors.find((sector) => visibleDepotSet.has(getWarehouseReportDepotId(sector.id)))?.id || defaultSectorId;
+  }
+
+  function applyWarehouseReportSavedFilters(filters) {
+    if (!filters || typeof filters !== 'object') return;
+
+    const savedSectors = normalizeWarehouseReportSelection(filters.sectors, warehouseReportSectorOptions);
+    const savedDepots = normalizeWarehouseReportSelection(filters.depots, warehouseReportDepotOptions.map((depot) => depot.id));
+
+    setWarehouseReportProducts(normalizeWarehouseReportSelection(filters.products, warehouseReportProductOptions));
+    setWarehouseReportSectors(savedSectors);
+    setWarehouseReportDepots(savedDepots);
+    setWarehouseReportInvoices(normalizeWarehouseReportSelection(filters.invoices, warehouseReportInvoiceOptions));
+    setWarehouseReportSuppliers(normalizeWarehouseReportSelection(filters.suppliers, warehouseReportSupplierOptions));
+    setWarehouseReportStatuses(normalizeWarehouseReportSelection(filters.statuses, warehouseReportStatusOptions));
+    setWarehouseReportMinWeight(filters.minWeight || '');
+    setWarehouseReportMaxWeight(filters.maxWeight || '');
+    setReportSort(filters.reportSort || { key: 'sectorId', direction: 'asc' });
+    setWarehouseReportSelectedSectorId(firstWarehouseReportVisibleSectorId(savedDepots, savedSectors));
+    setWarehouseReportOpen(true);
+    setWarehouseReportApplied(true);
+    setWarehouseReportGenerateMenuOpen(false);
+  }
+
+  useEffect(() => {
+    if (!initialSavedQuery?.filters) return;
+
+    applyWarehouseReportSavedFilters(initialSavedQuery.filters);
+    setWarehouseReportQuickQueryName(initialSavedQuery.name || '');
+    setWarehouseReportMessage(`Consulta rapida "${initialSavedQuery.name}" carregada`);
+  }, [initialSavedQuery?.id, initialSavedQuery?.updatedAt, initialSavedQuery?.appliedAt]);
+
+  useEffect(() => {
+    if (!warehouseReportApplied) return;
+
+    const selectedStillVisible = warehouseReportVisibleSectors.some((sector) => (
+      sector.id === warehouseReportSelectedSectorId
+    ));
+
+    if (selectedStillVisible) return;
+
+    setWarehouseReportSelectedSectorId(firstWarehouseReportVisibleSectorId());
+    setWarehouseReportExpandedInvoices({});
+    setWarehouseReportExpandedCustomers({});
+    setWarehouseReportShowCompletedInvoices(false);
+  }, [
+    filteredWarehouseReportItems,
+    warehouseReportApplied,
+    warehouseReportSelectedSectorId,
+    warehouseReportVisibleSectors,
+  ]);
+
   const occupiedSectors = sectorItemsMap.size;
   const totalWeight = activeCargoItems.reduce((sum, item) => sum + item.weight, 0);
   const overweightSectors = sectorWeightStats.filter((sector) => sector.isOverLimit).length;
@@ -727,6 +1122,35 @@ export default function WarehouseManagementPage() {
     if (mode === 'customer') {
       setExpandedCustomers({});
     }
+  }
+
+  function selectWarehouseReportSector(sectorId) {
+    setWarehouseReportSelectedSectorId(sectorId);
+    setWarehouseReportExpandedInvoices({});
+    setWarehouseReportExpandedCustomers({});
+    setWarehouseReportShowCompletedInvoices(false);
+  }
+
+  function changeWarehouseReportGroupingMode(mode) {
+    setWarehouseReportGroupingMode(mode);
+
+    if (mode === 'customer') {
+      setWarehouseReportExpandedCustomers({});
+    }
+  }
+
+  function toggleWarehouseReportInvoice(invoice) {
+    setWarehouseReportExpandedInvoices((currentExpanded) => ({
+      ...currentExpanded,
+      [invoice]: !currentExpanded[invoice],
+    }));
+  }
+
+  function toggleWarehouseReportCustomer(customer) {
+    setWarehouseReportExpandedCustomers((currentExpanded) => ({
+      ...currentExpanded,
+      [customer]: !currentExpanded[customer],
+    }));
   }
 
   function changeReportSort(column) {
@@ -922,6 +1346,197 @@ export default function WarehouseManagementPage() {
     );
   }
 
+  function renderWarehouseReportCompletedInvoiceRow(group) {
+    return (
+      <div className="warehouse-report-completed-row" key={group.invoice}>
+        <div>
+          <strong>{group.invoice}</strong>
+          <span>{group.customer}</span>
+        </div>
+        <em>{group.items.length} item(s)</em>
+      </div>
+    );
+  }
+
+  function renderWarehouseReportInvoiceGroup(group) {
+    const expanded = Boolean(warehouseReportExpandedInvoices[group.invoice]);
+
+    return (
+      <article className="warehouse-invoice-card" key={group.invoice}>
+        <button
+          type="button"
+          className="warehouse-invoice-header"
+          aria-expanded={expanded}
+          onClick={() => toggleWarehouseReportInvoice(group.invoice)}
+        >
+          <span aria-hidden="true">
+            {expanded ? (
+              <ChevronDown size={16} strokeWidth={2.3} />
+            ) : (
+              <ChevronRight size={16} strokeWidth={2.3} />
+            )}
+          </span>
+          <div>
+            <strong>{group.invoice}</strong>
+            <small>{group.customer}</small>
+          </div>
+          <em>{group.items.length} item(s)</em>
+        </button>
+
+        {expanded && (
+          <div className="warehouse-invoice-items">
+            {group.items.map((item) => (
+              <div className="warehouse-cargo-row" key={item.id}>
+                <Box size={16} strokeWidth={2.2} aria-hidden="true" />
+                <div>
+                  <strong>{item.description}</strong>
+                  <span>Quantidade: {item.quantity} - Peso: {weightFormatter.format(item.weight)} kg - {item.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </article>
+    );
+  }
+
+  function renderWarehouseReportCustomerGroup(group) {
+    const expanded = Boolean(warehouseReportExpandedCustomers[group.customer]);
+
+    return (
+      <article className="warehouse-customer-card" key={group.customer}>
+        <button
+          type="button"
+          className="warehouse-customer-header"
+          aria-expanded={expanded}
+          onClick={() => toggleWarehouseReportCustomer(group.customer)}
+        >
+          <span aria-hidden="true">
+            {expanded ? (
+              <ChevronDown size={16} strokeWidth={2.3} />
+            ) : (
+              <ChevronRight size={16} strokeWidth={2.3} />
+            )}
+          </span>
+          <div>
+            <strong>{group.customer}</strong>
+            <small>{group.invoiceCount} NF(s) - Quantidade {group.quantity} - {weightFormatter.format(group.weight)} kg</small>
+          </div>
+          <em>{group.items.length} item(s)</em>
+        </button>
+
+        {expanded && (
+          <div className="warehouse-customer-invoices">
+            {group.invoices.map((invoiceGroup) => renderWarehouseReportInvoiceGroup(invoiceGroup))}
+          </div>
+        )}
+      </article>
+    );
+  }
+
+  function renderWarehouseReportSectorPanel() {
+    return (
+      <aside className="selection-panel warehouse-sector-panel warehouse-report-sector-panel" aria-labelledby="warehouse-report-sector-title">
+        <div className="selection-panel-header">
+          <h2 id="warehouse-report-sector-title">Setor {warehouseReportSelectedSectorId}</h2>
+          <strong>{warehouseReportSelectedStats.itemCount} item(s)</strong>
+        </div>
+
+        <div className="warehouse-sector-summary">
+          <div>
+            <span>NFs</span>
+            <strong>{warehouseReportSelectedStats.invoiceCount}</strong>
+          </div>
+          <div>
+            <span>Quantidade</span>
+            <strong>{warehouseReportSelectedStats.quantity}</strong>
+          </div>
+          <div>
+            <span>Peso</span>
+            <strong>{weightFormatter.format(warehouseReportSelectedStats.weight)} kg</strong>
+          </div>
+          <div className={warehouseReportSelectedOverLimit ? 'warehouse-sector-limit-card warehouse-sector-limit-card--danger' : 'warehouse-sector-limit-card'}>
+            <span>Limite</span>
+            <strong>{weightFormatter.format(warehouseReportSelectedLimit)} kg</strong>
+          </div>
+        </div>
+
+        <div className="warehouse-limit-meter">
+          <header>
+            <span>{warehouseReportSelectedOverLimit ? 'Acima do limite' : 'Dentro da métrica'}</span>
+            <strong>{warehouseReportSelectedUsagePercent}%</strong>
+          </header>
+          <div>
+            <span
+              className={warehouseReportSelectedOverLimit ? 'warehouse-limit-meter-fill warehouse-limit-meter-fill--danger' : 'warehouse-limit-meter-fill'}
+              style={{ width: `${warehouseReportSelectedMeterWidth}%` }}
+            />
+          </div>
+        </div>
+
+        <div className="warehouse-group-mode" aria-label="Agrupamento das cargas filtradas do setor">
+          <span>Agrupar por</span>
+          <div>
+            <button
+              type="button"
+              className={warehouseReportGroupingMode === 'invoice' ? 'active' : ''}
+              aria-pressed={warehouseReportGroupingMode === 'invoice'}
+              onClick={() => changeWarehouseReportGroupingMode('invoice')}
+            >
+              NF
+            </button>
+            <button
+              type="button"
+              className={warehouseReportGroupingMode === 'customer' ? 'active' : ''}
+              aria-pressed={warehouseReportGroupingMode === 'customer'}
+              onClick={() => changeWarehouseReportGroupingMode('customer')}
+            >
+              Fornecedor
+            </button>
+          </div>
+        </div>
+
+        <section className="warehouse-completed-invoices" aria-label={`NF's concluídas do setor ${warehouseReportSelectedSectorId}`}>
+          <button
+            type="button"
+            className="warehouse-completed-toggle"
+            aria-expanded={warehouseReportShowCompletedInvoices}
+            onClick={() => setWarehouseReportShowCompletedInvoices((currentValue) => !currentValue)}
+          >
+            <span aria-hidden="true">
+              {warehouseReportShowCompletedInvoices ? (
+                <ChevronDown size={16} strokeWidth={2.3} />
+              ) : (
+                <ChevronRight size={16} strokeWidth={2.3} />
+              )}
+            </span>
+            <strong>NF's concluídas</strong>
+            <em>{warehouseReportCompletedSectorInvoices.length}</em>
+          </button>
+
+          {warehouseReportShowCompletedInvoices && (
+            <div className="warehouse-completed-list">
+              {warehouseReportCompletedSectorInvoices.map((group) => renderWarehouseReportCompletedInvoiceRow(group))}
+              {!warehouseReportCompletedSectorInvoices.length && (
+                <div className="empty-list">Nenhuma NF concluída neste setor</div>
+              )}
+            </div>
+          )}
+        </section>
+
+        <div className="warehouse-invoice-list" aria-label={`Cargas filtradas do setor ${warehouseReportSelectedSectorId}`}>
+          {warehouseReportGroupingMode === 'invoice' && warehouseReportGroupedInvoices.map((group) => renderWarehouseReportInvoiceGroup(group))}
+
+          {warehouseReportGroupingMode === 'customer' && warehouseReportGroupedCustomers.map((group) => renderWarehouseReportCustomerGroup(group))}
+
+          {!warehouseReportSelectedItems.length && (
+            <div className="empty-list">Nenhum item filtrado neste setor</div>
+          )}
+        </div>
+      </aside>
+    );
+  }
+
   function addCargoItem(event) {
     event.preventDefault();
 
@@ -965,6 +1580,291 @@ export default function WarehouseManagementPage() {
     setCargoForm(createCargoForm());
     setIsAddFormOpen(false);
     setStatus(`${nextCargoItems.length} item(s) da ${invoice} adicionados ao setor ${selectedSectorId}`);
+  }
+
+  function formatReportSelection(selected, allLabel = 'Todos') {
+    if (!selected.length) return allLabel;
+    if (selected.length <= 3) return selected.join(', ');
+    return `${selected.length} selecionados`;
+  }
+
+  function selectedDepotLabels() {
+    return warehouseReportDepots.map((depotId) => (
+      warehouseReportDepotOptions.find((depot) => depot.id === depotId)?.label || depotId
+    ));
+  }
+
+  function warehouseReportMetadata() {
+    return [
+      ['Produtos', formatReportSelection(warehouseReportProducts)],
+      ['Setores', formatReportSelection(warehouseReportSectors)],
+      ['Depositos', formatReportSelection(selectedDepotLabels())],
+      ['NF', formatReportSelection(warehouseReportInvoices)],
+      ['Fornecedor', formatReportSelection(warehouseReportSuppliers)],
+      ['Peso de', warehouseReportMinWeight ? `${warehouseReportMinWeight} kg` : 'Todos'],
+      ['Peso ate', warehouseReportMaxWeight ? `${warehouseReportMaxWeight} kg` : 'Todos'],
+      ['Status', formatReportSelection(warehouseReportStatuses)],
+    ];
+  }
+
+  function reportDepotLabel(sectorId) {
+    const depotId = getWarehouseReportDepotId(sectorId);
+    return warehouseReportDepotOptions.find((depot) => depot.id === depotId)?.label || depotId;
+  }
+
+  function reportFilename(extension) {
+    return `relatorio-galpao-${todayValue()}.${extension}`;
+  }
+
+  function handleWarehouseReportFilter(event) {
+    event.preventDefault();
+    setWarehouseReportSelectedSectorId(firstWarehouseReportVisibleSectorId());
+    setWarehouseReportExpandedInvoices({});
+    setWarehouseReportExpandedCustomers({});
+    setWarehouseReportShowCompletedInvoices(false);
+    setWarehouseReportApplied(true);
+    setWarehouseReportGenerateMenuOpen(false);
+    setWarehouseReportMessage(`${filteredWarehouseReportItems.length} item(s) encontrado(s)`);
+  }
+
+  function handleSaveWarehouseReportQuickQuery() {
+    const result = saveQuickQuery({
+      name: warehouseReportQuickQueryName,
+      reportType: 'warehouse-report',
+      pageId: 'warehouse-management',
+      module: 'Operacao',
+      icon: 'operation',
+      filters: currentWarehouseReportFilters(),
+    });
+
+    if (result.error) {
+      setWarehouseReportMessage(result.error);
+      return;
+    }
+
+    setWarehouseReportQuickQueryName(result.quickQuery.name);
+    onSavedQueriesChange?.(result.queries);
+    setWarehouseReportMessage(`Consulta rapida "${result.quickQuery.name}" salva`);
+  }
+
+  function clearWarehouseReportFilters() {
+    setWarehouseReportProducts([]);
+    setWarehouseReportSectors([]);
+    setWarehouseReportDepots([]);
+    setWarehouseReportInvoices([]);
+    setWarehouseReportSuppliers([]);
+    setWarehouseReportStatuses([]);
+    setWarehouseReportMinWeight('');
+    setWarehouseReportMaxWeight('');
+    setWarehouseReportSelectedSectorId(defaultSectorId);
+    setWarehouseReportExpandedInvoices({});
+    setWarehouseReportExpandedCustomers({});
+    setWarehouseReportShowCompletedInvoices(false);
+    setWarehouseReportApplied(false);
+    setWarehouseReportGenerateMenuOpen(false);
+    setWarehouseReportMessage('');
+  }
+
+  function generateWarehouseReportExcel() {
+    const metadataRows = warehouseReportMetadata().map(([label, value]) => `
+      <tr><th>${htmlEscape(label)}</th><td>${htmlEscape(value)}</td></tr>
+    `).join('');
+    const dataRows = sortedWarehouseReportItems.map((item) => `
+      <tr>
+        <td>${htmlEscape(item.sectorId)}</td>
+        <td>${htmlEscape(reportDepotLabel(item.sectorId))}</td>
+        <td>${htmlEscape(item.invoice)}</td>
+        <td>${htmlEscape(item.customer)}</td>
+        <td>${htmlEscape(item.description)}</td>
+        <td>${Number(item.quantity || 0)}</td>
+        <td>${Number(item.weight || 0).toFixed(2)}</td>
+        <td>${htmlEscape(item.status)}</td>
+      </tr>
+    `).join('');
+    const content = `
+      <html>
+        <head><meta charset="UTF-8"></head>
+        <body>
+          <h1>Relatorio de Galpao</h1>
+          <table border="1">${metadataRows}</table>
+          <br>
+          <table border="1">
+            <thead>
+              <tr>
+                <th>Setor</th>
+                <th>Deposito</th>
+                <th>NF</th>
+                <th>Fornecedor</th>
+                <th>Produto</th>
+                <th>Quantidade</th>
+                <th>Peso kg</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>${dataRows}</tbody>
+            <tfoot>
+              <tr>
+                <th colspan="5">Total</th>
+                <th>${warehouseReportStats.quantity}</th>
+                <th>${warehouseReportStats.weight.toFixed(2)}</th>
+                <th>${warehouseReportStats.itemCount} item(s)</th>
+              </tr>
+            </tfoot>
+          </table>
+        </body>
+      </html>
+    `;
+
+    downloadBlob(content, reportFilename('xls'), 'application/vnd.ms-excel;charset=utf-8');
+    setWarehouseReportGenerateMenuOpen(false);
+    setWarehouseReportMessage('Relatorio em Excel gerado');
+  }
+
+  function generateWarehouseReportPdf() {
+    const lines = [
+      'Relatorio de Galpao',
+      `Gerado em ${todayValue()}`,
+      '',
+    ];
+
+    warehouseReportMetadata().forEach(([label, value]) => {
+      lines.push(`${label}: ${value}`);
+    });
+
+    lines.push('');
+    lines.push('Setor Deposito       NF        Fornecedor       Produto              Qtd Peso kg Status');
+    lines.push('----------------------------------------------------------------------------------------');
+
+    if (!sortedWarehouseReportItems.length) {
+      lines.push('Nenhum item encontrado para os filtros aplicados.');
+    }
+
+    sortedWarehouseReportItems.forEach((item) => {
+      lines.push([
+        fitPdfText(item.sectorId, 5),
+        fitPdfText(reportDepotLabel(item.sectorId), 14),
+        fitPdfText(item.invoice, 9),
+        fitPdfText(item.customer, 16),
+        fitPdfText(item.description, 20),
+        fitPdfText(item.quantity, 3),
+        fitPdfText(weightFormatter.format(item.weight), 7),
+        fitPdfText(item.status, 14),
+      ].join(' '));
+    });
+
+    lines.push('----------------------------------------------------------------------------------------');
+    lines.push(`Total: ${warehouseReportStats.itemCount} item(s) | Quantidade: ${warehouseReportStats.quantity} | Peso: ${weightFormatter.format(warehouseReportStats.weight)} kg`);
+
+    downloadBlob(createPdfContent(lines), reportFilename('pdf'), 'application/pdf');
+    setWarehouseReportGenerateMenuOpen(false);
+    setWarehouseReportMessage('Relatorio em PDF gerado');
+  }
+
+  function renderWarehouseReportBlueprint() {
+    const visibleDepotIds = warehouseReportDepots.length === 1
+      ? warehouseReportDepots
+      : warehouseReportDepotOptions.map((depot) => depot.id);
+    const visibleDepotSet = new Set(visibleDepotIds);
+    const isSingleDepotView = visibleDepotIds.length === 1;
+    const reportBlueprintViewBox = isSingleDepotView
+      ? warehouseReportDepotViewBoxes[visibleDepotIds[0]]
+      : blueprintViewBox;
+    const visibleReportSectors = blueprintSectors.filter((sector) => (
+      visibleDepotSet.has(getWarehouseReportDepotId(sector.id))
+    ));
+    const visibleReportDepotOptions = warehouseReportDepotOptions.filter((depot) => (
+      visibleDepotSet.has(depot.id)
+    ));
+
+    return (
+      <div className="warehouse-map-scroll">
+        <div className={`warehouse-blueprint-shell warehouse-blueprint-shell--report${isSingleDepotView ? ' warehouse-blueprint-shell--report-single' : ''}`}>
+          <svg className="warehouse-blueprint warehouse-blueprint--report" viewBox={reportBlueprintViewBox} role="img" aria-labelledby="warehouse-report-blueprint-title">
+            <title id="warehouse-report-blueprint-title">Planta do galpao com filtros do relatorio aplicados</title>
+            <g className="warehouse-blueprint-walls" aria-hidden="true">
+              {warehouseWalls.map((shape) => (
+                shape.type === 'line' ? (
+                  <line
+                    key={shape.id}
+                    x1={shape.x1}
+                    y1={shape.y1}
+                    x2={shape.x2}
+                    y2={shape.y2}
+                  />
+                ) : (
+                  <rect
+                    key={shape.id}
+                    x={shape.x}
+                    y={shape.y}
+                    width={shape.width}
+                    height={shape.height}
+                    transform={shape.transform}
+                    strokeWidth={shape.strokeWidth}
+                  />
+                )
+              ))}
+            </g>
+
+            <g className="warehouse-blueprint-sectors">
+              {visibleReportSectors.map((sector) => {
+                const filteredItems = warehouseReportSectorItemsMap.get(sector.id) || [];
+                const originalItems = sectorItemsMap.get(sector.id) || [];
+                const stats = getSectorStats(filteredItems);
+                const limit = getSectorWeightLimit(weightSettings, sector.id);
+                const selected = warehouseReportSelectedSectorId === sector.id;
+                const occupied = stats.itemCount > 0;
+                const dimmed = originalItems.length > 0 && !occupied;
+                const overLimit = occupied && stats.weight > limit;
+
+                return (
+                  <g
+                    key={sector.id}
+                    className={`warehouse-blueprint-sector${selected ? ' warehouse-blueprint-sector--selected' : ''}${occupied ? ' warehouse-blueprint-sector--occupied warehouse-blueprint-sector--report-match' : ''}${dimmed ? ' warehouse-blueprint-sector--report-dimmed' : ''}${overLimit ? ' warehouse-blueprint-sector--over-limit' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Setor ${sector.id}, ${stats.itemCount} item(s) filtrado(s), ${stats.invoiceCount} NF(s), ${weightFormatter.format(stats.weight)} kg`}
+                    aria-pressed={selected}
+                    onClick={() => selectWarehouseReportSector(sector.id)}
+                    onKeyDown={(event) => handleSectorKeyDown(event, sector.id, selectWarehouseReportSector)}
+                  >
+                    <rect
+                      x={sector.x}
+                      y={sector.y}
+                      width={sector.width}
+                      height={sector.height}
+                    />
+                    <text
+                      x={sector.centerX}
+                      y={sector.centerY}
+                      textAnchor="middle"
+                      dominantBaseline="middle"
+                    >
+                      {sector.id}
+                    </text>
+                    {occupied && (
+                      <circle
+                        cx={sector.x + sector.width - 3.4}
+                        cy={sector.y + 3.4}
+                        r="2.4"
+                      />
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+
+          <div className={`warehouse-depot-labels${isSingleDepotView ? ' warehouse-depot-labels--single' : ''}`} aria-label="Divisao dos depositos do relatorio">
+            {visibleReportDepotOptions.map((depot) => (
+              <div key={depot.id}>
+                <strong>{depot.id === 'deposit-1' ? 'Deposito 1' : 'Deposito 2'}</strong>
+                <span>{depot.id === 'deposit-1' ? 'A-L' : 'M-T'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -1103,12 +2003,12 @@ export default function WarehouseManagementPage() {
 
               <div className="warehouse-depot-labels" aria-label="Divisão dos depósitos">
                 <div>
-                  <strong>Depósito 2</strong>
-                  <span></span>
+                  <strong>Depósito 1</strong>
+                  <span>A-L</span>
                 </div>
                 <div>
-                  <strong>Depósito 1</strong>
-                  <span></span>
+                  <strong>Depósito 2</strong>
+                  <span>M-T</span>
                 </div>
               </div>
             </div>
@@ -1385,7 +2285,7 @@ export default function WarehouseManagementPage() {
       <section className="warehouse-depot-dashboard" aria-label="Comparativo de uso dos depósitos">
         <div className="registered-launches-header warehouse-depot-dashboard-header">
           <h2>Comparativo dos depósitos</h2>
-          <div><span>Depósito 2 A-L</span><strong>Depósito 1 M-T</strong></div>
+          <div><span>Depósito 1 A-L</span><strong>Depósito 2 M-T</strong></div>
         </div>
 
         <div className="warehouse-depot-cards">
@@ -1669,6 +2569,187 @@ export default function WarehouseManagementPage() {
             {!sortedInventoryItems.length && <div className="empty-list">Nenhum produto em estoque</div>}
           </div>
         </article>
+      </section>
+
+      <section className="registered-launches-panel warehouse-filter-report-panel" aria-labelledby="warehouse-filter-report-title">
+        <button
+          type="button"
+          className="warehouse-filter-report-toggle"
+          aria-expanded={warehouseReportOpen}
+          aria-controls="warehouse-filter-report-body"
+          onClick={() => setWarehouseReportOpen((currentOpen) => !currentOpen)}
+        >
+          <span aria-hidden="true">
+            {warehouseReportOpen ? (
+              <ChevronDown size={17} strokeWidth={2.3} />
+            ) : (
+              <ChevronRight size={17} strokeWidth={2.3} />
+            )}
+          </span>
+          <Warehouse size={18} strokeWidth={2.2} aria-hidden="true" />
+          <strong id="warehouse-filter-report-title">Relatório de Galpão</strong>
+        </button>
+
+        {warehouseReportOpen && (
+          <div id="warehouse-filter-report-body" className="warehouse-filter-report-body">
+            <form className="warehouse-filter-report-form" onSubmit={handleWarehouseReportFilter}>
+              <div className="warehouse-filter-report-grid">
+                <WarehouseReportMultiSelect label="Produto" options={warehouseReportProductOptions} selected={warehouseReportProducts} onChange={setWarehouseReportProducts} />
+                <WarehouseReportMultiSelect label="Setor" options={warehouseReportSectorOptions} selected={warehouseReportSectors} onChange={setWarehouseReportSectors} />
+                <WarehouseReportMultiSelect label="NF" options={warehouseReportInvoiceOptions} selected={warehouseReportInvoices} onChange={setWarehouseReportInvoices} />
+                <WarehouseReportMultiSelect label="Fornecedor" options={warehouseReportSupplierOptions} selected={warehouseReportSuppliers} onChange={setWarehouseReportSuppliers} />
+
+                <div className="warehouse-report-filter-box">
+                  <span>Depósito</span>
+                  <div className="warehouse-report-check-list">
+                    {warehouseReportDepotOptions.map((depot) => (
+                      <label key={depot.id}>
+                        <input
+                          type="checkbox"
+                          checked={warehouseReportDepots.includes(depot.id)}
+                          onChange={(event) => {
+                            setWarehouseReportDepots((currentDepots) => (
+                              event.target.checked
+                                ? [...currentDepots, depot.id]
+                                : currentDepots.filter((depotId) => depotId !== depot.id)
+                            ));
+                          }}
+                        />
+                        <span>{depot.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="warehouse-report-filter-box">
+                  <span>Peso do item</span>
+                  <div className="warehouse-report-weight-range">
+                    <label>
+                      <span>De kg</span>
+                      <input type="number" min="0" step="0.1" placeholder="10" value={warehouseReportMinWeight} onChange={(event) => setWarehouseReportMinWeight(event.target.value)} />
+                    </label>
+                    <label>
+                      <span>Até kg</span>
+                      <input type="number" min="0" step="0.1" placeholder="20" value={warehouseReportMaxWeight} onChange={(event) => setWarehouseReportMaxWeight(event.target.value)} />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="warehouse-report-filter-box warehouse-report-filter-box--status">
+                  <span>Status</span>
+                  <div className="warehouse-report-check-list warehouse-report-check-list--scroll">
+                    {warehouseReportStatusOptions.map((statusOption) => (
+                      <label key={statusOption}>
+                        <input
+                          type="checkbox"
+                          checked={warehouseReportStatuses.includes(statusOption)}
+                          onChange={(event) => {
+                            setWarehouseReportStatuses((currentStatuses) => (
+                              event.target.checked
+                                ? [...currentStatuses, statusOption]
+                                : currentStatuses.filter((item) => item !== statusOption)
+                            ));
+                          }}
+                        />
+                        <span>{statusOption}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="report-save-query">
+                <label className="field">
+                  <span>Nome da consulta rapida</span>
+                  <input
+                    type="text"
+                    maxLength={maxQuickQueryNameLength}
+                    placeholder="Ate 25 caracteres"
+                    value={warehouseReportQuickQueryName}
+                    onChange={(event) => setWarehouseReportQuickQueryName(event.target.value.slice(0, maxQuickQueryNameLength))}
+                  />
+                </label>
+                <button type="button" className="secondary-button" onClick={handleSaveWarehouseReportQuickQuery}>
+                  <Save size={15} strokeWidth={2.2} />
+                  Salvar consulta
+                </button>
+              </div>
+
+              <div className="warehouse-filter-report-actions">
+                <button type="submit" className="primary-button">Filtrar</button>
+                <button type="button" className="secondary-button" onClick={clearWarehouseReportFilters}>Limpar filtros</button>
+                {warehouseReportApplied && (
+                  <div className="report-generate-actions">
+                    <div className="report-split-button">
+                      <button type="button" className="primary-button report-generate-main" onClick={generateWarehouseReportPdf}>
+                        Gerar relatório
+                      </button>
+                      <button
+                        type="button"
+                        className="primary-button report-generate-toggle"
+                        aria-label="Opções de geração do relatório de galpão"
+                        aria-expanded={warehouseReportGenerateMenuOpen}
+                        onClick={() => setWarehouseReportGenerateMenuOpen((currentOpen) => !currentOpen)}
+                      >
+                        v
+                      </button>
+                      {warehouseReportGenerateMenuOpen && (
+                        <div className="report-generate-menu">
+                          <button type="button" onClick={generateWarehouseReportExcel}>Gerar em Excel</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <span className="status-line" aria-live="polite">{warehouseReportMessage}</span>
+              </div>
+            </form>
+
+            {warehouseReportApplied && (
+              <section className="warehouse-filter-report-results" aria-labelledby="warehouse-filter-report-results-title">
+                <div className="registered-launches-header">
+                  <h2 id="warehouse-filter-report-results-title">Galpão filtrado</h2>
+                  <div>
+                    <span>{warehouseReportStats.itemCount} item(s)</span>
+                    <strong>{weightFormatter.format(warehouseReportStats.weight)} kg</strong>
+                  </div>
+                </div>
+
+                <div className="warehouse-filter-report-layout">
+                  <div className="warehouse-filter-report-map">
+                    {renderWarehouseReportBlueprint()}
+                  </div>
+                  {renderWarehouseReportSectorPanel()}
+                </div>
+
+                <div className="registered-launches-table-wrap warehouse-report-wrap">
+                  <table className="registered-launches-table warehouse-report-table">
+                    <thead>
+                      <tr>
+                        {reportSortColumns.map((column) => renderReportHeader(column))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedWarehouseReportItems.map((item) => (
+                        <tr key={item.id}>
+                          <td><strong>{item.sectorId}</strong></td>
+                          <td>{item.invoice}</td>
+                          <td>{item.customer}</td>
+                          <td>{item.description}</td>
+                          <td>{item.quantity}</td>
+                          <td>{weightFormatter.format(item.weight)} kg</td>
+                          <td>{item.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  {!sortedWarehouseReportItems.length && <div className="empty-list">Nenhum item encontrado para os filtros aplicados</div>}
+                </div>
+              </section>
+            )}
+          </div>
+        )}
       </section>
     </section>
   );

@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { FileText, MapPinned, Route, Search, Truck, UserRound } from 'lucide-react';
+import { FileText, MapPinned, Route, Save, Search, Truck, UserRound } from 'lucide-react';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import { getRegisteredManifests, pendingManifestIdKey } from '../data/operationRegistry.js';
+import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
 import {
   formatCpf,
   getRegisteredDrivers,
@@ -533,7 +535,7 @@ function uniqueOptions(values) {
   return [...new Set(values.filter(Boolean))].sort((left, right) => left.localeCompare(right, 'pt-BR'));
 }
 
-export default function FleetManagementPage({ onNavigate }) {
+export default function FleetManagementPage({ onNavigate, initialSavedQuery = null, onSavedQueriesChange }) {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedMetric, setSelectedMetric] = useState('fleet');
@@ -548,13 +550,18 @@ export default function FleetManagementPage({ onNavigate }) {
   const [manifestTypeFilter, setManifestTypeFilter] = useState('Manifesto de Trânsito');
   const [selectedManifestId, setSelectedManifestId] = useState('');
   const [activeHeatRegionKey, setActiveHeatRegionKey] = useState('');
+  const [routeQuickQueryName, setRouteQuickQueryName] = useState('');
+  const [heatQuickQueryName, setHeatQuickQueryName] = useState('');
+  const [quickQueryStatus, setQuickQueryStatus] = useAutoClearMessage();
   const [cityGeoCache, setCityGeoCache] = useState(readStoredGeoCache);
   const [geocodingCities, setGeocodingCities] = useState([]);
   const mapElementRef = useRef(null);
+  const routeMapSectionRef = useRef(null);
   const mapRef = useRef(null);
   const routeLayerRef = useRef(null);
   const lastRouteSignatureRef = useRef('');
   const heatMapElementRef = useRef(null);
+  const heatMapSectionRef = useRef(null);
   const heatMapRef = useRef(null);
   const heatLayerRef = useRef(null);
   const lastHeatSignatureRef = useRef('');
@@ -1185,6 +1192,90 @@ export default function FleetManagementPage({ onNavigate }) {
 
   const selectedManifest = manifests.find((manifest) => manifest.id === selectedManifestId) || null;
 
+  function currentMapFilters() {
+    return {
+      query,
+      statusFilter,
+      originFilter,
+      destinationFilter,
+      driverFilter,
+      driverTypeFilter,
+      plateFilter,
+      mapDateFilter,
+      mapStatusFilter,
+      manifestTypeFilter,
+      activeHeatRegionKey,
+      selectedManifestId,
+    };
+  }
+
+  function normalizeOptionValue(value, options, fallback = '') {
+    if (fallback === value || options.some((option) => option.value === value || option === value)) {
+      return value || fallback;
+    }
+
+    return fallback;
+  }
+
+  function applySavedMapFilters(filters) {
+    if (!filters || typeof filters !== 'object') return;
+
+    setQuery(filters.query || '');
+    setStatusFilter(normalizeOptionValue(filters.statusFilter, statusFilters, 'all'));
+    setOriginFilter(originOptions.includes(filters.originFilter) ? filters.originFilter : '');
+    setDestinationFilter(destinationOptions.includes(filters.destinationFilter) ? filters.destinationFilter : '');
+    setDriverFilter(driverOptions.some((driver) => driver.value === filters.driverFilter) ? filters.driverFilter : '');
+    setDriverTypeFilter(normalizeOptionValue(filters.driverTypeFilter, driverTypeFilters, 'both'));
+    setPlateFilter(plateOptions.includes(filters.plateFilter) ? filters.plateFilter : '');
+    setMapDateFilter(filters.mapDateFilter || '');
+    setMapStatusFilter(normalizeOptionValue(filters.mapStatusFilter, mapStatusFilters, 'active'));
+    setManifestTypeFilter(normalizeOptionValue(filters.manifestTypeFilter, manifestTypeFilters, manifestTypeFilters[2]?.value || 'all'));
+    setActiveHeatRegionKey(filters.activeHeatRegionKey || '');
+    setSelectedManifestId(filters.selectedManifestId || '');
+  }
+
+  useEffect(() => {
+    if (!initialSavedQuery?.filters) return;
+
+    applySavedMapFilters(initialSavedQuery.filters);
+
+    if (initialSavedQuery.reportType === 'fleet-heat-map') {
+      setHeatQuickQueryName(initialSavedQuery.name || '');
+      window.setTimeout(() => heatMapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    } else {
+      setRouteQuickQueryName(initialSavedQuery.name || '');
+      window.setTimeout(() => routeMapSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    }
+
+    setQuickQueryStatus(`Consulta rapida "${initialSavedQuery.name}" carregada`);
+  }, [initialSavedQuery?.id, initialSavedQuery?.updatedAt, initialSavedQuery?.appliedAt]);
+
+  function handleSaveMapQuickQuery(reportType) {
+    const isHeatMap = reportType === 'fleet-heat-map';
+    const result = saveQuickQuery({
+      name: isHeatMap ? heatQuickQueryName : routeQuickQueryName,
+      reportType,
+      pageId: 'fleet-management',
+      module: 'Operacao',
+      icon: 'operation',
+      filters: currentMapFilters(),
+    });
+
+    if (result.error) {
+      setQuickQueryStatus(result.error);
+      return;
+    }
+
+    if (isHeatMap) {
+      setHeatQuickQueryName(result.quickQuery.name);
+    } else {
+      setRouteQuickQueryName(result.quickQuery.name);
+    }
+
+    onSavedQueriesChange?.(result.queries);
+    setQuickQueryStatus(`Consulta rapida "${result.quickQuery.name}" salva`);
+  }
+
   function handleMetricClick(metric, nextStatusFilter = statusFilter) {
     setSelectedMetric(metric);
     setStatusFilter(nextStatusFilter);
@@ -1467,7 +1558,7 @@ export default function FleetManagementPage({ onNavigate }) {
         </section>
       </div>
 
-      <section className="registered-launches-panel fleet-map-panel" aria-labelledby="fleet-map-title">
+      <section className="registered-launches-panel fleet-map-panel" aria-labelledby="fleet-map-title" ref={routeMapSectionRef}>
         <div className="registered-launches-header">
           <h2 id="fleet-map-title">Mapa operacional de rotas</h2>
           <div>
@@ -1551,6 +1642,24 @@ export default function FleetManagementPage({ onNavigate }) {
               ))}
             </select>
           </label>
+        </div>
+
+        <div className="fleet-map-save-query">
+          <label>
+            <span>Nome da consulta rapida</span>
+            <input
+              type="text"
+              maxLength={maxQuickQueryNameLength}
+              placeholder="Ate 25 caracteres"
+              value={routeQuickQueryName}
+              onChange={(event) => setRouteQuickQueryName(event.target.value.slice(0, maxQuickQueryNameLength))}
+            />
+          </label>
+          <button type="button" className="secondary-button" onClick={() => handleSaveMapQuickQuery('fleet-route-map')}>
+            <Save size={15} strokeWidth={2.2} />
+            Salvar consulta padrao
+          </button>
+          <span className="status-line" aria-live="polite">{quickQueryStatus}</span>
         </div>
 
         <div className="fleet-map-wrap">
@@ -1649,7 +1758,7 @@ export default function FleetManagementPage({ onNavigate }) {
         </div>
       </section>
 
-      <section className="registered-launches-panel fleet-map-panel fleet-heatmap-panel" aria-labelledby="fleet-heatmap-title">
+      <section className="registered-launches-panel fleet-map-panel fleet-heatmap-panel" aria-labelledby="fleet-heatmap-title" ref={heatMapSectionRef}>
         <div className="registered-launches-header">
           <h2 id="fleet-heatmap-title">Mapa de calor das principais regiões de origem e destino</h2>
           <div>
@@ -1733,6 +1842,24 @@ export default function FleetManagementPage({ onNavigate }) {
               ))}
             </select>
           </label>
+        </div>
+
+        <div className="fleet-map-save-query">
+          <label>
+            <span>Nome da consulta rapida</span>
+            <input
+              type="text"
+              maxLength={maxQuickQueryNameLength}
+              placeholder="Ate 25 caracteres"
+              value={heatQuickQueryName}
+              onChange={(event) => setHeatQuickQueryName(event.target.value.slice(0, maxQuickQueryNameLength))}
+            />
+          </label>
+          <button type="button" className="secondary-button" onClick={() => handleSaveMapQuickQuery('fleet-heat-map')}>
+            <Save size={15} strokeWidth={2.2} />
+            Salvar consulta padrao
+          </button>
+          <span className="status-line" aria-live="polite">{quickQueryStatus}</span>
         </div>
 
         <div className="fleet-map-wrap">

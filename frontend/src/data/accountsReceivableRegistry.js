@@ -29,6 +29,7 @@ export const defaultReceivables = [
     paidValue: '0',
     openBalance: '1805',
     issueDate: '2026-05-18',
+    createdDate: '2026-05-18',
     dueTermDays: 10,
     status: 'Aberto',
     settlements: [],
@@ -43,6 +44,7 @@ function withReceivableDefaults(receivable) {
 
   return {
     ...normalizedReceivable,
+    createdDate: normalizedReceivable.createdDate || normalizedReceivable.issueDate || todayValue(),
     originalValue: originalValue.toFixed(2),
     paidValue: paidValue.toFixed(2),
     openBalance: openBalance.toFixed(2),
@@ -110,6 +112,7 @@ export function blankReceivable() {
     deliveryFee: '',
     paidValue: '',
     issueDate: todayValue(),
+    createdDate: todayValue(),
     settlements: [],
   };
 }

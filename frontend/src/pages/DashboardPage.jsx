@@ -1,4 +1,4 @@
-import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import CardGrid from '../components/CardGrid.jsx';
 import DashboardSection from '../components/DashboardSection.jsx';
 import { PageLoadingFallback } from '../components/LoadingStates.jsx';
@@ -12,7 +12,8 @@ import {
   saveHomeShortcutIds,
 } from '../data/homeShortcuts.js';
 import { getPageTitle } from '../data/pageCatalog.js';
-import { quickQueryCards, tabs as initialTabs } from '../data/siteData.js';
+import { getQuickQueryCards, quickQueryUpdatedEventName } from '../data/quickQueries.js';
+import { tabs as initialTabs } from '../data/siteData.js';
 
 const AccountsPayableDeletionPage = lazy(() => import('./AccountsPayableDeletionPage.jsx'));
 const AccountsPayablePage = lazy(() => import('./AccountsPayablePage.jsx'));
@@ -21,6 +22,7 @@ const AccountsPayableSchedulePage = lazy(() => import('./AccountsPayableSchedule
 const AccountsPayableSettlementPage = lazy(() => import('./AccountsPayableSettlementPage.jsx'));
 const AccountsReceivableDashboardPage = lazy(() => import('./AccountsReceivableDashboardPage.jsx'));
 const AccountsReceivablePage = lazy(() => import('./AccountsReceivablePage.jsx'));
+const AccountsReceivableReportPage = lazy(() => import('./AccountsReceivableReportPage.jsx'));
 const AccountsReceivableSettlementPage = lazy(() => import('./AccountsReceivableSettlementPage.jsx'));
 const BankManagementPage = lazy(() => import('./BankManagementPage.jsx'));
 const BusinessIntelligencePage = lazy(() => import('./BusinessIntelligencePage.jsx'));
@@ -47,11 +49,26 @@ export default function DashboardPage() {
   const [openTabs, setOpenTabs] = useState(initialTabs);
   const [activeTabId, setActiveTabId] = useState('home');
   const [editingLaunch, setEditingLaunch] = useState(null);
+  const [activeQuickQuery, setActiveQuickQuery] = useState(null);
   const [homeShortcutIds, setHomeShortcutIds] = useState(readHomeShortcutIds);
+  const [quickQueryCards, setQuickQueryCards] = useState(getQuickQueryCards);
   const contentAreaRef = useRef(null);
   const scrollPositionsRef = useRef(new Map());
   const resetScrollTabsRef = useRef(new Set(['home']));
   const homeShortcutCards = useMemo(() => getHomeShortcutCards(homeShortcutIds), [homeShortcutIds]);
+
+  useEffect(() => {
+    function refreshQuickQueries() {
+      setQuickQueryCards(getQuickQueryCards());
+    }
+
+    window.addEventListener(quickQueryUpdatedEventName, refreshQuickQueries);
+    window.addEventListener('storage', refreshQuickQueries);
+    return () => {
+      window.removeEventListener(quickQueryUpdatedEventName, refreshQuickQueries);
+      window.removeEventListener('storage', refreshQuickQueries);
+    };
+  }, []);
 
   useLayoutEffect(() => {
     const contentArea = contentAreaRef.current;
@@ -92,6 +109,17 @@ export default function DashboardPage() {
 
   function openPage(item) {
     if (!item.pageId) return;
+
+    if (item.quickQuery) {
+      setActiveQuickQuery({
+        ...item.quickQuery,
+        appliedAt: Date.now(),
+      });
+    } else {
+      setActiveQuickQuery((currentQuery) => (
+        currentQuery?.pageId === item.pageId ? null : currentQuery
+      ));
+    }
 
     setOpenTabs((currentTabs) => {
       if (currentTabs.some((tab) => tab.id === item.pageId)) {
@@ -191,7 +219,13 @@ export default function DashboardPage() {
     }
 
     if (activeTabId === 'fleet-management') {
-      return <FleetManagementPage onNavigate={openPage} />;
+      return (
+        <FleetManagementPage
+          onNavigate={openPage}
+          initialSavedQuery={activeQuickQuery?.pageId === 'fleet-management' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'issue-cte') {
@@ -211,7 +245,12 @@ export default function DashboardPage() {
     }
 
     if (activeTabId === 'warehouse-management') {
-      return <WarehouseManagementPage />;
+      return (
+        <WarehouseManagementPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'warehouse-management' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'warehouse-settings') {
@@ -246,6 +285,15 @@ export default function DashboardPage() {
       return <AccountsReceivablePage />;
     }
 
+    if (activeTabId === 'accounts-receivable-report') {
+      return (
+        <AccountsReceivableReportPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'accounts-receivable-report' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
+    }
+
     if (activeTabId === 'accounts-receivable-dashboard') {
       return <AccountsReceivableDashboardPage />;
     }
@@ -255,7 +303,12 @@ export default function DashboardPage() {
     }
 
     if (activeTabId === 'accounts-payable-report') {
-      return <AccountsPayableReportPage />;
+      return (
+        <AccountsPayableReportPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'accounts-payable-report' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'accounts-payable-settlement') {
@@ -297,7 +350,11 @@ export default function DashboardPage() {
         </DashboardSection>
 
         <DashboardSection title="Consultas rápidas">
-          <CardGrid cards={quickQueryCards} variant="short" />
+          {quickQueryCards.length ? (
+            <CardGrid cards={quickQueryCards} variant="short" onCardClick={openPage} />
+          ) : (
+            <div className="empty-list">Nenhuma consulta rapida salva para este usuario</div>
+          )}
         </DashboardSection>
       </>
     );

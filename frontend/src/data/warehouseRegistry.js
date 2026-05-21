@@ -161,21 +161,21 @@ export const warehouseColumnCount = new Set(blueprintSectors.map((sector) => sec
 export const warehouseRowCount = new Set(blueprintSectors.map((sector) => sector.row)).size;
 export const warehouseDepots = [
   {
-    id: 'deposit-2',
-    label: 'Depósito 2',
-    columns: '',
-  },
-  {
     id: 'deposit-1',
     label: 'Depósito 1',
-    columns: '',
+    columns: 'A-L',
+  },
+  {
+    id: 'deposit-2',
+    label: 'Depósito 2',
+    columns: 'M-T',
   },
 ];
 
 const depotSplitColumnIndex = columnLabelIndex('M');
 export const sectorDepotMap = new Map(blueprintSectors.map((sector) => [
   sector.id,
-  columnLabelIndex(sector.column) >= depotSplitColumnIndex ? 'deposit-1' : 'deposit-2',
+  columnLabelIndex(sector.column) >= depotSplitColumnIndex ? 'deposit-2' : 'deposit-1',
 ]));
 
 export function parseWeightLimit(value) {

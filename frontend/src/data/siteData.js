@@ -137,6 +137,11 @@ export const navigationItems = [
             pageId: 'accounts-receivable',
           },
           {
+            id: 'relatorio-contas-receber',
+            label: 'Relatorio de Contas a Receber',
+            pageId: 'accounts-receivable-report',
+          },
+          {
             id: 'baixa-titulos-receber',
             label: 'Baixa de Títulos a Receber',
             pageId: 'accounts-receivable-settlement',
@@ -242,8 +247,3 @@ export const quickAccessCards = [
     icon: 'finance',
   },
 ];
-
-export const quickQueryCards = Array.from({ length: 10 }, (_, index) => ({
-  id: `quick-query-${index + 1}`,
-  label: `Consulta rápida ${index + 1}`,
-}));

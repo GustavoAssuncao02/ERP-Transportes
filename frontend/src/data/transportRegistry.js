@@ -1,3 +1,6 @@
+import { recordAuditEvent, auditActions } from '../services/auditLog.js';
+import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
+
 export const vehicleStorageKey = 'transportVehicles';
 export const driverStorageKey = 'transportDrivers';
 export const pendingVehiclePlateKey = 'pendingVehiclePlate';
@@ -105,21 +108,26 @@ export function isValidCpf(value) {
 }
 
 function readStoredRecords(key, fallback) {
-  try {
-    const rawValue = localStorage.getItem(key);
-    if (rawValue !== null) {
-      const stored = JSON.parse(rawValue);
-      return Array.isArray(stored) ? stored : fallback;
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
+  return readJsonStorage(key, fallback, {
+    validate: Array.isArray,
+  });
 }
 
 function writeStoredRecords(key, records) {
-  localStorage.setItem(key, JSON.stringify(records));
+  writeJsonStorage(key, records);
+}
+
+function recordTransportAudit({ action, entityType, entityId, entityLabel, before, after, summary }) {
+  recordAuditEvent({
+    module: 'Operacao',
+    action,
+    entityType,
+    entityId,
+    entityLabel,
+    before,
+    after,
+    summary,
+  });
 }
 
 export function getRegisteredVehicles() {
@@ -149,6 +157,7 @@ export function saveVehicle(record) {
   const vehicles = getRegisteredVehicles();
   const nextRecord = { ...record, plate: normalizedPlate };
   const existingIndex = vehicles.findIndex((vehicle) => normalizePlate(vehicle.plate) === normalizedPlate);
+  const previousRecord = existingIndex >= 0 ? vehicles[existingIndex] : null;
 
   if (existingIndex >= 0) {
     vehicles[existingIndex] = nextRecord;
@@ -157,6 +166,15 @@ export function saveVehicle(record) {
   }
 
   writeStoredRecords(vehicleStorageKey, vehicles);
+  recordTransportAudit({
+    action: previousRecord ? auditActions.update : auditActions.create,
+    entityType: 'veiculo',
+    entityId: nextRecord.plate,
+    entityLabel: nextRecord.model,
+    before: previousRecord,
+    after: nextRecord,
+    summary: previousRecord ? 'Veiculo atualizado' : 'Veiculo cadastrado',
+  });
   return vehicles;
 }
 
@@ -165,6 +183,7 @@ export function saveDriver(record) {
   const drivers = getRegisteredDrivers();
   const nextRecord = { ...record, cpf: normalizedCpf };
   const existingIndex = drivers.findIndex((driver) => onlyDigits(driver.cpf) === normalizedCpf);
+  const previousRecord = existingIndex >= 0 ? drivers[existingIndex] : null;
 
   if (existingIndex >= 0) {
     drivers[existingIndex] = nextRecord;
@@ -173,45 +192,94 @@ export function saveDriver(record) {
   }
 
   writeStoredRecords(driverStorageKey, drivers);
+  recordTransportAudit({
+    action: previousRecord ? auditActions.update : auditActions.create,
+    entityType: 'motorista',
+    entityId: nextRecord.cpf,
+    entityLabel: nextRecord.name,
+    before: previousRecord,
+    after: nextRecord,
+    summary: previousRecord ? 'Motorista atualizado' : 'Motorista cadastrado',
+  });
   return drivers;
 }
 
 export function deleteVehicle(plate) {
   const normalizedPlate = normalizePlate(plate);
   const vehicles = getRegisteredVehicles();
+  const previousRecord = vehicles.find((vehicle) => normalizePlate(vehicle.plate) === normalizedPlate) || { plate: normalizedPlate };
   const nextVehicles = vehicles.filter((vehicle) => normalizePlate(vehicle.plate) !== normalizedPlate);
 
   writeStoredRecords(vehicleStorageKey, nextVehicles);
+  recordTransportAudit({
+    action: auditActions.delete,
+    entityType: 'veiculo',
+    entityId: previousRecord.plate,
+    entityLabel: previousRecord.model,
+    before: previousRecord,
+    after: null,
+    summary: 'Veiculo excluido',
+  });
   return nextVehicles;
 }
 
 export function deactivateVehicle(plate) {
   const normalizedPlate = normalizePlate(plate);
   const vehicles = getRegisteredVehicles();
+  const previousRecord = vehicles.find((vehicle) => normalizePlate(vehicle.plate) === normalizedPlate) || { plate: normalizedPlate };
   const nextVehicles = vehicles.map((vehicle) => (
     normalizePlate(vehicle.plate) === normalizedPlate ? { ...vehicle, status: 'Inativo' } : vehicle
   ));
 
   writeStoredRecords(vehicleStorageKey, nextVehicles);
+  recordTransportAudit({
+    action: auditActions.deactivate,
+    entityType: 'veiculo',
+    entityId: previousRecord.plate,
+    entityLabel: previousRecord.model,
+    before: previousRecord,
+    after: nextVehicles.find((vehicle) => normalizePlate(vehicle.plate) === normalizedPlate) || null,
+    summary: 'Veiculo inativado',
+  });
   return nextVehicles;
 }
 
 export function deleteDriver(cpf) {
   const normalizedCpf = onlyDigits(cpf);
   const drivers = getRegisteredDrivers();
+  const previousRecord = drivers.find((driver) => onlyDigits(driver.cpf) === normalizedCpf) || { cpf: normalizedCpf };
   const nextDrivers = drivers.filter((driver) => onlyDigits(driver.cpf) !== normalizedCpf);
 
   writeStoredRecords(driverStorageKey, nextDrivers);
+  recordTransportAudit({
+    action: auditActions.delete,
+    entityType: 'motorista',
+    entityId: previousRecord.cpf,
+    entityLabel: previousRecord.name,
+    before: previousRecord,
+    after: null,
+    summary: 'Motorista excluido',
+  });
   return nextDrivers;
 }
 
 export function deactivateDriver(cpf) {
   const normalizedCpf = onlyDigits(cpf);
   const drivers = getRegisteredDrivers();
+  const previousRecord = drivers.find((driver) => onlyDigits(driver.cpf) === normalizedCpf) || { cpf: normalizedCpf };
   const nextDrivers = drivers.map((driver) => (
     onlyDigits(driver.cpf) === normalizedCpf ? { ...driver, status: 'Inativo' } : driver
   ));
 
   writeStoredRecords(driverStorageKey, nextDrivers);
+  recordTransportAudit({
+    action: auditActions.deactivate,
+    entityType: 'motorista',
+    entityId: previousRecord.cpf,
+    entityLabel: previousRecord.name,
+    before: previousRecord,
+    after: nextDrivers.find((driver) => onlyDigits(driver.cpf) === normalizedCpf) || null,
+    summary: 'Motorista inativado',
+  });
   return nextDrivers;
 }

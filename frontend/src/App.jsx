@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
+import { PageLoadingFallback } from './components/LoadingStates.jsx';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
@@ -48,7 +49,7 @@ export default function App() {
   const path = window.location.pathname;
 
   return (
-    <Suspense fallback={<div className="empty-list">Carregando sistema...</div>}>
+    <Suspense fallback={<PageLoadingFallback message="Carregando sistema..." />}>
       {path === '/login' ? <LoginPage /> : <DashboardPage />}
     </Suspense>
   );

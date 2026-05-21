@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
-import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import DataTable from '../components/DataTable.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   deactivateSupplier,
@@ -28,12 +28,12 @@ const initialForm = {
 };
 
 const supplierSortColumns = [
-  { key: 'name', label: 'Nome', type: 'text', getValue: (supplier) => supplier.name },
+  { key: 'name', label: 'Nome', type: 'text', getValue: (supplier) => supplier.name, render: (supplier) => <strong>{supplier.name}</strong> },
   { key: 'document', label: 'CNPJ/CPF', type: 'text', getValue: (supplier) => supplier.cnpj },
   { key: 'contact', label: 'Contato', type: 'text', getValue: (supplier) => supplier.contact },
   { key: 'email', label: 'E-mail', type: 'text', getValue: (supplier) => supplier.email },
   { key: 'address', label: 'EndereÃ§o', type: 'text', getValue: (supplier) => supplier.address },
-  { key: 'active', label: 'Ativo', type: 'text', getValue: (supplier) => (supplier.active ? 'Sim' : 'Nao') },
+  { key: 'active', label: 'Ativo', type: 'text', getValue: (supplier) => (supplier.active ? 'Sim' : 'Nao'), render: (supplier) => (supplier.active ? 'Sim' : 'Nao') },
 ];
 
 export default function SupplierRegistrationPage() {
@@ -41,6 +41,7 @@ export default function SupplierRegistrationPage() {
   const [form, setForm] = useState(initialForm);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [supplierSearch, setSupplierSearch] = useState('');
   const [supplierSort, setSupplierSort] = useState({ key: 'name', direction: 'asc' });
   const [message, setMessage] = useAutoClearMessage();
   const companyLookupRequestRef = useRef(0);
@@ -54,6 +55,14 @@ export default function SupplierRegistrationPage() {
     ),
     [supplierSort, suppliers],
   );
+  const visibleSuppliers = useMemo(() => {
+    const query = normalizeText(supplierSearch);
+    if (!query) return sortedSuppliers;
+
+    return sortedSuppliers.filter((supplier) => (
+      normalizeText(`${supplier.name} ${supplier.cnpj} ${supplier.contact} ${supplier.email} ${supplier.address} ${supplier.active ? 'ativo' : 'inativo'}`).includes(query)
+    ));
+  }, [sortedSuppliers, supplierSearch]);
   const lookupSuppliers = useMemo(() => {
     const query = normalizeText(lookupSearch);
     if (!query) return sortedSuppliers;
@@ -279,36 +288,25 @@ export default function SupplierRegistrationPage() {
         </div>
       </form>
 
-      <section className="registered-launches-panel registry-list-panel" aria-labelledby="suppliers-list-title">
-        <div className="registered-launches-header">
-          <h2 id="suppliers-list-title">Fornecedores cadastrados</h2>
-          <div>
-            <span>{sortedSuppliers.length} fornecedor(es)</span>
-          </div>
-        </div>
-
-        <div className="registered-launches-table-wrap">
-          <table className="registered-launches-table registry-table">
-            <thead>
-              <tr>
-                <SortableTableHeader columns={supplierSortColumns} sort={supplierSort} onSortChange={setSupplierSort} />
-              </tr>
-            </thead>
-            <tbody>
-              {sortedSuppliers.map((supplier) => (
-                <tr key={supplier.id || supplier.cnpj} onClick={() => loadSupplier(supplier)}>
-                  <td><strong>{supplier.name}</strong></td>
-                  <td>{supplier.cnpj}</td>
-                  <td>{supplier.contact}</td>
-                  <td>{supplier.email}</td>
-                  <td>{supplier.address}</td>
-                  <td>{supplier.active ? 'Sim' : 'Não'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <DataTable
+        title="Fornecedores cadastrados"
+        titleId="suppliers-list-title"
+        rows={visibleSuppliers}
+        columns={supplierSortColumns}
+        sort={supplierSort}
+        onSortChange={setSupplierSort}
+        getRowKey={(supplier) => supplier.id || supplier.cnpj}
+        onRowClick={loadSupplier}
+        rowClassName="registry-row"
+        searchValue={supplierSearch}
+        onSearchChange={setSupplierSearch}
+        searchPlaceholder="Pesquisar por nome, CPF/CNPJ, contato, e-mail ou endereco"
+        summary={<span>{visibleSuppliers.length} fornecedor(es)</span>}
+        panelClassName="registry-list-panel"
+        tableClassName="registry-table"
+        minWidth={1080}
+        emptyMessage="Nenhum fornecedor encontrado"
+      />
 
       {lookupOpen && (
         <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-lookup-title">

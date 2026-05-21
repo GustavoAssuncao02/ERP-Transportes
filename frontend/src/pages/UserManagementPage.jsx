@@ -3,6 +3,8 @@ import { ChevronDown, ChevronRight, Power, RotateCcw, Save, Search, ShieldCheck,
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { navigationItems } from '../data/siteData.js';
 import { normalizeText } from '../data/financeData.js';
+import { auditActions, recordAuditEvent } from '../services/auditLog.js';
+import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 
 const userStorageKey = 'systemUserManagementUsers';
 const currentAdminUsername = 'camila.aguiar';
@@ -185,19 +187,18 @@ function normalizeUser(user, index = 0) {
 }
 
 function loadUsers() {
-  try {
-    const storedUsers = JSON.parse(window.localStorage.getItem(userStorageKey) || '[]');
-    if (Array.isArray(storedUsers) && storedUsers.length) {
-      const normalizedUsers = storedUsers.map(normalizeUser);
+  const storedUsers = readJsonStorage(userStorageKey, [], {
+    validate: Array.isArray,
+  });
 
-      if (normalizedUsers.some((user) => user.username === currentAdminUsername)) {
-        return normalizedUsers;
-      }
+  if (storedUsers.length) {
+    const normalizedUsers = storedUsers.map(normalizeUser);
 
-      return [defaultSystemUsers[0], ...normalizedUsers];
+    if (normalizedUsers.some((user) => user.username === currentAdminUsername)) {
+      return normalizedUsers;
     }
-  } catch {
-    // localStorage é opcional; a tela continua com os dados padrão.
+
+    return [defaultSystemUsers[0], ...normalizedUsers];
   }
 
   return defaultSystemUsers;
@@ -205,7 +206,7 @@ function loadUsers() {
 
 function saveUsers(users) {
   try {
-    window.localStorage.setItem(userStorageKey, JSON.stringify(users));
+    writeJsonStorage(userStorageKey, users);
   } catch {
     // localStorage é opcional; a tela continua funcionando na sessão.
   }
@@ -448,6 +449,16 @@ export default function UserManagementPage() {
       ));
 
       setUsers(nextUsers);
+      recordAuditEvent({
+        module: 'Sistema',
+        action: auditActions.update,
+        entityType: 'usuario',
+        entityId: selectedUser.id,
+        entityLabel: username,
+        before: selectedUser,
+        after: nextUsers.find((user) => user.id === selectedUser.id),
+        summary: 'Usuario atualizado',
+      });
       setForm((currentForm) => ({ ...currentForm, username, accessPageIds }));
       setMessage(`Usuário ${username} atualizado`);
       return;
@@ -470,6 +481,16 @@ export default function UserManagementPage() {
     });
 
     setUsers((currentUsers) => [...currentUsers, newUser]);
+    recordAuditEvent({
+      module: 'Sistema',
+      action: auditActions.create,
+      entityType: 'usuario',
+      entityId: newUser.id,
+      entityLabel: newUser.username,
+      before: null,
+      after: newUser,
+      summary: 'Usuario cadastrado',
+    });
     setSelectedUserId(newUser.id);
     setForm(createFormFromUser(newUser));
     setUsernameTouched(true);
@@ -497,6 +518,16 @@ export default function UserManagementPage() {
         user.id === selectedUser.id ? { ...user, status: 'Inativo' } : user
       ));
       setUsers(nextUsers);
+      recordAuditEvent({
+        module: 'Sistema',
+        action: auditActions.deactivate,
+        entityType: 'usuario',
+        entityId: selectedUser.id,
+        entityLabel: selectedUser.username,
+        before: selectedUser,
+        after: nextUsers.find((user) => user.id === selectedUser.id),
+        summary: 'Usuario desativado',
+      });
       setForm((currentForm) => ({ ...currentForm, status: 'Inativo' }));
       setMessage(`Usuário ${selectedUser.username} possui atividade e foi desativado`);
       return;
@@ -504,6 +535,16 @@ export default function UserManagementPage() {
 
     const nextUsers = users.filter((user) => user.id !== selectedUser.id);
     setUsers(nextUsers);
+    recordAuditEvent({
+      module: 'Sistema',
+      action: auditActions.delete,
+      entityType: 'usuario',
+      entityId: selectedUser.id,
+      entityLabel: selectedUser.username,
+      before: selectedUser,
+      after: null,
+      summary: 'Usuario excluido',
+    });
     const nextSelectedUser = nextUsers[0] || null;
     setSelectedUserId(nextSelectedUser?.id || null);
     setForm(nextSelectedUser ? createFormFromUser(nextSelectedUser) : createBlankForm());
@@ -529,6 +570,16 @@ export default function UserManagementPage() {
     ));
 
     setUsers(nextUsers);
+    recordAuditEvent({
+      module: 'Sistema',
+      action: auditActions.update,
+      entityType: 'usuario',
+      entityId: selectedUser.id,
+      entityLabel: selectedUser.username,
+      before: selectedUser,
+      after: nextUsers.find((user) => user.id === selectedUser.id),
+      summary: 'Senha temporaria redefinida',
+    });
     setForm((currentForm) => ({ ...currentForm, mustChangePassword: true }));
     setMessage(`Senha de ${selectedUser.username} redefinida para 1234`);
   }

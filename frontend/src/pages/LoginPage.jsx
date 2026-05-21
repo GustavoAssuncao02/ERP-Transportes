@@ -3,6 +3,7 @@ import vexoRevealFinalUrl from '../assets/brand/animations/vexo_reveal_square_fi
 import vexoRevealUrl from '../assets/brand/animations/vexo_reveal_square.gif';
 import vexoWordmarkRevealFinalUrl from '../assets/brand/animations/vexo_wordmark_reveal_final.png';
 import vexoWordmarkRevealUrl from '../assets/brand/animations/vexo_wordmark_reveal.gif';
+import { auditActions, recordAuditEvent } from '../services/auditLog.js';
 
 export default function LoginPage() {
   const [frozenAnimations, setFrozenAnimations] = useState({
@@ -40,6 +41,20 @@ export default function LoginPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const username = String(formData.get('usuario') || '').trim();
+
+    recordAuditEvent({
+      module: 'Sistema',
+      action: auditActions.login,
+      entityType: 'sessao',
+      entityId: username || 'usuario-local',
+      entityLabel: username || 'Login local',
+      summary: 'Login realizado',
+      metadata: {
+        username,
+      },
+    });
     window.location.assign('/');
   }
 

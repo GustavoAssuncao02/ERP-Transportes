@@ -1,4 +1,7 @@
 import { navigationItems, quickAccessCards } from './siteData.js';
+import { getPageTitle } from './pageCatalog.js';
+import { recordAuditEvent, auditActions } from '../services/auditLog.js';
+import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 
 export const homeShortcutStorageKey = 'homeShortcutPageIds';
 
@@ -26,7 +29,7 @@ function collectShortcutOptions(items, rootId = '', parents = []) {
 
     return {
       id: `shortcut-${item.pageId}`,
-      label: item.label,
+      label: getPageTitle(item.pageId, item.label),
       menuPath: parents.join(' / '),
       pageId: item.pageId,
       icon: rootIcons[nextRootId] || 'system',
@@ -57,18 +60,28 @@ export function normalizeHomeShortcutIds(ids) {
 }
 
 export function readHomeShortcutIds() {
-  try {
-    const storedIds = JSON.parse(localStorage.getItem(homeShortcutStorageKey) || '[]');
-    const normalizedIds = Array.isArray(storedIds) ? normalizeHomeShortcutIds(storedIds) : [];
-    return normalizedIds.length ? normalizedIds : defaultHomeShortcutIds;
-  } catch {
-    return defaultHomeShortcutIds;
-  }
+  const storedIds = readJsonStorage(homeShortcutStorageKey, [], {
+    validate: Array.isArray,
+  });
+  const normalizedIds = normalizeHomeShortcutIds(storedIds);
+
+  return normalizedIds.length ? normalizedIds : defaultHomeShortcutIds;
 }
 
 export function saveHomeShortcutIds(ids) {
+  const previousIds = readHomeShortcutIds();
   const normalizedIds = normalizeHomeShortcutIds(ids);
-  localStorage.setItem(homeShortcutStorageKey, JSON.stringify(normalizedIds));
+  writeJsonStorage(homeShortcutStorageKey, normalizedIds);
+  recordAuditEvent({
+    module: 'Sistema',
+    action: auditActions.configChange,
+    entityType: 'atalhos da tela inicial',
+    entityId: homeShortcutStorageKey,
+    entityLabel: 'Acesso rapido',
+    before: previousIds,
+    after: normalizedIds,
+    summary: 'Atalhos da tela inicial atualizados',
+  });
   return normalizedIds;
 }
 

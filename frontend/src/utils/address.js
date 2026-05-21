@@ -1,3 +1,5 @@
+import { readJsonStorage, writeJsonStorage } from './storage.js';
+
 export const defaultAddressFields = {
   zipCode: 'zipCode',
   street: 'street',
@@ -99,15 +101,13 @@ export function copyAddressFields(source = {}, targetFields, sourceFields = defa
 }
 
 function readCachedZipCodeAddress(digits) {
-  try {
-    const cache = JSON.parse(localStorage.getItem(zipCodeCacheKey) || '{}');
-    const entry = cache?.[digits];
+  const cache = readJsonStorage(zipCodeCacheKey, {}, {
+    validate: (value) => value && typeof value === 'object' && !Array.isArray(value),
+  });
+  const entry = cache?.[digits];
 
-    if (entry?.address && entry.updatedAt && Date.now() - entry.updatedAt <= zipCodeCacheTtlMs) {
-      return entry.address;
-    }
-  } catch {
-    return null;
+  if (entry?.address && entry.updatedAt && Date.now() - entry.updatedAt <= zipCodeCacheTtlMs) {
+    return entry.address;
   }
 
   return null;
@@ -115,7 +115,9 @@ function readCachedZipCodeAddress(digits) {
 
 function writeCachedZipCodeAddress(digits, address) {
   try {
-    const cache = JSON.parse(localStorage.getItem(zipCodeCacheKey) || '{}');
+    const cache = readJsonStorage(zipCodeCacheKey, {}, {
+      validate: (value) => value && typeof value === 'object' && !Array.isArray(value),
+    });
     const nextCache = cache && typeof cache === 'object' ? cache : {};
 
     nextCache[digits] = {
@@ -123,7 +125,7 @@ function writeCachedZipCodeAddress(digits, address) {
       address,
     };
 
-    localStorage.setItem(zipCodeCacheKey, JSON.stringify(nextCache));
+    writeJsonStorage(zipCodeCacheKey, nextCache);
   } catch {
     // O cache é apenas otimização; se o navegador bloquear, a consulta continua normal.
   }

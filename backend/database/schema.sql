@@ -27,9 +27,9 @@ CREATE TABLE IF NOT EXISTS unidade (
 
 CREATE TABLE IF NOT EXISTS auditoria_alteracoes (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-  entidade_tipo ENUM('unidade', 'usuario') NOT NULL,
-  entidade_id INT UNSIGNED NOT NULL,
-  acao ENUM('criado', 'atualizado', 'removido') NOT NULL DEFAULT 'atualizado',
+  entidade_tipo VARCHAR(80) NOT NULL,
+  entidade_id VARCHAR(80) NOT NULL,
+  acao VARCHAR(40) NOT NULL DEFAULT 'atualizado',
   alterado_por_usuario_id INT UNSIGNED NULL,
   alterado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   campos_alterados JSON NOT NULL,

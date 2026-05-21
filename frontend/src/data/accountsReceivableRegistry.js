@@ -1,6 +1,8 @@
 import { normalizeText, toNumber, todayValue } from './financeData.js';
 import { formatCpf, onlyDigits } from './transportRegistry.js';
 import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
+import { recordAuditEvent, auditActions } from '../services/auditLog.js';
+import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 
 export const receivableStorageKey = 'accountsReceivableTitles';
 
@@ -49,21 +51,27 @@ function withReceivableDefaults(receivable) {
 }
 
 export function readReceivables() {
-  try {
-    const rawValue = localStorage.getItem(receivableStorageKey);
-    if (rawValue !== null) {
-      const stored = JSON.parse(rawValue);
-      return Array.isArray(stored) ? stored.map(withReceivableDefaults) : defaultReceivables;
-    }
-  } catch {
-    return defaultReceivables;
-  }
-
-  return defaultReceivables;
+  return readJsonStorage(receivableStorageKey, defaultReceivables, {
+    validate: Array.isArray,
+  }).map(withReceivableDefaults);
 }
 
 export function writeReceivables(receivables) {
-  localStorage.setItem(receivableStorageKey, JSON.stringify(receivables.map(withReceivableDefaults)));
+  writeJsonStorage(receivableStorageKey, receivables.map(withReceivableDefaults));
+}
+
+function recordReceivableAudit({ action, receivable, before, after, summary, metadata }) {
+  recordAuditEvent({
+    module: 'Financeiro',
+    action,
+    entityType: 'titulo a receber',
+    entityId: receivable?.id || before?.id || after?.id || '',
+    entityLabel: receivable?.customerName || before?.customerName || after?.customerName || '',
+    before,
+    after,
+    summary,
+    metadata,
+  });
 }
 
 export function nextReceivableNumber() {
@@ -182,6 +190,13 @@ export function saveReceivable(record) {
   }
 
   writeReceivables(nextReceivables);
+  recordReceivableAudit({
+    action: existingIndex >= 0 ? auditActions.update : auditActions.create,
+    receivable: nextReceivable,
+    before: existingIndex >= 0 ? receivables[existingIndex] : null,
+    after: nextReceivable,
+    summary: existingIndex >= 0 ? 'Titulo a receber atualizado' : 'Titulo a receber cadastrado',
+  });
   return { receivables: nextReceivables, receivable: nextReceivable, updated: existingIndex >= 0 };
 }
 
@@ -236,5 +251,15 @@ export function settleReceivable({ id, amount, settlementDate, bank, method, not
   nextReceivables[existingIndex] = nextReceivable;
 
   writeReceivables(nextReceivables);
+  recordReceivableAudit({
+    action: auditActions.financialChange,
+    receivable: nextReceivable,
+    before: current,
+    after: nextReceivable,
+    summary: 'Baixa de titulo a receber registrada',
+    metadata: {
+      settlement,
+    },
+  });
   return { receivables: nextReceivables, receivable: nextReceivable, settlement };
 }

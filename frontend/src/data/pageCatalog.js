@@ -1,0 +1,35 @@
+export const pageCatalog = {
+  home: { title: 'Tela Principal', module: 'Sistema' },
+  'unit-registration': { title: 'Unidades', module: 'Gestao' },
+  'supplier-registration': { title: 'Fornecedores', module: 'Gestao' },
+  'insurance-registration': { title: 'Seguros', module: 'Gestao' },
+  'warehouse-management': { title: 'Gestao de Galpao', module: 'Gestao' },
+  'warehouse-settings': { title: 'Configuracao de Galpao', module: 'Sistema' },
+  'vehicle-registration': { title: 'Veiculos', module: 'Gestao' },
+  'driver-registration': { title: 'Motoristas', module: 'Gestao' },
+  'issue-cte': { title: 'Emitir CT-e', module: 'Operacao' },
+  'collection-order': { title: 'Ordens de Coleta', module: 'Operacao' },
+  'create-minuta': { title: 'Minutas', module: 'Operacao' },
+  'generate-manifest': { title: 'Manifestos', module: 'Operacao' },
+  'fleet-management': { title: 'Gestao de Frota', module: 'Operacao' },
+  'bank-management': { title: 'Bancos', module: 'Financeiro' },
+  'one-off-payment': { title: 'Movimentacao de Tesouraria', module: 'Financeiro' },
+  'registered-launches': { title: 'Lancamentos Financeiros', module: 'Financeiro' },
+  'accounts-payable-schedule': { title: 'Programacao de Contas a Pagar', module: 'Financeiro' },
+  'accounts-payable': { title: 'Cadastro de Contas a Pagar', module: 'Financeiro' },
+  'accounts-payable-deletion': { title: 'Exclusao de Lancamentos a Pagar', module: 'Financeiro' },
+  'accounts-payable-report': { title: 'Relatorio de Contas a Pagar', module: 'Financeiro' },
+  'accounts-payable-settlement': { title: 'Baixa de Contas a Pagar', module: 'Financeiro' },
+  'accounts-receivable-dashboard': { title: 'Dashboard de Contas a Receber', module: 'Financeiro' },
+  'accounts-receivable': { title: 'Titulos a Receber', module: 'Financeiro' },
+  'accounts-receivable-settlement': { title: 'Baixa de Titulos a Receber', module: 'Financeiro' },
+  'settlement-reversal': { title: 'Estorno de Baixa', module: 'Financeiro' },
+  'business-intelligence': { title: 'Business Intelligence', module: 'Financeiro' },
+  'user-management': { title: 'Usuarios', module: 'Sistema' },
+  'home-shortcuts': { title: 'Atalhos da Tela Principal', module: 'Sistema' },
+  'system-updates': { title: 'Atualizacoes do Sistema', module: 'Sistema' },
+};
+
+export function getPageTitle(pageId, fallback = 'Tela') {
+  return pageCatalog[pageId]?.title || fallback;
+}

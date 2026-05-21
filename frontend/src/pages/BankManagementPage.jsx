@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Building2, Plus, Search, Trash2 } from 'lucide-react';
-import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import { Building2, Plus, Trash2 } from 'lucide-react';
+import DataTable from '../components/DataTable.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import { deleteBank, getRegisteredBanks, getRegisteredUnits, saveBank } from '../data/managementRegistry.js';
@@ -33,10 +33,32 @@ export default function BankManagementPage() {
   const unitMap = useMemo(() => new Map(unitOptions.map((unit) => [unit.id, unitLabel(unit)])), [unitOptions]);
   const bankSortColumns = useMemo(() => [
     { key: 'unit', label: 'Unidade', type: 'text', getValue: (bank) => unitMap.get(bank.unit) || bank.unit },
-    { key: 'name', label: 'Nome', type: 'text', getValue: (bank) => bank.name },
+    {
+      key: 'name',
+      label: 'Nome',
+      type: 'text',
+      getValue: (bank) => bank.name,
+      className: 'bank-name-cell',
+      render: (bank) => (
+        <>
+          <strong>{bank.name}</strong>
+          <span>{bank.id}</span>
+        </>
+      ),
+    },
     { key: 'agency', label: 'Agencia', type: 'text', getValue: (bank) => bank.agency },
     { key: 'account', label: 'Conta', type: 'text', getValue: (bank) => bank.account },
-    { key: 'status', label: 'Status', type: 'text', getValue: (bank) => (bank.active ? 'Ativo' : 'Inativo') },
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'text',
+      getValue: (bank) => (bank.active ? 'Ativo' : 'Inativo'),
+      render: (bank) => (
+        <span className={bank.active ? 'bank-status-pill bank-status-pill--active' : 'bank-status-pill'}>
+          {bank.active ? 'Ativo' : 'Inativo'}
+        </span>
+      ),
+    },
   ], [unitMap]);
 
   const visibleBanks = useMemo(() => {
@@ -154,62 +176,25 @@ export default function BankManagementPage() {
       </section>
 
       <div className="bank-management-layout">
-        <section className="registered-launches-panel bank-list-panel" aria-labelledby="bank-list-title">
-          <div className="registered-launches-header">
-            <h2 id="bank-list-title">Bancos cadastrados</h2>
-            <div>
-              <span>{visibleBanks.length} banco(s)</span>
-            </div>
-          </div>
-
-          <div className="bank-searchbar">
-            <div className="lookup-field">
-              <input
-                type="search"
-                placeholder="Pesquisar banco, unidade, agencia ou conta"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-              <span className="shortcut-search-icon" aria-hidden="true">
-                <Search size={16} strokeWidth={2.2} />
-              </span>
-            </div>
-          </div>
-
-          <div className="registered-launches-table-wrap">
-            <table className="registered-launches-table bank-table">
-              <thead>
-                <tr>
-                  <SortableTableHeader columns={bankSortColumns} sort={bankSort} onSortChange={setBankSort} />
-                </tr>
-              </thead>
-              <tbody>
-                {visibleBanks.map((bank) => (
-                  <tr
-                    key={bank.id}
-                    className={bank.id === form.id ? 'bank-row bank-row--selected' : 'bank-row'}
-                    onClick={() => loadBank(bank)}
-                  >
-                    <td>{unitMap.get(bank.unit) || bank.unit}</td>
-                    <td className="bank-name-cell">
-                      <strong>{bank.name}</strong>
-                      <span>{bank.id}</span>
-                    </td>
-                    <td>{bank.agency}</td>
-                    <td>{bank.account}</td>
-                    <td>
-                      <span className={bank.active ? 'bank-status-pill bank-status-pill--active' : 'bank-status-pill'}>
-                        {bank.active ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {!visibleBanks.length && <div className="empty-list">Nenhum banco encontrado</div>}
-          </div>
-        </section>
+        <DataTable
+          title="Bancos cadastrados"
+          titleId="bank-list-title"
+          rows={visibleBanks}
+          columns={bankSortColumns}
+          sort={bankSort}
+          onSortChange={setBankSort}
+          getRowKey={(bank) => bank.id}
+          onRowClick={loadBank}
+          rowClassName={(bank) => (bank.id === form.id ? 'bank-row bank-row--selected' : 'bank-row')}
+          searchValue={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Pesquisar banco, unidade, agencia ou conta"
+          summary={<span>{visibleBanks.length} banco(s)</span>}
+          panelClassName="bank-list-panel"
+          tableClassName="bank-table"
+          minWidth={860}
+          emptyMessage="Nenhum banco encontrado"
+        />
 
         <section className="selection-panel bank-form-panel" aria-labelledby="bank-form-title">
           <div className="selection-panel-header">

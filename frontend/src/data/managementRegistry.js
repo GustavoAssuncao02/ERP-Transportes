@@ -1,6 +1,8 @@
 import { businessUnits, suppliers } from './financeData.js';
 import { onlyDigits } from './transportRegistry.js';
 import { normalizeAddressFields } from '../utils/address.js';
+import { recordAuditEvent, auditActions } from '../services/auditLog.js';
+import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 
 export const unitStorageKey = 'managementUnits';
 export const supplierStorageKey = 'managementSuppliers';
@@ -130,21 +132,26 @@ export function formatCpfCnpj(value) {
 }
 
 function readRecords(key, fallback) {
-  try {
-    const rawValue = localStorage.getItem(key);
-    if (rawValue !== null) {
-      const stored = JSON.parse(rawValue);
-      return Array.isArray(stored) ? stored : fallback;
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
+  return readJsonStorage(key, fallback, {
+    validate: Array.isArray,
+  });
 }
 
 function writeRecords(key, records) {
-  localStorage.setItem(key, JSON.stringify(records));
+  writeJsonStorage(key, records);
+}
+
+function recordManagementAudit({ action, entityType, entityId, entityLabel, before, after, summary }) {
+  recordAuditEvent({
+    module: 'Gestao',
+    action,
+    entityType,
+    entityId,
+    entityLabel,
+    before,
+    after,
+    summary,
+  });
 }
 
 export function getRegisteredUnits() {
@@ -180,6 +187,7 @@ export function saveUnit(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const units = getRegisteredUnits();
   const existingIndex = units.findIndex((unit) => onlyDigits(unit.cnpj) === cnpjDigits);
+  const previousRecord = existingIndex >= 0 ? units[existingIndex] : null;
   const nextRecord = normalizeAddressFields({
     ...record,
     id: record.id || String(units.length + 1).padStart(3, '0'),
@@ -193,6 +201,15 @@ export function saveUnit(record) {
   }
 
   writeRecords(unitStorageKey, units);
+  recordManagementAudit({
+    action: previousRecord ? auditActions.update : auditActions.create,
+    entityType: 'unidade',
+    entityId: nextRecord.id,
+    entityLabel: nextRecord.name,
+    before: previousRecord,
+    after: nextRecord,
+    summary: previousRecord ? 'Unidade atualizada' : 'Unidade cadastrada',
+  });
   return units;
 }
 
@@ -200,6 +217,7 @@ export function saveSupplier(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const suppliersList = getRegisteredSuppliers();
   const existingIndex = suppliersList.findIndex((supplier) => onlyDigits(supplier.cnpj) === cnpjDigits);
+  const previousRecord = existingIndex >= 0 ? suppliersList[existingIndex] : null;
   const nextRecord = normalizeAddressFields({
     ...record,
     id: record.id || String(1000 + suppliersList.length + 1),
@@ -213,6 +231,15 @@ export function saveSupplier(record) {
   }
 
   writeRecords(supplierStorageKey, suppliersList);
+  recordManagementAudit({
+    action: previousRecord ? auditActions.update : auditActions.create,
+    entityType: 'fornecedor',
+    entityId: nextRecord.id,
+    entityLabel: nextRecord.name,
+    before: previousRecord,
+    after: nextRecord,
+    summary: previousRecord ? 'Fornecedor atualizado' : 'Fornecedor cadastrado',
+  });
   return suppliersList;
 }
 
@@ -227,6 +254,7 @@ export function saveInsurance(record) {
       && String(insurance.policyNumber || '').trim() === String(record.policyNumber || '').trim()
     )
   ));
+  const previousRecord = existingIndex >= 0 ? insurances[existingIndex] : null;
   const nextRecord = normalizeAddressFields({
     ...record,
     id: record.id || `INS-${String(insurances.length + 1).padStart(3, '0')}`,
@@ -254,12 +282,22 @@ export function saveInsurance(record) {
   }
 
   writeRecords(insuranceStorageKey, nextInsurances);
+  recordManagementAudit({
+    action: previousRecord ? auditActions.update : auditActions.create,
+    entityType: 'seguro',
+    entityId: nextRecord.id,
+    entityLabel: nextRecord.companyName || nextRecord.name,
+    before: previousRecord,
+    after: nextRecord,
+    summary: previousRecord ? 'Seguro atualizado' : 'Seguro cadastrado',
+  });
   return nextInsurances;
 }
 
 export function saveBank(record) {
   const banks = getRegisteredBanks();
   const existingIndex = banks.findIndex((bank) => bank.id === record.id);
+  const previousRecord = existingIndex >= 0 ? banks[existingIndex] : null;
   const nextRecord = {
     ...record,
     id: record.id || `BCO-${String(banks.length + 1).padStart(3, '0')}`,
@@ -277,59 +315,119 @@ export function saveBank(record) {
   }
 
   writeRecords(bankStorageKey, banks);
+  recordManagementAudit({
+    action: previousRecord ? auditActions.update : auditActions.create,
+    entityType: 'banco',
+    entityId: nextRecord.id,
+    entityLabel: nextRecord.name,
+    before: previousRecord,
+    after: nextRecord,
+    summary: previousRecord ? 'Banco atualizado' : 'Banco cadastrado',
+  });
   return banks;
 }
 
 export function deleteBank(record) {
   const banks = getRegisteredBanks();
+  const previousRecord = banks.find((bank) => bank.id === record.id) || record;
   const nextBanks = banks.filter((bank) => bank.id !== record.id);
 
   writeRecords(bankStorageKey, nextBanks);
+  recordManagementAudit({
+    action: auditActions.delete,
+    entityType: 'banco',
+    entityId: previousRecord.id,
+    entityLabel: previousRecord.name,
+    before: previousRecord,
+    after: null,
+    summary: 'Banco excluido',
+  });
   return nextBanks;
 }
 
 export function deleteUnit(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const units = getRegisteredUnits();
+  const previousRecord = units.find((unit) => unit.id === record.id || onlyDigits(unit.cnpj) === cnpjDigits) || record;
   const nextUnits = units.filter((unit) => unit.id !== record.id && onlyDigits(unit.cnpj) !== cnpjDigits);
 
   writeRecords(unitStorageKey, nextUnits);
+  recordManagementAudit({
+    action: auditActions.delete,
+    entityType: 'unidade',
+    entityId: previousRecord.id,
+    entityLabel: previousRecord.name,
+    before: previousRecord,
+    after: null,
+    summary: 'Unidade excluida',
+  });
   return nextUnits;
 }
 
 export function deactivateUnit(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const units = getRegisteredUnits();
+  const previousRecord = units.find((unit) => unit.id === record.id || onlyDigits(unit.cnpj) === cnpjDigits) || record;
   const nextUnits = units.map((unit) => (
     unit.id === record.id || onlyDigits(unit.cnpj) === cnpjDigits ? { ...unit, active: false } : unit
   ));
 
   writeRecords(unitStorageKey, nextUnits);
+  recordManagementAudit({
+    action: auditActions.deactivate,
+    entityType: 'unidade',
+    entityId: previousRecord.id,
+    entityLabel: previousRecord.name,
+    before: previousRecord,
+    after: nextUnits.find((unit) => unit.id === previousRecord.id) || null,
+    summary: 'Unidade inativada',
+  });
   return nextUnits;
 }
 
 export function deleteSupplier(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const suppliersList = getRegisteredSuppliers();
+  const previousRecord = suppliersList.find((supplier) => supplier.id === record.id || onlyDigits(supplier.cnpj) === cnpjDigits) || record;
   const nextSuppliers = suppliersList.filter((supplier) => supplier.id !== record.id && onlyDigits(supplier.cnpj) !== cnpjDigits);
 
   writeRecords(supplierStorageKey, nextSuppliers);
+  recordManagementAudit({
+    action: auditActions.delete,
+    entityType: 'fornecedor',
+    entityId: previousRecord.id,
+    entityLabel: previousRecord.name,
+    before: previousRecord,
+    after: null,
+    summary: 'Fornecedor excluido',
+  });
   return nextSuppliers;
 }
 
 export function deactivateSupplier(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
   const suppliersList = getRegisteredSuppliers();
+  const previousRecord = suppliersList.find((supplier) => supplier.id === record.id || onlyDigits(supplier.cnpj) === cnpjDigits) || record;
   const nextSuppliers = suppliersList.map((supplier) => (
     supplier.id === record.id || onlyDigits(supplier.cnpj) === cnpjDigits ? { ...supplier, active: false } : supplier
   ));
 
   writeRecords(supplierStorageKey, nextSuppliers);
+  recordManagementAudit({
+    action: auditActions.deactivate,
+    entityType: 'fornecedor',
+    entityId: previousRecord.id,
+    entityLabel: previousRecord.name,
+    before: previousRecord,
+    after: nextSuppliers.find((supplier) => supplier.id === previousRecord.id) || null,
+    summary: 'Fornecedor inativado',
+  });
   return nextSuppliers;
 }
 
 export function deleteInsurance(record) {
   const insurances = getRegisteredInsurances();
+  const previousRecord = insurances.find((insurance) => insurance.id === record.id) || record;
   const nextInsurances = insurances.filter((insurance) => insurance.id !== record.id);
 
   if (!nextInsurances.some((insurance) => insurance.active && insurance.defaultInsurance)) {
@@ -340,11 +438,21 @@ export function deleteInsurance(record) {
   }
 
   writeRecords(insuranceStorageKey, nextInsurances);
+  recordManagementAudit({
+    action: auditActions.delete,
+    entityType: 'seguro',
+    entityId: previousRecord.id,
+    entityLabel: previousRecord.companyName || previousRecord.name,
+    before: previousRecord,
+    after: null,
+    summary: 'Seguro excluido',
+  });
   return nextInsurances;
 }
 
 export function deactivateInsurance(record) {
   const insurances = getRegisteredInsurances();
+  const previousRecord = insurances.find((insurance) => insurance.id === record.id) || record;
   const nextInsurances = insurances.map((insurance) => (
     insurance.id === record.id ? { ...insurance, active: false, defaultInsurance: false } : insurance
   ));
@@ -357,5 +465,14 @@ export function deactivateInsurance(record) {
   }
 
   writeRecords(insuranceStorageKey, nextInsurances);
+  recordManagementAudit({
+    action: auditActions.deactivate,
+    entityType: 'seguro',
+    entityId: previousRecord.id,
+    entityLabel: previousRecord.companyName || previousRecord.name,
+    before: previousRecord,
+    after: nextInsurances.find((insurance) => insurance.id === previousRecord.id) || null,
+    summary: 'Seguro inativado',
+  });
   return nextInsurances;
 }

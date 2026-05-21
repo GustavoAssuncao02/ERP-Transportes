@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   accountingTypeNames,
@@ -12,6 +13,7 @@ import {
   supplierNames,
   todayValue,
 } from '../data/financeData.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
   { value: 'issueDate', label: 'Data Emissao' },
@@ -29,8 +31,28 @@ const reportLaunches = financeLaunches.map((launch) => ({
 
 const bankOptions = ['Sem banco', ...paymentBanks];
 
+const reportResultsSortColumns = [
+  { key: 'id', label: 'Lançamento', type: 'text', getValue: (launch) => launch.id },
+  { key: 'unit', label: 'Unidade', type: 'text', getValue: (launch) => launch.unit },
+  { key: 'supplier', label: 'Fornecedor', type: 'text', getValue: (launch) => launch.supplier },
+  { key: 'document', label: 'Documento', type: 'text', getValue: (launch) => launch.document },
+  { key: 'dueDate', label: 'Vencimento', type: 'date', getValue: (launch) => launch.dueDate },
+  { key: 'status', label: 'Situação', type: 'text', getValue: (launch) => launch.status },
+  { key: 'paymentMethod', label: 'Cobrança', type: 'text', getValue: (launch) => launch.paymentMethod },
+  { key: 'bank', label: 'Banco', type: 'text', getValue: (launch) => bankLabel(launch) },
+  { key: 'amount', label: 'Valor', type: 'number', getValue: (launch) => launch.amount },
+  { key: 'interest', label: 'Juros', type: 'number', getValue: (launch) => launch.interestAmount || 0 },
+  { key: 'discount', label: 'Desconto', type: 'number', getValue: (launch) => launch.discountAmount || 0 },
+  { key: 'final', label: 'Valor final', type: 'number', getValue: (launch) => launch.finalAmount || 0 },
+];
+
 function bankLabel(launch) {
   return launch.paymentBank || 'Sem banco';
+}
+
+function compareReportLaunchFallback(left, right) {
+  return String(left.dueDate || '').localeCompare(String(right.dueDate || ''), 'pt-BR')
+    || String(left.id || '').localeCompare(String(right.id || ''), 'pt-BR');
 }
 
 function htmlEscape(value) {
@@ -212,6 +234,7 @@ export default function AccountsPayableReportPage() {
   const [message, setMessage] = useAutoClearMessage();
   const [filtersApplied, setFiltersApplied] = useState(false);
   const [generateMenuOpen, setGenerateMenuOpen] = useState(false);
+  const [reportResultsSort, setReportResultsSort] = useState({ key: 'dueDate', direction: 'desc' });
 
   const summary = useMemo(() => ({
     chargeTypes: selectedChargeTypes.length,
@@ -246,6 +269,16 @@ export default function AccountsPayableReportPage() {
     selectedSuppliers,
     selectedDocuments,
   ]);
+
+  const sortedFilteredLaunches = useMemo(
+    () => sortTableRows(
+      filteredLaunches,
+      reportResultsSortColumns,
+      reportResultsSort,
+      compareReportLaunchFallback,
+    ),
+    [filteredLaunches, reportResultsSort],
+  );
 
   function markFiltersDirty() {
     setFiltersApplied(false);
@@ -288,7 +321,7 @@ export default function AccountsPayableReportPage() {
     const metadataRows = reportMetadata().map(([label, value]) => `
       <tr><th>${htmlEscape(label)}</th><td>${htmlEscape(value)}</td></tr>
     `).join('');
-    const dataRows = filteredLaunches.map((launch) => `
+    const dataRows = sortedFilteredLaunches.map((launch) => `
       <tr>
         <td>${htmlEscape(launch.id)}</td>
         <td>${htmlEscape(launch.unit)}</td>
@@ -371,11 +404,11 @@ export default function AccountsPayableReportPage() {
     lines.push('Lançamento       Unid Fornecedor      Documento Banco        Vencimento Sit    Valor        Juros    Desconto Valor final');
     lines.push('------------------------------------------------------------------------------------------------------------------------------');
 
-    if (!filteredLaunches.length) {
+    if (!sortedFilteredLaunches.length) {
       lines.push('Nenhum lançamento encontrado para os filtros aplicados.');
     }
 
-    filteredLaunches.forEach((launch) => {
+    sortedFilteredLaunches.forEach((launch) => {
       lines.push([
         fitPdfText(launch.id, 16),
         fitPdfText(launch.unit, 4),
@@ -564,7 +597,7 @@ export default function AccountsPayableReportPage() {
           <div className="registered-launches-header">
             <h2 id="accounts-payable-report-results-title">Dados consultados</h2>
             <div>
-              <span>{filteredLaunches.length} lançamento(s)</span>
+              <span>{sortedFilteredLaunches.length} lançamento(s)</span>
               <strong>{currency(tableTotals.amount)}</strong>
             </div>
           </div>
@@ -573,22 +606,15 @@ export default function AccountsPayableReportPage() {
             <table className="registered-launches-table report-results-table">
               <thead>
                 <tr>
-                  <th>Lançamento</th>
-                  <th>Unidade</th>
-                  <th>Fornecedor</th>
-                  <th>Documento</th>
-                  <th>Vencimento</th>
-                  <th>Situação</th>
-                  <th>Cobrança</th>
-                  <th>Banco</th>
-                  <th>Valor</th>
-                  <th>Juros</th>
-                  <th>Desconto</th>
-                  <th>Valor final</th>
+                  <SortableTableHeader
+                    columns={reportResultsSortColumns}
+                    sort={reportResultsSort}
+                    onSortChange={setReportResultsSort}
+                  />
                 </tr>
               </thead>
               <tbody>
-                {filteredLaunches.map((launch) => (
+                {sortedFilteredLaunches.map((launch) => (
                   <tr key={launch.id}>
                     <td><strong>{launch.id}</strong></td>
                     <td>{launch.unit}</td>
@@ -616,7 +642,7 @@ export default function AccountsPayableReportPage() {
               </tfoot>
             </table>
 
-            {!filteredLaunches.length && (
+            {!sortedFilteredLaunches.length && (
               <div className="empty-list">Nenhum lançamento encontrado para os filtros aplicados</div>
             )}
           </div>

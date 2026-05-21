@@ -1015,6 +1015,132 @@
   background: #eef5f4;
 }
 
+.standard-data-table-panel {
+  min-width: 0;
+}
+
+.standard-data-table-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  background: #ffffff;
+}
+
+.standard-data-table-search {
+  position: relative;
+  display: flex;
+  min-width: min(100%, 320px);
+  flex: 1;
+  align-items: center;
+  color: var(--text-muted);
+}
+
+.standard-data-table-search svg {
+  position: absolute;
+  left: 10px;
+  pointer-events: none;
+}
+
+.standard-data-table-search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px 8px 34px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.standard-data-table-filter {
+  display: flex;
+  min-width: 180px;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.standard-data-table-filter span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.standard-data-table-filter select {
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.standard-data-table tbody tr[onclick] {
+  cursor: pointer;
+}
+
+.standard-data-table-actions-heading,
+.standard-data-table-actions {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  width: 88px;
+  min-width: 88px;
+  background: inherit;
+  text-align: center;
+  box-shadow: -1px 0 0 var(--border);
+}
+
+.standard-data-table-actions-heading {
+  background: #f7f7f7;
+}
+
+.standard-data-table-actions {
+  white-space: nowrap;
+}
+
+.standard-data-table-pagination {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border);
+  background: #f8f8f8;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.standard-data-table-pagination label,
+.standard-data-table-pagination div {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.standard-data-table-pagination select {
+  min-height: 30px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: #ffffff;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.standard-data-table-pagination .icon-button {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+
 .launch-status-pill {
   display: inline-flex;
   min-height: 22px;
@@ -1507,6 +1633,97 @@
   color: var(--text-muted);
   font-size: 13px;
   text-align: center;
+}
+
+.soft-loading-state {
+  display: flex;
+  min-height: 160px;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.soft-loading-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d6e3e1;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: soft-loading-spin 800ms linear infinite;
+}
+
+.skeleton-block {
+  display: grid;
+  gap: 8px;
+}
+
+.skeleton-block span,
+.standard-table-skeleton-row span,
+.card-skeleton,
+.form-skeleton .skeleton-block {
+  overflow: hidden;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #eeeeee 0%, #f8f8f8 42%, #eeeeee 78%);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1200ms ease-in-out infinite;
+}
+
+.skeleton-block span {
+  display: block;
+  height: 14px;
+}
+
+.standard-table-skeleton {
+  display: grid;
+  min-width: 760px;
+  padding: 8px;
+  gap: 7px;
+}
+
+.standard-table-skeleton-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.standard-table-skeleton-row span {
+  display: block;
+  height: 28px;
+}
+
+.card-skeleton-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.card-skeleton {
+  min-height: 78px;
+}
+
+.form-skeleton {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.form-skeleton .skeleton-block {
+  min-height: 36px;
+}
+
+@keyframes soft-loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes skeleton-shimmer {
+  to {
+    background-position-x: -220%;
+  }
 }
 
 .settlement-details-grid {
@@ -5796,6 +6013,22 @@
 @media (max-width: 640px) {
   .content-area {
     padding: 18px 14px;
+  }
+
+  .standard-data-table-toolbar,
+  .standard-data-table-pagination {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .standard-data-table-search,
+  .standard-data-table-filter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .standard-data-table-pagination div {
+    justify-content: space-between;
   }
 
   .cards-grid {

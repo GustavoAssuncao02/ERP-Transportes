@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
-import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import DataTable from '../components/DataTable.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import {
@@ -20,11 +20,11 @@ import { sortTableRows } from '../utils/tableSort.js';
 const licenseCategories = ['B', 'C', 'D', 'E'];
 
 const driverSortColumns = [
-  { key: 'cpf', label: 'CPF', type: 'text', getValue: (driver) => formatCpf(driver.cpf) },
+  { key: 'cpf', label: 'CPF', type: 'text', getValue: (driver) => formatCpf(driver.cpf), render: (driver) => <strong>{formatCpf(driver.cpf)}</strong> },
   { key: 'name', label: 'Nome', type: 'text', getValue: (driver) => driver.name },
   { key: 'phone', label: 'Telefone', type: 'text', getValue: (driver) => driver.phone },
-  { key: 'cnh', label: 'CNH', type: 'text', getValue: (driver) => `${driver.cnh} ${driver.category}` },
-  { key: 'status', label: 'Status', type: 'text', getValue: (driver) => driver.status },
+  { key: 'cnh', label: 'CNH', type: 'text', getValue: (driver) => `${driver.cnh} ${driver.category}`, render: (driver) => `${driver.cnh} / ${driver.category}` },
+  { key: 'status', label: 'Status', type: 'text', getValue: (driver) => driver.status, status: true },
 ];
 
 function pendingCpf() {
@@ -46,6 +46,7 @@ export default function DriverRegistrationPage() {
   const [cpfError, setCpfError] = useState('');
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [driverSearch, setDriverSearch] = useState('');
   const [driverSort, setDriverSort] = useState({ key: 'name', direction: 'asc' });
   const [message, setMessage] = useAutoClearMessage();
 
@@ -58,6 +59,14 @@ export default function DriverRegistrationPage() {
     ),
     [driverSort, drivers],
   );
+  const visibleDrivers = useMemo(() => {
+    const query = normalizeText(driverSearch);
+    if (!query) return sortedDrivers;
+
+    return sortedDrivers.filter((driver) => (
+      normalizeText(`${driver.name} ${formatCpf(driver.cpf)} ${driver.cnh} ${driver.phone} ${driver.status}`).includes(query)
+    ));
+  }, [driverSearch, sortedDrivers]);
   const lookupDrivers = useMemo(() => {
     const query = normalizeText(lookupSearch);
     if (!query) return sortedDrivers;
@@ -261,35 +270,25 @@ export default function DriverRegistrationPage() {
         </div>
       </form>
 
-      <section className="registered-launches-panel registry-list-panel" aria-labelledby="drivers-list-title">
-        <div className="registered-launches-header">
-          <h2 id="drivers-list-title">Motoristas cadastrados</h2>
-          <div>
-            <span>{sortedDrivers.length} motorista(s)</span>
-          </div>
-        </div>
-
-        <div className="registered-launches-table-wrap">
-          <table className="registered-launches-table registry-table">
-            <thead>
-              <tr>
-                <SortableTableHeader columns={driverSortColumns} sort={driverSort} onSortChange={setDriverSort} />
-              </tr>
-            </thead>
-            <tbody>
-              {sortedDrivers.map((driver) => (
-                <tr key={driver.cpf} onClick={() => loadDriver(driver)}>
-                  <td><strong>{formatCpf(driver.cpf)}</strong></td>
-                  <td>{driver.name}</td>
-                  <td>{driver.phone}</td>
-                  <td>{driver.cnh} / {driver.category}</td>
-                  <td>{driver.status}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <DataTable
+        title="Motoristas cadastrados"
+        titleId="drivers-list-title"
+        rows={visibleDrivers}
+        columns={driverSortColumns}
+        sort={driverSort}
+        onSortChange={setDriverSort}
+        getRowKey={(driver) => driver.cpf}
+        onRowClick={loadDriver}
+        rowClassName="registry-row"
+        searchValue={driverSearch}
+        onSearchChange={setDriverSearch}
+        searchPlaceholder="Pesquisar por nome, CPF, CNH, telefone ou status"
+        summary={<span>{visibleDrivers.length} motorista(s)</span>}
+        panelClassName="registry-list-panel"
+        tableClassName="registry-table"
+        minWidth={760}
+        emptyMessage="Nenhum motorista encontrado"
+      />
 
       {lookupOpen && (
         <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="driver-lookup-title">

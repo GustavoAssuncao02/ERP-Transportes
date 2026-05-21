@@ -1,6 +1,7 @@
 import { lazy, Suspense, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import CardGrid from '../components/CardGrid.jsx';
 import DashboardSection from '../components/DashboardSection.jsx';
+import { PageLoadingFallback } from '../components/LoadingStates.jsx';
 import Navbar from '../components/Navbar.jsx';
 import SidebarBrand from '../components/SidebarBrand.jsx';
 import TabBar from '../components/TabBar.jsx';
@@ -10,6 +11,7 @@ import {
   readHomeShortcutIds,
   saveHomeShortcutIds,
 } from '../data/homeShortcuts.js';
+import { getPageTitle } from '../data/pageCatalog.js';
 import { quickQueryCards, tabs as initialTabs } from '../data/siteData.js';
 
 const AccountsPayableDeletionPage = lazy(() => import('./AccountsPayableDeletionPage.jsx'));
@@ -100,7 +102,7 @@ export default function DashboardPage() {
         ...currentTabs,
         {
           id: item.pageId,
-          label: item.label,
+          label: getPageTitle(item.pageId, item.label),
           closable: true,
         },
       ];
@@ -123,7 +125,7 @@ export default function DashboardPage() {
         ...currentTabs,
         {
           id: pageId,
-          label: 'Cadastro de Contas a Pagar',
+          label: getPageTitle(pageId, 'Cadastro de Contas a Pagar'),
           closable: true,
         },
       ];
@@ -316,7 +318,7 @@ export default function DashboardPage() {
 
       <main className="main-layout">
         <div className="content-area" ref={contentAreaRef}>
-          <Suspense fallback={<div className="empty-list">Carregando tela...</div>}>
+          <Suspense fallback={<PageLoadingFallback />}>
             {renderContent()}
           </Suspense>
         </div>

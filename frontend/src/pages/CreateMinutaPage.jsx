@@ -12,7 +12,7 @@ import {
   onlyDigits,
 } from '../data/transportRegistry.js';
 import { getMinutaDeletionBlockers } from '../data/deletionRules.js';
-import { deactivateMinuta, deleteMinuta } from '../data/operationRegistry.js';
+import { deactivateMinuta, deleteMinuta, saveMinuta } from '../data/operationRegistry.js';
 import {
   addressFieldSet,
   blankAddressFields,
@@ -455,15 +455,7 @@ export default function CreateMinutaPage() {
       createdAt: form.createdAt || new Date().toISOString(),
     });
     const existingIndex = minutas.findIndex((minuta) => normalizeText(minuta.id) === normalizeText(id));
-    const nextMinutas = [...minutas];
-
-    if (existingIndex >= 0) {
-      nextMinutas[existingIndex] = nextMinuta;
-    } else {
-      nextMinutas.push(nextMinuta);
-    }
-
-    writeMinutas(nextMinutas);
+    const nextMinutas = saveMinuta(nextMinuta);
     setMinutas(nextMinutas);
     setForm(nextMinuta);
     setMessage(existingIndex >= 0 ? `Minuta ${id} atualizada` : `Minuta ${id} criada`);

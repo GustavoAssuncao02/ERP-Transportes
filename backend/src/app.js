@@ -9,7 +9,9 @@ import { env } from './config/env.js';
 import { getHealth } from './controllers/healthController.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { notFoundHandler } from './middleware/notFoundHandler.js';
+import { requestContext } from './middleware/requestContext.js';
 import routes from './routes/index.js';
+import { logger } from './utils/logger.js';
 
 const app = express();
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -19,10 +21,15 @@ const indexHtmlPath = path.join(clientDistPath, 'index.html');
 const hasClientBuild = fs.existsSync(indexHtmlPath);
 
 app.set('trust proxy', 1);
+app.use(requestContext);
 app.use(compression());
 app.use(cors({ origin: env.corsOrigins }));
 app.use(express.json());
-app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
+app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev', {
+  stream: {
+    write: (message) => logger.info(message.trim()),
+  },
+}));
 
 app.use('/api', routes);
 app.get('/health', getHealth);

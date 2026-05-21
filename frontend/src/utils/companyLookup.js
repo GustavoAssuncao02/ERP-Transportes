@@ -1,4 +1,5 @@
 import { formatZipCode } from './address.js';
+import { readJsonStorage, writeJsonStorage } from './storage.js';
 
 const companyLookupCacheKey = 'brasilApiCnpjLookupCache';
 const companyLookupCacheTtlMs = 30 * 24 * 60 * 60 * 1000;
@@ -104,15 +105,13 @@ function normalizeCnpjaCompany(data, cnpj) {
 }
 
 function readCachedCompany(cnpj) {
-  try {
-    const cache = JSON.parse(localStorage.getItem(companyLookupCacheKey) || '{}');
-    const entry = cache?.[cnpj];
+  const cache = readJsonStorage(companyLookupCacheKey, {}, {
+    validate: (value) => value && typeof value === 'object' && !Array.isArray(value),
+  });
+  const entry = cache?.[cnpj];
 
-    if (entry?.company && entry.updatedAt && Date.now() - entry.updatedAt <= companyLookupCacheTtlMs) {
-      return entry.company;
-    }
-  } catch {
-    return null;
+  if (entry?.company && entry.updatedAt && Date.now() - entry.updatedAt <= companyLookupCacheTtlMs) {
+    return entry.company;
   }
 
   return null;
@@ -120,7 +119,9 @@ function readCachedCompany(cnpj) {
 
 function writeCachedCompany(cnpj, company) {
   try {
-    const cache = JSON.parse(localStorage.getItem(companyLookupCacheKey) || '{}');
+    const cache = readJsonStorage(companyLookupCacheKey, {}, {
+      validate: (value) => value && typeof value === 'object' && !Array.isArray(value),
+    });
     const nextCache = cache && typeof cache === 'object' ? cache : {};
 
     nextCache[cnpj] = {
@@ -128,7 +129,7 @@ function writeCachedCompany(cnpj, company) {
       company,
     };
 
-    localStorage.setItem(companyLookupCacheKey, JSON.stringify(nextCache));
+    writeJsonStorage(companyLookupCacheKey, nextCache);
   } catch {
     // Cache is only an optimization; the form keeps working without it.
   }

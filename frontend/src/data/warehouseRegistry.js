@@ -1,3 +1,6 @@
+import { recordAuditEvent, auditActions } from '../services/auditLog.js';
+import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
+
 export const warehouseCargoStorageKey = 'warehouseManagementCargoItems';
 export const warehouseWeightSettingsStorageKey = 'warehouseWeightSettings';
 export const defaultWarehouseSectorLimitKg = 3;
@@ -209,18 +212,26 @@ export function readWarehouseWeightSettings() {
     return normalizeWarehouseWeightSettings();
   }
 
-  try {
-    const storedValue = window.localStorage.getItem(warehouseWeightSettingsStorageKey);
-    return storedValue ? normalizeWarehouseWeightSettings(JSON.parse(storedValue)) : normalizeWarehouseWeightSettings();
-  } catch {
-    return normalizeWarehouseWeightSettings();
-  }
+  return normalizeWarehouseWeightSettings(readJsonStorage(warehouseWeightSettingsStorageKey, normalizeWarehouseWeightSettings(), {
+    validate: (value) => value && typeof value === 'object' && !Array.isArray(value),
+  }));
 }
 
 export function saveWarehouseWeightSettings(settings) {
+  const previousSettings = readWarehouseWeightSettings();
   const normalizedSettings = normalizeWarehouseWeightSettings(settings);
 
-  window.localStorage.setItem(warehouseWeightSettingsStorageKey, JSON.stringify(normalizedSettings));
+  writeJsonStorage(warehouseWeightSettingsStorageKey, normalizedSettings);
+  recordAuditEvent({
+    module: 'Gestao',
+    action: auditActions.configChange,
+    entityType: 'configuracao de galpao',
+    entityId: warehouseWeightSettingsStorageKey,
+    entityLabel: 'Limites de peso por setor',
+    before: previousSettings,
+    after: normalizedSettings,
+    summary: 'Configuracao de peso do galpao atualizada',
+  });
   return normalizedSettings;
 }
 

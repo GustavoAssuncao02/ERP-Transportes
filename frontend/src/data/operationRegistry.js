@@ -1,4 +1,6 @@
 import { addressFieldSet, normalizeAddressFields } from '../utils/address.js';
+import { recordAuditEvent, auditActions } from '../services/auditLog.js';
+import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 
 export const cteStorageKey = 'transportCtes';
 export const collectionOrderStorageKey = 'collectionOrders';
@@ -574,21 +576,26 @@ export const defaultManifests = [
 ];
 
 function readRecords(key, fallback) {
-  try {
-    const rawValue = localStorage.getItem(key);
-    if (rawValue !== null) {
-      const stored = JSON.parse(rawValue);
-      return Array.isArray(stored) ? stored : fallback;
-    }
-  } catch {
-    return fallback;
-  }
-
-  return fallback;
+  return readJsonStorage(key, fallback, {
+    validate: Array.isArray,
+  });
 }
 
 function writeRecords(key, records) {
-  localStorage.setItem(key, JSON.stringify(records));
+  writeJsonStorage(key, records);
+}
+
+function recordOperationAudit({ action, entityType, entityId, entityLabel, before, after, summary }) {
+  recordAuditEvent({
+    module: 'Operacao',
+    action,
+    entityType,
+    entityId,
+    entityLabel,
+    before,
+    after,
+    summary,
+  });
 }
 
 function mergeSeedManifests(records) {
@@ -612,9 +619,10 @@ function mergeSeedManifests(records) {
   }
 }
 
-function upsertRecord(key, fallback, record) {
+function upsertRecord(key, fallback, record, audit = {}) {
   const records = readRecords(key, fallback);
   const existingIndex = records.findIndex((item) => item.id === record.id);
+  const previousRecord = existingIndex >= 0 ? records[existingIndex] : null;
   const nextRecords = [...records];
 
   if (existingIndex >= 0) {
@@ -624,20 +632,49 @@ function upsertRecord(key, fallback, record) {
   }
 
   writeRecords(key, nextRecords);
+  recordOperationAudit({
+    action: previousRecord ? auditActions.update : auditActions.create,
+    entityType: audit.entityType || 'registro operacional',
+    entityId: record.id,
+    entityLabel: audit.entityLabel?.(record) || record.number || record.id,
+    before: previousRecord,
+    after: record,
+    summary: previousRecord ? audit.updateSummary : audit.createSummary,
+  });
   return nextRecords;
 }
 
-function deleteRecord(key, fallback, id) {
+function deleteRecord(key, fallback, id, audit = {}) {
   const records = readRecords(key, fallback);
+  const previousRecord = records.find((item) => item.id === id) || { id };
   const nextRecords = records.filter((item) => item.id !== id);
   writeRecords(key, nextRecords);
+  recordOperationAudit({
+    action: auditActions.delete,
+    entityType: audit.entityType || 'registro operacional',
+    entityId: previousRecord.id,
+    entityLabel: audit.entityLabel?.(previousRecord) || previousRecord.number || previousRecord.id,
+    before: previousRecord,
+    after: null,
+    summary: audit.deleteSummary || 'Registro operacional excluido',
+  });
   return nextRecords;
 }
 
-function updateRecordStatus(key, fallback, id, status) {
+function updateRecordStatus(key, fallback, id, status, audit = {}) {
   const records = readRecords(key, fallback);
+  const previousRecord = records.find((item) => item.id === id) || { id };
   const nextRecords = records.map((item) => (item.id === id ? { ...item, status } : item));
   writeRecords(key, nextRecords);
+  recordOperationAudit({
+    action: auditActions.statusChange,
+    entityType: audit.entityType || 'registro operacional',
+    entityId: previousRecord.id,
+    entityLabel: audit.entityLabel?.(previousRecord) || previousRecord.number || previousRecord.id,
+    before: previousRecord,
+    after: nextRecords.find((item) => item.id === id) || null,
+    summary: audit.statusSummary || `Status alterado para ${status}`,
+  });
   return nextRecords;
 }
 
@@ -646,15 +683,26 @@ export function getRegisteredCtes() {
 }
 
 export function saveCte(record) {
-  return upsertRecord(cteStorageKey, defaultCtes, { status: 'Aberto', ...record });
+  return upsertRecord(cteStorageKey, defaultCtes, { status: 'Aberto', ...record }, {
+    entityType: 'CT-e',
+    entityLabel: (cte) => cte.number || cte.id,
+    createSummary: 'CT-e emitido',
+    updateSummary: 'CT-e atualizado',
+  });
 }
 
 export function deleteCte(id) {
-  return deleteRecord(cteStorageKey, defaultCtes, id);
+  return deleteRecord(cteStorageKey, defaultCtes, id, {
+    entityType: 'CT-e',
+    deleteSummary: 'CT-e excluido',
+  });
 }
 
 export function deactivateCte(id) {
-  return updateRecordStatus(cteStorageKey, defaultCtes, id, 'Cancelado');
+  return updateRecordStatus(cteStorageKey, defaultCtes, id, 'Cancelado', {
+    entityType: 'CT-e',
+    statusSummary: 'CT-e cancelado',
+  });
 }
 
 export function getRegisteredCollectionOrders() {
@@ -662,15 +710,25 @@ export function getRegisteredCollectionOrders() {
 }
 
 export function saveCollectionOrder(record) {
-  return upsertRecord(collectionOrderStorageKey, defaultCollectionOrders, record);
+  return upsertRecord(collectionOrderStorageKey, defaultCollectionOrders, record, {
+    entityType: 'ordem de coleta',
+    createSummary: 'Ordem de coleta criada',
+    updateSummary: 'Ordem de coleta atualizada',
+  });
 }
 
 export function deleteCollectionOrder(id) {
-  return deleteRecord(collectionOrderStorageKey, defaultCollectionOrders, id);
+  return deleteRecord(collectionOrderStorageKey, defaultCollectionOrders, id, {
+    entityType: 'ordem de coleta',
+    deleteSummary: 'Ordem de coleta excluida',
+  });
 }
 
 export function deactivateCollectionOrder(id) {
-  return updateRecordStatus(collectionOrderStorageKey, defaultCollectionOrders, id, 'Cancelada');
+  return updateRecordStatus(collectionOrderStorageKey, defaultCollectionOrders, id, 'Cancelada', {
+    entityType: 'ordem de coleta',
+    statusSummary: 'Ordem de coleta cancelada',
+  });
 }
 
 export function getRegisteredMinutas() {
@@ -678,15 +736,25 @@ export function getRegisteredMinutas() {
 }
 
 export function saveMinuta(record) {
-  return upsertRecord(minutaStorageKey, defaultMinutas, normalizeMinutaAddressFields(record));
+  return upsertRecord(minutaStorageKey, defaultMinutas, normalizeMinutaAddressFields(record), {
+    entityType: 'minuta',
+    createSummary: 'Minuta criada',
+    updateSummary: 'Minuta atualizada',
+  });
 }
 
 export function deleteMinuta(id) {
-  return deleteRecord(minutaStorageKey, defaultMinutas, id);
+  return deleteRecord(minutaStorageKey, defaultMinutas, id, {
+    entityType: 'minuta',
+    deleteSummary: 'Minuta excluida',
+  });
 }
 
 export function deactivateMinuta(id) {
-  return updateRecordStatus(minutaStorageKey, defaultMinutas, id, 'Cancelada');
+  return updateRecordStatus(minutaStorageKey, defaultMinutas, id, 'Cancelada', {
+    entityType: 'minuta',
+    statusSummary: 'Minuta cancelada',
+  });
 }
 
 export function getRegisteredManifests() {
@@ -695,13 +763,23 @@ export function getRegisteredManifests() {
 }
 
 export function saveManifest(record) {
-  return upsertRecord(manifestStorageKey, defaultManifests, { manifestType: 'Manifesto de Trânsito', status: 'Emitido', ...record });
+  return upsertRecord(manifestStorageKey, defaultManifests, { manifestType: 'Manifesto de Trânsito', status: 'Emitido', ...record }, {
+    entityType: 'manifesto',
+    createSummary: 'Manifesto emitido',
+    updateSummary: 'Manifesto atualizado',
+  });
 }
 
 export function deleteManifest(id) {
-  return deleteRecord(manifestStorageKey, defaultManifests, id);
+  return deleteRecord(manifestStorageKey, defaultManifests, id, {
+    entityType: 'manifesto',
+    deleteSummary: 'Manifesto excluido',
+  });
 }
 
 export function deactivateManifest(id) {
-  return updateRecordStatus(manifestStorageKey, defaultManifests, id, 'Cancelado');
+  return updateRecordStatus(manifestStorageKey, defaultManifests, id, 'Cancelado', {
+    entityType: 'manifesto',
+    statusSummary: 'Manifesto cancelado',
+  });
 }

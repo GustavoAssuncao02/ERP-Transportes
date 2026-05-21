@@ -11,7 +11,7 @@ import {
   onlyDigits,
 } from '../data/transportRegistry.js';
 import { getCollectionOrderDeletionBlockers } from '../data/deletionRules.js';
-import { deactivateCollectionOrder, deleteCollectionOrder } from '../data/operationRegistry.js';
+import { deactivateCollectionOrder, deleteCollectionOrder, saveCollectionOrder } from '../data/operationRegistry.js';
 
 const collectionOrderStorageKey = 'collectionOrders';
 
@@ -285,15 +285,7 @@ export default function CollectionOrderPage() {
     const id = form.id || nextCollectionOrderNumber();
     const nextOrder = { ...form, id };
     const existingIndex = orders.findIndex((order) => normalizeText(order.id) === normalizeText(id));
-    const nextOrders = [...orders];
-
-    if (existingIndex >= 0) {
-      nextOrders[existingIndex] = nextOrder;
-    } else {
-      nextOrders.push(nextOrder);
-    }
-
-    writeCollectionOrders(nextOrders);
+    const nextOrders = saveCollectionOrder(nextOrder);
     setOrders(nextOrders);
     setForm(nextOrder);
     setMessage(existingIndex >= 0 ? `Ordem ${id} atualizada` : `Ordem ${id} criada`);

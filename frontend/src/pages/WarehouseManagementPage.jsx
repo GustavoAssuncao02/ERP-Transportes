@@ -207,6 +207,15 @@ const reportSortColumns = [
   { key: 'status', label: 'Status', type: 'text', getValue: (item) => item.status },
 ];
 
+const inventorySortColumns = [
+  { key: 'name', label: 'Produto', type: 'text', getValue: (item) => item.name },
+  { key: 'quantity', label: 'Quantidade', type: 'number', getValue: (item) => item.quantity },
+  { key: 'itemCount', label: 'Itens', type: 'number', getValue: (item) => item.itemCount },
+  { key: 'weight', label: 'Peso', type: 'number', getValue: (item) => item.weight },
+  { key: 'invoiceCount', label: 'NFs', type: 'number', getValue: (item) => item.invoiceCount },
+  { key: 'sectorCount', label: 'Setores', type: 'number', getValue: (item) => item.sectorCount },
+];
+
 function getReportDefaultDirection(column) {
   return column.type === 'number' ? 'desc' : 'asc';
 }
@@ -223,6 +232,10 @@ function compareReportFallback(first, second) {
   return reportTextSorter.compare(first.sectorId, second.sectorId)
     || reportTextSorter.compare(first.invoice, second.invoice)
     || reportTextSorter.compare(first.description, second.description);
+}
+
+function compareInventoryFallback(first, second) {
+  return reportTextSorter.compare(first.name, second.name);
 }
 
 function compareReportItems(first, second, column) {
@@ -248,6 +261,21 @@ function sortReportItems(items, sort) {
     }
 
     return compareReportFallback(first, second);
+  });
+}
+
+function sortInventoryItems(items, sort) {
+  const column = inventorySortColumns.find((option) => option.key === sort.key) || inventorySortColumns[0];
+  const direction = sort.direction === 'desc' ? 'desc' : 'asc';
+
+  return [...items].sort((first, second) => {
+    const result = compareReportItems(first, second, column);
+
+    if (result !== 0) {
+      return direction === 'asc' ? result : -result;
+    }
+
+    return compareInventoryFallback(first, second);
   });
 }
 
@@ -511,6 +539,7 @@ export default function WarehouseManagementPage() {
   const [cargoForm, setCargoForm] = useState(createCargoForm);
   const [weightSettings, setWeightSettings] = useState(readWarehouseWeightSettings);
   const [reportSort, setReportSort] = useState({ key: 'sectorId', direction: 'asc' });
+  const [inventorySort, setInventorySort] = useState({ key: 'quantity', direction: 'desc' });
   const [status, setStatus] = useAutoClearMessage();
 
   useEffect(() => {
@@ -587,6 +616,10 @@ export default function WarehouseManagementPage() {
   const sortedReportItems = useMemo(
     () => sortReportItems(warehouseDashboards.reportItems, reportSort),
     [warehouseDashboards.reportItems, reportSort],
+  );
+  const sortedInventoryItems = useMemo(
+    () => sortInventoryItems(warehouseDashboards.inventoryItems, inventorySort),
+    [inventorySort, warehouseDashboards.inventoryItems],
   );
   const clientSelectOptions = useMemo(() => (
     [...new Set([...customerOptions, ...cargoItems.map((item) => item.customer).filter(Boolean)])]
@@ -712,6 +745,22 @@ export default function WarehouseManagementPage() {
     });
   }
 
+  function changeInventorySort(column) {
+    setInventorySort((currentSort) => {
+      if (currentSort.key === column.key) {
+        return {
+          key: column.key,
+          direction: currentSort.direction === 'asc' ? 'desc' : 'asc',
+        };
+      }
+
+      return {
+        key: column.key,
+        direction: getReportDefaultDirection(column),
+      };
+    });
+  }
+
   function renderReportHeader(column) {
     const isActive = reportSort.key === column.key;
     const direction = isActive ? reportSort.direction : getReportDefaultDirection(column);
@@ -732,6 +781,34 @@ export default function WarehouseManagementPage() {
             title={`Ordenar ${column.label} ${getReportSortLabel(column, nextDirection)}`}
             aria-label={`Ordenar ${column.label} ${getReportSortLabel(column, nextDirection)}`}
             onClick={() => changeReportSort(column)}
+          >
+            {getReportSortLabel(column, direction)}
+          </button>
+        </span>
+      </th>
+    );
+  }
+
+  function renderInventoryHeader(column) {
+    const isActive = inventorySort.key === column.key;
+    const direction = isActive ? inventorySort.direction : getReportDefaultDirection(column);
+    const nextDirection = isActive
+      ? inventorySort.direction === 'asc' ? 'desc' : 'asc'
+      : getReportDefaultDirection(column);
+    const ariaSort = isActive
+      ? inventorySort.direction === 'asc' ? 'ascending' : 'descending'
+      : 'none';
+
+    return (
+      <th key={column.key} aria-sort={ariaSort}>
+        <span className="warehouse-sort-header">
+          <span>{column.label}</span>
+          <button
+            type="button"
+            className={isActive ? 'warehouse-sort-button warehouse-sort-button--active' : 'warehouse-sort-button'}
+            title={`Ordenar ${column.label} ${getReportSortLabel(column, nextDirection)}`}
+            aria-label={`Ordenar ${column.label} ${getReportSortLabel(column, nextDirection)}`}
+            onClick={() => changeInventorySort(column)}
           >
             {getReportSortLabel(column, direction)}
           </button>
@@ -1509,7 +1586,7 @@ export default function WarehouseManagementPage() {
         <article className="registered-launches-panel warehouse-dashboard-card warehouse-dashboard-card--stock">
           <div className="registered-launches-header">
             <h2>Relatório de estoque por produto</h2>
-            <div><span>{warehouseDashboards.inventoryItems.length} produto(s)</span></div>
+            <div><span>{sortedInventoryItems.length} produto(s)</span></div>
           </div>
 
           {warehouseDashboards.mainInventoryItem ? (
@@ -1572,16 +1649,11 @@ export default function WarehouseManagementPage() {
             <table className="registered-launches-table warehouse-stock-table">
               <thead>
                 <tr>
-                  <th>Produto</th>
-                  <th>Quantidade</th>
-                  <th>Itens</th>
-                  <th>Peso</th>
-                  <th>NFs</th>
-                  <th>Setores</th>
+                  {inventorySortColumns.map((column) => renderInventoryHeader(column))}
                 </tr>
               </thead>
               <tbody>
-                {warehouseDashboards.inventoryItems.map((item) => (
+                {sortedInventoryItems.map((item) => (
                   <tr key={item.name}>
                     <td><strong>{item.name}</strong></td>
                     <td>{item.quantity}</td>
@@ -1594,7 +1666,7 @@ export default function WarehouseManagementPage() {
               </tbody>
             </table>
 
-            {!warehouseDashboards.inventoryItems.length && <div className="empty-list">Nenhum produto em estoque</div>}
+            {!sortedInventoryItems.length && <div className="empty-list">Nenhum produto em estoque</div>}
           </div>
         </article>
       </section>

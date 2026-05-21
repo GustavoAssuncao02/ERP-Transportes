@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, todayValue } from '../data/financeData.js';
 import { getRegisteredSuppliers } from '../data/managementRegistry.js';
@@ -20,6 +21,7 @@ import {
   defaultAddressFields,
   normalizeAddressFields,
 } from '../utils/address.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const minutaStorageKey = 'transportMinutas';
 const cityApiUrl = 'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome';
@@ -62,6 +64,17 @@ const minutaStatuses = [
   'Em transporte',
   'Entregue',
   'Cancelada',
+];
+
+const minutaSortColumns = [
+  { key: 'id', label: 'Minuta', type: 'number', defaultDirection: 'asc', getValue: (minuta) => identifierNumberValue(minuta.id) },
+  { key: 'issueDate', label: 'Emissao', type: 'date', defaultDirection: 'asc', getValue: (minuta) => minuta.issueDate },
+  { key: 'senderName', label: 'Cliente/remetente', type: 'text', getValue: (minuta) => minuta.senderName },
+  { key: 'recipientName', label: 'Destinatario', type: 'text', getValue: (minuta) => minuta.recipientName },
+  { key: 'originCity', label: 'Origem', type: 'text', getValue: (minuta) => minuta.originCity },
+  { key: 'destinationCity', label: 'Destino', type: 'text', getValue: (minuta) => minuta.destinationCity },
+  { key: 'freightValue', label: 'Frete', type: 'number', defaultDirection: 'asc', getValue: (minuta) => minuta.freightValue },
+  { key: 'status', label: 'Status', type: 'text', getValue: (minuta) => minuta.status },
 ];
 
 const defaultMinutas = [
@@ -226,6 +239,7 @@ export default function CreateMinutaPage() {
   const [cities, setCities] = useState(() => readCachedCities()?.options || fallbackCities);
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [minutaSort, setMinutaSort] = useState({ key: 'id', direction: 'asc' });
   const [message, setMessage] = useAutoClearMessage();
 
   useEffect(() => {
@@ -286,8 +300,13 @@ export default function CreateMinutaPage() {
   const drivers = useMemo(() => getRegisteredDrivers(), []);
   const vehicles = useMemo(() => getRegisteredVehicles(), []);
   const sortedMinutas = useMemo(
-    () => [...minutas].sort((left, right) => right.id.localeCompare(left.id, 'pt-BR')),
-    [minutas],
+    () => sortTableRows(
+      minutas,
+      minutaSortColumns,
+      minutaSort,
+      (left, right) => identifierNumberValue(left.id) - identifierNumberValue(right.id),
+    ),
+    [minutaSort, minutas],
   );
   const minutasByClosestDate = useMemo(
     () => [...minutas].sort((left, right) => dateDistance(left.createdAt || left.issueDate) - dateDistance(right.createdAt || right.issueDate)),
@@ -706,14 +725,11 @@ export default function CreateMinutaPage() {
           <table className="registered-launches-table registry-table">
             <thead>
               <tr>
-                <th>Minuta</th>
-                <th>Emissao</th>
-                <th>Cliente/remetente</th>
-                <th>Destinatario</th>
-                <th>Origem</th>
-                <th>Destino</th>
-                <th>Frete</th>
-                <th>Status</th>
+                <SortableTableHeader
+                  columns={minutaSortColumns}
+                  sort={minutaSort}
+                  onSortChange={setMinutaSort}
+                />
               </tr>
             </thead>
             <tbody>

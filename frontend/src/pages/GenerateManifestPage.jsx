@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Trash2, X } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, currency, normalizeText } from '../data/financeData.js';
 import { getManifestDeletionBlockers } from '../data/deletionRules.js';
@@ -12,6 +13,7 @@ import {
   pendingManifestIdKey,
   saveManifest,
 } from '../data/operationRegistry.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const openCtes = [
   {
@@ -54,6 +56,16 @@ const openCtes = [
     cargoValue: 158750,
     status: 'Aberto',
   },
+];
+
+const manifestCteSortColumns = [
+  { key: 'id', label: 'CT-e', type: 'number', defaultDirection: 'asc', getValue: (cte) => identifierNumberValue(cte.id) },
+  { key: 'issuer', label: 'Emissor', type: 'text', getValue: (cte) => cte.issuer },
+  { key: 'origin', label: 'Origem', type: 'text', getValue: (cte) => cte.origin },
+  { key: 'destination', label: 'Destino', type: 'text', getValue: (cte) => cte.destination },
+  { key: 'cargoWeight', label: 'Peso', type: 'number', getValue: (cte) => cte.cargoWeight },
+  { key: 'cargoValue', label: 'Valor', type: 'number', getValue: (cte) => cte.cargoValue },
+  { key: 'actions', label: '', sortable: false },
 ];
 
 const manifestStorageKey = 'transportManifests';
@@ -178,6 +190,7 @@ export default function GenerateManifestPage() {
   const [selectedCteIds, setSelectedCteIds] = useState([]);
   const [manifestLookupOpen, setManifestLookupOpen] = useState(false);
   const [manifestLookupSearch, setManifestLookupSearch] = useState('');
+  const [cteSort, setCteSort] = useState({ key: 'id', direction: 'asc' });
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [truckPlate, setTruckPlate] = useState('');
@@ -229,10 +242,17 @@ export default function GenerateManifestPage() {
   const filteredCtes = useMemo(() => {
     const query = normalizeText(cteSearch);
     const availableCtes = ctes.filter((cte) => cte.status !== 'Cancelado');
-    if (!query) return availableCtes;
+    const filtered = query
+      ? availableCtes.filter((cte) => normalizeText(`${cte.id} ${cte.number} ${cte.issuer} ${cte.origin} ${cte.destination}`).includes(query))
+      : availableCtes;
 
-    return availableCtes.filter((cte) => normalizeText(`${cte.id} ${cte.number} ${cte.issuer} ${cte.origin} ${cte.destination}`).includes(query));
-  }, [cteSearch, ctes]);
+    return sortTableRows(
+      filtered,
+      manifestCteSortColumns,
+      cteSort,
+      (left, right) => identifierNumberValue(left.id) - identifierNumberValue(right.id),
+    );
+  }, [cteSearch, cteSort, ctes]);
 
   const manifestsByClosestDate = useMemo(
     () => [...manifests].sort((left, right) => dateDistance(left.createdAt) - dateDistance(right.createdAt)),
@@ -595,13 +615,11 @@ export default function GenerateManifestPage() {
               <table className="registered-launches-table manifest-cte-table">
                 <thead>
                   <tr>
-                    <th>CT-e</th>
-                    <th>Emissor</th>
-                    <th>Origem</th>
-                    <th>Destino</th>
-                    <th>Peso</th>
-                    <th>Valor</th>
-                    <th></th>
+                    <SortableTableHeader
+                      columns={manifestCteSortColumns}
+                      sort={cteSort}
+                      onSortChange={setCteSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>

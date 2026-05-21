@@ -4,6 +4,10 @@ const tableTextSorter = new Intl.Collator('pt-BR', {
 });
 
 export function getTableDefaultSortDirection(column) {
+  if (column.defaultDirection) {
+    return column.defaultDirection;
+  }
+
   return column.type === 'number' || column.type === 'date' ? 'desc' : 'asc';
 }
 
@@ -61,4 +65,9 @@ export function sortTableRows(rows, columns, sort, fallbackCompare) {
 
     return fallbackCompare ? fallbackCompare(first, second) : 0;
   });
+}
+
+export function identifierNumberValue(value) {
+  const numericParts = String(value || '').match(/\d+/g);
+  return numericParts ? Number(numericParts.join('')) : 0;
 }

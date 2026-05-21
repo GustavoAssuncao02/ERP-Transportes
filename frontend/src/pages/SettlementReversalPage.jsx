@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   businessUnits,
@@ -8,6 +9,7 @@ import {
   normalizeText,
   paymentBanks,
 } from '../data/financeData.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
   { label: 'Data Emissao', field: 'issueDate' },
@@ -28,6 +30,17 @@ const bankFilterOptions = ['Sem banco', ...paymentBanks];
 function bankLabel(launch) {
   return launch.paymentBank || 'Sem banco';
 }
+
+const reversalSortColumns = [
+  { key: 'id', label: 'Lançamento', type: 'number', getValue: (launch) => identifierNumberValue(launch.id) },
+  { key: 'supplier', label: 'Fornecedor', type: 'text', getValue: (launch) => launch.supplier },
+  { key: 'document', label: 'Documento', type: 'text', getValue: (launch) => launch.document },
+  { key: 'type', label: 'Tipo', type: 'text', getValue: (launch) => launch.type },
+  { key: 'bank', label: 'Banco', type: 'text', getValue: (launch) => bankLabel(launch) },
+  { key: 'paymentDate', label: 'Pagamento', type: 'date', getValue: (launch) => launch.paymentDate },
+  { key: 'finalAmount', label: 'Valor final', type: 'number', getValue: (launch) => launch.finalAmount || launch.amount },
+  { key: 'actions', label: '', sortable: false },
+];
 
 function totalAmount(launches) {
   return launches.reduce((sum, launch) => sum + (launch.finalAmount || launch.amount), 0);
@@ -97,6 +110,7 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
   const [selectedDocuments, setSelectedDocuments] = useState(settledDocuments);
   const [launchSearch, setLaunchSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [reversalSort, setReversalSort] = useState({ key: 'paymentDate', direction: 'desc' });
   const [status, setStatus] = useAutoClearMessage();
 
   const filteredLaunches = useMemo(() => settledLaunches.filter((launch) => {
@@ -126,6 +140,15 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
   const selectedLaunches = useMemo(
     () => settledLaunches.filter((launch) => selectedIds.includes(launch.id)),
     [selectedIds],
+  );
+  const sortedFilteredLaunches = useMemo(
+    () => sortTableRows(
+      filteredLaunches,
+      reversalSortColumns,
+      reversalSort,
+      (left, right) => identifierNumberValue(right.id) - identifierNumberValue(left.id),
+    ),
+    [filteredLaunches, reversalSort],
   );
 
   function addLaunch(launchId) {
@@ -312,18 +335,15 @@ export default function SettlementReversalPage({ onOpenLaunchDetails }) {
               <table className="registered-launches-table reversal-table">
                 <thead>
                   <tr>
-                    <th>Lançamento</th>
-                    <th>Fornecedor</th>
-                    <th>Documento</th>
-                    <th>Tipo</th>
-                    <th>Banco</th>
-                    <th>Pagamento</th>
-                    <th>Valor final</th>
-                    <th></th>
+                    <SortableTableHeader
+                      columns={reversalSortColumns}
+                      sort={reversalSort}
+                      onSortChange={setReversalSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLaunches.map((launch) => {
+                  {sortedFilteredLaunches.map((launch) => {
                     const selected = selectedIds.includes(launch.id);
 
                     return (

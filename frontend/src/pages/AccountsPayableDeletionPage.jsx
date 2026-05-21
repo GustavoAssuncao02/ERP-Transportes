@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   businessUnits,
@@ -7,6 +8,7 @@ import {
   financeLaunches,
   normalizeText,
 } from '../data/financeData.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
   { label: 'Data Emissao', field: 'issueDate' },
@@ -20,6 +22,16 @@ const deletableLaunches = financeLaunches.filter((launch) => launch.status === '
 const supplierOptions = [...new Set(deletableLaunches.map((launch) => launch.supplier))];
 const typeOptions = [...new Set(deletableLaunches.map((launch) => launch.type))];
 const chargeTypeOptions = [...new Set(deletableLaunches.map((launch) => launch.chargeType))];
+
+const payableDeletionSortColumns = [
+  { key: 'id', label: 'Lançamento', type: 'number', getValue: (launch) => identifierNumberValue(launch.id) },
+  { key: 'supplier', label: 'Fornecedor', type: 'text', getValue: (launch) => launch.supplier },
+  { key: 'document', label: 'Documento', type: 'text', getValue: (launch) => launch.document },
+  { key: 'type', label: 'Tipo', type: 'text', getValue: (launch) => launch.type },
+  { key: 'dueDate', label: 'Vencimento', type: 'date', defaultDirection: 'asc', getValue: (launch) => launch.dueDate },
+  { key: 'amount', label: 'Valor', type: 'number', getValue: (launch) => launch.amount },
+  { key: 'actions', label: '', sortable: false },
+];
 
 function digitsOnly(value) {
   return String(value).replace(/\D/g, '');
@@ -146,6 +158,7 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
   const [launchSearch, setLaunchSearch] = useState('');
   const [activeLaunchSearch, setActiveLaunchSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [deletionSort, setDeletionSort] = useState({ key: 'dueDate', direction: 'asc' });
   const [status, setStatus] = useAutoClearMessage();
 
   const filteredLaunches = useMemo(() => deletableLaunches.filter((launch) => {
@@ -173,6 +186,15 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
   const selectedLaunches = useMemo(
     () => deletableLaunches.filter((launch) => selectedIds.includes(launch.id)),
     [selectedIds],
+  );
+  const sortedFilteredLaunches = useMemo(
+    () => sortTableRows(
+      filteredLaunches,
+      payableDeletionSortColumns,
+      deletionSort,
+      (left, right) => identifierNumberValue(left.id) - identifierNumberValue(right.id),
+    ),
+    [deletionSort, filteredLaunches],
   );
 
   function addLaunch(launchId) {
@@ -327,17 +349,15 @@ export default function AccountsPayableDeletionPage({ onOpenLaunchDetails }) {
               <table className="registered-launches-table schedule-table">
                 <thead>
                   <tr>
-                    <th>Lançamento</th>
-                    <th>Fornecedor</th>
-                    <th>Documento</th>
-                    <th>Tipo</th>
-                    <th>Vencimento</th>
-                    <th>Valor</th>
-                    <th></th>
+                    <SortableTableHeader
+                      columns={payableDeletionSortColumns}
+                      sort={deletionSort}
+                      onSortChange={setDeletionSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLaunches.map((launch) => {
+                  {sortedFilteredLaunches.map((launch) => {
                     const selected = selectedIds.includes(launch.id);
 
                     return (

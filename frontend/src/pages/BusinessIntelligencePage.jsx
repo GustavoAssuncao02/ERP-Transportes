@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import { LineChart, PieChart } from '../components/FinanceCharts.jsx';
 import {
   accountingTypeNames,
@@ -11,6 +12,7 @@ import {
   supplierNames,
   todayValue,
 } from '../data/financeData.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
   { label: 'Data Emissao', field: 'issueDate' },
@@ -27,6 +29,20 @@ const bankOptions = ['Sem banco', ...paymentBanks];
 function bankLabel(launch) {
   return launch.paymentBank || 'Sem banco';
 }
+
+const biLaunchSortColumns = [
+  { key: 'id', label: 'Lançamento', type: 'number', getValue: (launch) => identifierNumberValue(launch.id) },
+  { key: 'unit', label: 'Unidade', type: 'text', getValue: (launch) => launch.unit },
+  { key: 'supplier', label: 'Fornecedor', type: 'text', getValue: (launch) => launch.supplier },
+  { key: 'document', label: 'Documento', type: 'text', getValue: (launch) => launch.document },
+  { key: 'type', label: 'Tipo', type: 'text', getValue: (launch) => launch.type },
+  { key: 'chargeType', label: 'Cobrança', type: 'text', getValue: (launch) => launch.chargeType },
+  { key: 'bank', label: 'Banco', type: 'text', getValue: (launch) => bankLabel(launch) },
+  { key: 'dueDate', label: 'Vencimento', type: 'date', getValue: (launch) => launch.dueDate },
+  { key: 'paymentDate', label: 'Pagamento', type: 'date', getValue: (launch) => launch.paymentDate },
+  { key: 'amount', label: 'Valor', type: 'number', getValue: (launch) => launch.amount },
+  { key: 'status', label: 'Situação', type: 'text', getValue: (launch) => launch.status },
+];
 
 function groupByDate(launches, field) {
   const grouped = new Map();
@@ -131,6 +147,16 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
 }
 
 function LaunchReport({ title, launches }) {
+  const [reportSort, setReportSort] = useState({ key: 'dueDate', direction: 'desc' });
+  const sortedLaunches = useMemo(
+    () => sortTableRows(
+      launches,
+      biLaunchSortColumns,
+      reportSort,
+      (left, right) => identifierNumberValue(right.id) - identifierNumberValue(left.id),
+    ),
+    [launches, reportSort],
+  );
   const total = totalAmount(launches);
 
   return (
@@ -147,21 +173,15 @@ function LaunchReport({ title, launches }) {
         <table className="registered-launches-table">
           <thead>
             <tr>
-              <th>Lançamento</th>
-              <th>Unidade</th>
-              <th>Fornecedor</th>
-              <th>Documento</th>
-              <th>Tipo</th>
-              <th>Cobrança</th>
-              <th>Banco</th>
-              <th>Vencimento</th>
-              <th>Pagamento</th>
-              <th>Valor</th>
-              <th>Situação</th>
+              <SortableTableHeader
+                columns={biLaunchSortColumns}
+                sort={reportSort}
+                onSortChange={setReportSort}
+              />
             </tr>
           </thead>
           <tbody>
-            {launches.map((launch) => (
+            {sortedLaunches.map((launch) => (
               <tr key={launch.id}>
                 <td><strong>{launch.id}</strong></td>
                 <td>{launch.unit}</td>

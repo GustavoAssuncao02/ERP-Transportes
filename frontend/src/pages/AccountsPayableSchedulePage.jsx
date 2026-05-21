@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
 import { PieChart } from '../components/FinanceCharts.jsx';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   accountingTypes,
@@ -10,6 +11,7 @@ import {
   normalizeText,
   suppliers,
 } from '../data/financeData.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const storageKey = 'accountsPayableDailySchedule';
 const oneOffStorageKey = 'accountsPayableDailyScheduleOneOffs';
@@ -41,6 +43,16 @@ const oneOffLookupConfig = {
     format: (item) => `${item.code} - ${item.name}`,
   },
 };
+
+const payableScheduleSortColumns = [
+  { key: 'id', label: 'Lançamento', type: 'number', getValue: (launch) => identifierNumberValue(launch.id) },
+  { key: 'supplier', label: 'Fornecedor', type: 'text', getValue: (launch) => launch.supplier },
+  { key: 'document', label: 'Documento', type: 'text', getValue: (launch) => launch.document },
+  { key: 'type', label: 'Tipo', type: 'text', getValue: (launch) => launch.type },
+  { key: 'dueDate', label: 'Vencimento', type: 'date', defaultDirection: 'asc', getValue: (launch) => launch.dueDate },
+  { key: 'amount', label: 'Valor', type: 'number', getValue: (launch) => launch.amount },
+  { key: 'actions', label: '', sortable: false },
+];
 
 function numberValue(value) {
   return Number.parseFloat(String(value).replace(',', '.'));
@@ -229,6 +241,7 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
   const [oneOffLookupType, setOneOffLookupType] = useState(null);
   const [oneOffLookupSearch, setOneOffLookupSearch] = useState('');
   const [oneOffSupplierSearchBy, setOneOffSupplierSearchBy] = useState('name');
+  const [payableScheduleSort, setPayableScheduleSort] = useState({ key: 'dueDate', direction: 'asc' });
   const [status, setStatus] = useAutoClearMessage();
 
   useEffect(() => {
@@ -263,6 +276,15 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
   const scheduledLaunches = useMemo(
     () => openLaunches.filter((launch) => scheduledIds.includes(launch.id)),
     [scheduledIds],
+  );
+  const sortedFilteredLaunches = useMemo(
+    () => sortTableRows(
+      filteredLaunches,
+      payableScheduleSortColumns,
+      payableScheduleSort,
+      (left, right) => identifierNumberValue(left.id) - identifierNumberValue(right.id),
+    ),
+    [filteredLaunches, payableScheduleSort],
   );
 
   const scheduledItems = useMemo(
@@ -517,17 +539,15 @@ export default function AccountsPayableSchedulePage({ onOpenLaunchDetails }) {
               <table className="registered-launches-table schedule-table">
                 <thead>
                   <tr>
-                    <th>Lançamento</th>
-                    <th>Fornecedor</th>
-                    <th>Documento</th>
-                    <th>Tipo</th>
-                    <th>Vencimento</th>
-                    <th>Valor</th>
-                    <th></th>
+                    <SortableTableHeader
+                      columns={payableScheduleSortColumns}
+                      sort={payableScheduleSort}
+                      onSortChange={setPayableScheduleSort}
+                    />
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredLaunches.map((launch) => {
+                  {sortedFilteredLaunches.map((launch) => {
                     const scheduled = scheduledIds.includes(launch.id);
 
                     return (

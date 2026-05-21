@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, todayValue } from '../data/financeData.js';
 import { getRegisteredSuppliers, getRegisteredUnits } from '../data/managementRegistry.js';
@@ -12,6 +13,7 @@ import {
 } from '../data/transportRegistry.js';
 import { getCollectionOrderDeletionBlockers } from '../data/deletionRules.js';
 import { deactivateCollectionOrder, deleteCollectionOrder, saveCollectionOrder } from '../data/operationRegistry.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const collectionOrderStorageKey = 'collectionOrders';
 
@@ -37,6 +39,21 @@ const defaultCollectionOrders = [
 ];
 
 const orderStatuses = ['Solicitada', 'Agendada', 'Em coleta', 'Coletada', 'Cancelada'];
+
+function collectionOrderNumber(orderId) {
+  const numericParts = String(orderId || '').match(/\d+/g);
+  return numericParts ? Number(numericParts.join('')) : 0;
+}
+
+const collectionOrderSortColumns = [
+  { key: 'id', label: 'Ordem', type: 'number', getValue: (order) => collectionOrderNumber(order.id) },
+  { key: 'requestDate', label: 'Solicitação', type: 'date', getValue: (order) => order.requestDate },
+  { key: 'senderName', label: 'Remetente', type: 'text', getValue: (order) => order.senderName },
+  { key: 'recipientName', label: 'Destinatário', type: 'text', getValue: (order) => order.recipientName },
+  { key: 'driverName', label: 'Motorista', type: 'text', getValue: (order) => order.driverName },
+  { key: 'vehiclePlate', label: 'Veículo', type: 'text', getValue: (order) => `${order.vehiclePlate} ${order.vehicleModel}` },
+  { key: 'status', label: 'Status', type: 'text', getValue: (order) => order.status },
+];
 
 function readCollectionOrders() {
   try {
@@ -112,6 +129,7 @@ export default function CollectionOrderPage() {
   const [form, setForm] = useState(blankOrder);
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [orderSort, setOrderSort] = useState({ key: 'id', direction: 'desc' });
   const [message, setMessage] = useAutoClearMessage();
 
   const drivers = useMemo(() => getRegisteredDrivers(), []);
@@ -133,8 +151,13 @@ export default function CollectionOrderPage() {
     })),
   ], []);
   const sortedOrders = useMemo(
-    () => [...orders].sort((left, right) => right.id.localeCompare(left.id, 'pt-BR')),
-    [orders],
+    () => sortTableRows(
+      orders,
+      collectionOrderSortColumns,
+      orderSort,
+      (left, right) => collectionOrderNumber(right.id) - collectionOrderNumber(left.id),
+    ),
+    [orderSort, orders],
   );
   const ordersByClosestDate = useMemo(
     () => [...orders].sort((left, right) => (
@@ -479,13 +502,11 @@ export default function CollectionOrderPage() {
           <table className="registered-launches-table registry-table">
             <thead>
               <tr>
-                <th>Ordem</th>
-                <th>Solicitação</th>
-                <th>Remetente</th>
-                <th>Destinatário</th>
-                <th>Motorista</th>
-                <th>Veículo</th>
-                <th>Status</th>
+                <SortableTableHeader
+                  columns={collectionOrderSortColumns}
+                  sort={orderSort}
+                  onSortChange={setOrderSort}
+                />
               </tr>
             </thead>
             <tbody>

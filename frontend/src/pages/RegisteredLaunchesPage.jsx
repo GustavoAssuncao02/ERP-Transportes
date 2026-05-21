@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import {
   accountingTypeNames,
   businessUnits,
@@ -8,6 +9,7 @@ import {
   paymentBanks,
   supplierNames,
 } from '../data/financeData.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
   { label: 'Data Emissao', field: 'issueDate' },
@@ -23,6 +25,19 @@ const bankOptions = ['Sem banco', ...paymentBanks];
 function bankLabel(launch) {
   return launch.paymentBank || 'Sem banco';
 }
+
+const registeredLaunchSortColumns = [
+  { key: 'id', label: 'Lançamento', type: 'number', getValue: (launch) => identifierNumberValue(launch.id) },
+  { key: 'unit', label: 'Unidade', type: 'text', getValue: (launch) => launch.unit },
+  { key: 'supplier', label: 'Fornecedor', type: 'text', getValue: (launch) => launch.supplier },
+  { key: 'document', label: 'Documento', type: 'text', getValue: (launch) => launch.document },
+  { key: 'type', label: 'Tipo', type: 'text', getValue: (launch) => launch.type },
+  { key: 'bank', label: 'Banco', type: 'text', getValue: (launch) => bankLabel(launch) },
+  { key: 'issueDate', label: 'Emissao', type: 'date', getValue: (launch) => launch.issueDate },
+  { key: 'dueDate', label: 'Vencimento', type: 'date', getValue: (launch) => launch.dueDate },
+  { key: 'amount', label: 'Valor', type: 'number', getValue: (launch) => launch.amount },
+  { key: 'status', label: 'Situação', type: 'text', getValue: (launch) => launch.status },
+];
 
 function numberValue(value) {
   return Number.parseFloat(String(value).replace(',', '.'));
@@ -105,6 +120,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
   const [dateEnd, setDateEnd] = useState('');
   const [minValue, setMinValue] = useState('');
   const [maxValue, setMaxValue] = useState('');
+  const [launchSort, setLaunchSort] = useState({ key: 'id', direction: 'desc' });
 
   const filteredLaunches = useMemo(() => {
     const min = numberValue(minValue);
@@ -128,6 +144,15 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
   }, [businessUnit, dateEnd, dateStart, maxValue, minValue, searchType, selectedBanks, selectedSuppliers, selectedTypes, statusFilter]);
 
   const filteredTotal = filteredLaunches.reduce((total, launch) => total + launch.amount, 0);
+  const sortedFilteredLaunches = useMemo(
+    () => sortTableRows(
+      filteredLaunches,
+      registeredLaunchSortColumns,
+      launchSort,
+      (left, right) => identifierNumberValue(right.id) - identifierNumberValue(left.id),
+    ),
+    [filteredLaunches, launchSort],
+  );
 
   function clearFilters() {
     setBusinessUnit('');
@@ -258,20 +283,15 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
             <table className="registered-launches-table">
               <thead>
                 <tr>
-                  <th>Lançamento</th>
-                  <th>Unidade</th>
-                  <th>Fornecedor</th>
-                  <th>Documento</th>
-                  <th>Tipo</th>
-                  <th>Banco</th>
-                  <th>Emissao</th>
-                  <th>Vencimento</th>
-                  <th>Valor</th>
-                  <th>Situação</th>
+                  <SortableTableHeader
+                    columns={registeredLaunchSortColumns}
+                    sort={launchSort}
+                    onSortChange={setLaunchSort}
+                  />
                 </tr>
               </thead>
               <tbody>
-                {filteredLaunches.map((launch) => (
+                {sortedFilteredLaunches.map((launch) => (
                   <tr key={launch.id} onDoubleClick={() => onEditLaunch?.(launch)}>
                     <td><strong>{launch.id}</strong></td>
                     <td>{launch.unit}</td>

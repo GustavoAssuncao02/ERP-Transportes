@@ -1,11 +1,13 @@
 import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import { LineChart, PieChart } from '../components/FinanceCharts.jsx';
 import { currency, normalizeText, paymentBanks, toNumber, todayValue } from '../data/financeData.js';
 import {
   readReceivables,
   receivableSearchText,
 } from '../data/accountsReceivableRegistry.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
   { value: 'paymentForecastDate', label: 'Previsao de pagamento' },
@@ -53,6 +55,20 @@ function bankLabels(receivable) {
 
   return uniqueBanks.length ? uniqueBanks : ['Sem banco'];
 }
+
+const receivableDashboardSortColumns = [
+  { key: 'id', label: 'Titulo', type: 'number', getValue: (receivable) => identifierNumberValue(receivable.id) },
+  { key: 'customerName', label: 'Cliente / tomador', type: 'text', getValue: (receivable) => receivable.customerName },
+  { key: 'document', label: 'Documento', type: 'text', getValue: (receivable) => documentLabel(receivable) },
+  { key: 'issueDate', label: 'Emissao', type: 'date', getValue: (receivable) => receivable.issueDate },
+  { key: 'paymentForecastDate', label: 'Previsao', type: 'date', defaultDirection: 'asc', getValue: (receivable) => receivable.paymentForecastDate },
+  { key: 'receiptDate', label: 'Ultima baixa', type: 'date', getValue: (receivable) => receiptDate(receivable) },
+  { key: 'originalValue', label: 'Original', type: 'number', getValue: (receivable) => receivable.originalValue },
+  { key: 'paidValue', label: 'Recebido', type: 'number', getValue: (receivable) => receivable.paidValue },
+  { key: 'openBalance', label: 'Saldo', type: 'number', getValue: (receivable) => receivable.openBalance },
+  { key: 'bank', label: 'Banco', type: 'text', getValue: (receivable) => bankLabels(receivable).join(' / ') },
+  { key: 'status', label: 'Status', type: 'text', getValue: (receivable) => receivable.status },
+];
 
 function dateValue(receivable, field) {
   if (field === 'receiptDate') return receiptDate(receivable);
@@ -175,6 +191,7 @@ export default function AccountsReceivableDashboardPage() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeLookup, setActiveLookup] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [dashboardSort, setDashboardSort] = useState({ key: 'paymentForecastDate', direction: 'asc' });
 
   const filterOptions = useMemo(() => {
     const statusOptions = uniqueOptions([...defaultStatuses, ...receivables.map((receivable) => receivable.status)]);
@@ -271,6 +288,15 @@ export default function AccountsReceivableDashboardPage() {
     nextSevenDays: { title: 'Proximos 7 dias', receivables: dashboard.nextSevenDays },
   };
   const selectedReport = reportMap[reportKey] || reportMap.open;
+  const sortedSelectedReceivables = useMemo(
+    () => sortTableRows(
+      selectedReport.receivables,
+      receivableDashboardSortColumns,
+      dashboardSort,
+      (left, right) => identifierNumberValue(right.id) - identifierNumberValue(left.id),
+    ),
+    [dashboardSort, selectedReport.receivables],
+  );
   const averageTicket = filteredReceivables.length ? total(filteredReceivables, 'originalValue') / filteredReceivables.length : 0;
   const lookupConfigs = {
     customer: {
@@ -475,21 +501,15 @@ export default function AccountsReceivableDashboardPage() {
           <table className="registered-launches-table receivable-dashboard-table">
             <thead>
               <tr>
-                <th>Titulo</th>
-                <th>Cliente / tomador</th>
-                <th>Documento</th>
-                <th>Emissao</th>
-                <th>Previsao</th>
-                <th>Ultima baixa</th>
-                <th>Original</th>
-                <th>Recebido</th>
-                <th>Saldo</th>
-                <th>Banco</th>
-                <th>Status</th>
+                <SortableTableHeader
+                  columns={receivableDashboardSortColumns}
+                  sort={dashboardSort}
+                  onSortChange={setDashboardSort}
+                />
               </tr>
             </thead>
             <tbody>
-              {selectedReport.receivables.map((receivable) => (
+              {sortedSelectedReceivables.map((receivable) => (
                 <tr key={receivable.id}>
                   <td><strong>{receivable.id}</strong></td>
                   <td>{receivable.customerName || '-'}</td>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, normalizeText } from '../data/financeData.js';
 import {
@@ -15,8 +16,29 @@ import {
   saveVehicle,
 } from '../data/transportRegistry.js';
 import { getVehicleDeletionBlockers } from '../data/deletionRules.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const vehicleTypes = ['Cavalo mecânico', 'Truck', 'Toco', 'Bitruck', 'Van', 'Carreta'];
+
+function businessUnitOwnerLabel(unitCode) {
+  const businessUnit = businessUnits.find((item) => item.value === unitCode);
+  return businessUnit?.name || 'JTD Transportes LTDA';
+}
+
+function vehicleOwnerLabel(vehicle) {
+  return vehicle.ownerType === 'driver'
+    ? `Motorista - ${vehicle.owner || ''}`
+    : `Empresa - ${vehicle.owner || businessUnitOwnerLabel(vehicle.unit)}`;
+}
+
+const vehicleSortColumns = [
+  { key: 'plate', label: 'Placa', type: 'text', getValue: (vehicle) => vehicle.plate },
+  { key: 'model', label: 'Modelo', type: 'text', getValue: (vehicle) => vehicle.model },
+  { key: 'type', label: 'Tipo', type: 'text', getValue: (vehicle) => vehicle.type },
+  { key: 'owner', label: 'Propriedade', type: 'text', getValue: (vehicle) => vehicleOwnerLabel(vehicle) },
+  { key: 'unit', label: 'Unidade', type: 'text', getValue: (vehicle) => vehicle.unit },
+  { key: 'status', label: 'Status', type: 'text', getValue: (vehicle) => vehicle.status },
+];
 
 function pendingPlate() {
   try {
@@ -41,10 +63,16 @@ export default function VehicleRegistrationPage() {
   const [driverSearch, setDriverSearch] = useState('');
   const [statusValue, setStatusValue] = useState('Ativo');
   const [message, setMessage] = useAutoClearMessage();
+  const [vehicleSort, setVehicleSort] = useState({ key: 'plate', direction: 'asc' });
 
   const sortedVehicles = useMemo(
-    () => [...vehicles].sort((left, right) => left.plate.localeCompare(right.plate, 'pt-BR')),
-    [vehicles],
+    () => sortTableRows(
+      vehicles,
+      vehicleSortColumns,
+      vehicleSort,
+      (left, right) => normalizePlate(left.plate).localeCompare(normalizePlate(right.plate), 'pt-BR'),
+    ),
+    [vehicleSort, vehicles],
   );
   const filteredVehicles = useMemo(() => {
     const query = normalizeText(vehicleSearch);
@@ -65,8 +93,7 @@ export default function VehicleRegistrationPage() {
   }, [driverOptions, driverSearch]);
 
   function companyOwnerLabel(unitCode = unit) {
-    const businessUnit = businessUnits.find((item) => item.value === unitCode);
-    return businessUnit?.name || 'JTD Transportes LTDA';
+    return businessUnitOwnerLabel(unitCode);
   }
 
   function loadVehicle(vehicle) {
@@ -359,13 +386,12 @@ export default function VehicleRegistrationPage() {
           <table className="registered-launches-table registry-table">
             <thead>
               <tr>
-                <th>Placa</th>
-                <th>Modelo</th>
-                  <th>Tipo</th>
-                  <th>Propriedade</th>
-                  <th>Unidade</th>
-                  <th>Status</th>
-                </tr>
+                <SortableTableHeader
+                  columns={vehicleSortColumns}
+                  sort={vehicleSort}
+                  onSortChange={setVehicleSort}
+                />
+              </tr>
             </thead>
             <tbody>
               {sortedVehicles.map((vehicle) => (
@@ -373,11 +399,7 @@ export default function VehicleRegistrationPage() {
                   <td><strong>{vehicle.plate}</strong></td>
                   <td>{vehicle.model}</td>
                   <td>{vehicle.type}</td>
-                  <td>
-                    {vehicle.ownerType === 'driver'
-                      ? `Motorista - ${vehicle.owner}`
-                      : `Empresa - ${vehicle.owner || companyOwnerLabel(vehicle.unit)}`}
-                  </td>
+                  <td>{vehicleOwnerLabel(vehicle)}</td>
                   <td>{vehicle.unit}</td>
                   <td>{vehicle.status}</td>
                 </tr>
@@ -426,11 +448,7 @@ export default function VehicleRegistrationPage() {
                       <td>{vehicle.plate}</td>
                       <td>{vehicle.model}</td>
                       <td>{vehicle.type}</td>
-                      <td>
-                        {vehicle.ownerType === 'driver'
-                          ? `Motorista - ${vehicle.owner}`
-                          : `Empresa - ${vehicle.owner || companyOwnerLabel(vehicle.unit)}`}
-                      </td>
+                      <td>{vehicleOwnerLabel(vehicle)}</td>
                       <td>{vehicle.status}</td>
                     </tr>
                   ))}

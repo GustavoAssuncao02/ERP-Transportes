@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, toNumber } from '../data/financeData.js';
 import { getRegisteredSuppliers } from '../data/managementRegistry.js';
@@ -22,12 +23,25 @@ import {
 } from '../data/accountsReceivableRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
 import { copyAddressFields, defaultAddressFields, formatAddress, normalizeAddressFields } from '../utils/address.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
+
+const receivableSortColumns = [
+  { key: 'id', label: 'Titulo', type: 'number', getValue: (receivable) => identifierNumberValue(receivable.id) },
+  { key: 'customerName', label: 'Cliente / tomador', type: 'text', getValue: (receivable) => receivable.customerName },
+  { key: 'cteId', label: 'CT-e', type: 'text', getValue: (receivable) => receivable.cteId },
+  { key: 'paymentForecastDate', label: 'Previsao', type: 'date', getValue: (receivable) => receivable.paymentForecastDate },
+  { key: 'originalValue', label: 'Original', type: 'number', getValue: (receivable) => receivable.originalValue },
+  { key: 'paidValue', label: 'Pago', type: 'number', getValue: (receivable) => receivable.paidValue },
+  { key: 'openBalance', label: 'Saldo', type: 'number', getValue: (receivable) => receivable.openBalance },
+  { key: 'status', label: 'Status', type: 'text', getValue: (receivable) => receivable.status },
+];
 
 export default function AccountsReceivablePage() {
   const [receivables, setReceivables] = useState(readReceivables);
   const [form, setForm] = useState(blankReceivable);
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [receivableSort, setReceivableSort] = useState({ key: 'id', direction: 'desc' });
   const [message, setMessage] = useAutoClearMessage();
 
   const customers = useMemo(
@@ -55,8 +69,13 @@ export default function AccountsReceivablePage() {
   const titleStatus = calculateStatus({ totalValue, paidValue, paymentForecastDate: form.paymentForecastDate });
 
   const sortedReceivables = useMemo(
-    () => [...receivables].sort((left, right) => right.id.localeCompare(left.id, 'pt-BR')),
-    [receivables],
+    () => sortTableRows(
+      receivables,
+      receivableSortColumns,
+      receivableSort,
+      (left, right) => identifierNumberValue(right.id) - identifierNumberValue(left.id),
+    ),
+    [receivableSort, receivables],
   );
 
   const lookupItems = useMemo(() => {
@@ -455,14 +474,11 @@ export default function AccountsReceivablePage() {
           <table className="registered-launches-table registry-table">
             <thead>
               <tr>
-                <th>Titulo</th>
-                <th>Cliente / tomador</th>
-                <th>CT-e</th>
-                <th>Previsao</th>
-                <th>Original</th>
-                <th>Pago</th>
-                <th>Saldo</th>
-                <th>Status</th>
+                <SortableTableHeader
+                  columns={receivableSortColumns}
+                  sort={receivableSort}
+                  onSortChange={setReceivableSort}
+                />
               </tr>
             </thead>
             <tbody>

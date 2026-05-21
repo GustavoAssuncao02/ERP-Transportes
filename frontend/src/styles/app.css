@@ -2191,12 +2191,95 @@
   max-width: 1280px;
 }
 
+.report-results-panel .registered-launches-table-wrap {
+  overflow-x: hidden;
+}
+
 .report-results-table {
-  min-width: 1220px;
+  min-width: 0;
+  table-layout: fixed;
+  font-size: 11px;
+}
+
+.report-results-table th,
+.report-results-table td {
+  overflow: hidden;
+  padding: 7px 5px;
+  text-overflow: ellipsis;
+}
+
+.report-results-table .warehouse-sort-header {
+  max-width: 100%;
+  gap: 4px;
+}
+
+.report-results-table .warehouse-sort-header > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.report-results-table .warehouse-sort-button {
+  min-height: 20px;
+  flex: 0 0 auto;
+  padding: 0 4px;
+  font-size: 9px;
+}
+
+.report-results-table th:nth-child(1),
+.report-results-table td:nth-child(1) {
+  width: 11.5%;
+}
+
+.report-results-table th:nth-child(2),
+.report-results-table td:nth-child(2) {
+  width: 5%;
+}
+
+.report-results-table th:nth-child(3),
+.report-results-table td:nth-child(3) {
+  width: 14%;
+}
+
+.report-results-table th:nth-child(4),
+.report-results-table td:nth-child(4) {
+  width: 8.5%;
+}
+
+.report-results-table th:nth-child(5),
+.report-results-table td:nth-child(5) {
+  width: 8%;
+}
+
+.report-results-table th:nth-child(6),
+.report-results-table td:nth-child(6) {
+  width: 7%;
+}
+
+.report-results-table th:nth-child(7),
+.report-results-table td:nth-child(7) {
+  width: 8.5%;
+}
+
+.report-results-table th:nth-child(8),
+.report-results-table td:nth-child(8) {
+  width: 8%;
+}
+
+.report-results-table th:nth-child(9),
+.report-results-table td:nth-child(9),
+.report-results-table th:nth-child(10),
+.report-results-table td:nth-child(10),
+.report-results-table th:nth-child(11),
+.report-results-table td:nth-child(11),
+.report-results-table th:nth-child(12),
+.report-results-table td:nth-child(12) {
+  width: 7.375%;
+  text-align: right;
 }
 
 .report-results-table tfoot th {
-  padding: 9px;
+  padding: 7px 5px;
   border-top: 1px solid var(--border);
   background: #f8f8f8;
   color: var(--primary-dark);

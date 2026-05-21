@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import { getInsuranceDeletionBlockers } from '../data/deletionRules.js';
@@ -14,6 +15,7 @@ import {
 import { onlyDigits } from '../data/transportRegistry.js';
 import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
 import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const initialForm = {
   id: '',
@@ -28,20 +30,34 @@ const initialForm = {
   defaultInsurance: false,
 };
 
+const insuranceSortColumns = [
+  { key: 'companyName', label: 'Seguradora', type: 'text', getValue: (insurance) => insurance.companyName },
+  { key: 'cnpj', label: 'CNPJ', type: 'text', getValue: (insurance) => insurance.cnpj },
+  { key: 'policyNumber', label: 'Apolice', type: 'text', getValue: (insurance) => insurance.policyNumber },
+  { key: 'endorsementNumber', label: 'Averbacao', type: 'text', getValue: (insurance) => insurance.endorsementNumber },
+  { key: 'contact', label: 'Contato', type: 'text', getValue: (insurance) => insurance.contact },
+  { key: 'email', label: 'E-mail', type: 'text', getValue: (insurance) => insurance.email },
+  { key: 'active', label: 'Ativo', type: 'number', getValue: (insurance) => Number(insurance.active) },
+  { key: 'defaultInsurance', label: 'Padrao', type: 'number', getValue: (insurance) => Number(insurance.defaultInsurance) },
+];
+
 export default function InsuranceRegistrationPage() {
   const [insurances, setInsurances] = useState(getRegisteredInsurances);
   const [form, setForm] = useState(initialForm);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [insuranceSort, setInsuranceSort] = useState({ key: 'defaultInsurance', direction: 'desc' });
   const [message, setMessage] = useAutoClearMessage();
   const companyLookupRequestRef = useRef(0);
 
   const sortedInsurances = useMemo(
-    () => [...insurances].sort((left, right) => (
-      Number(right.defaultInsurance) - Number(left.defaultInsurance)
-      || left.companyName.localeCompare(right.companyName, 'pt-BR')
-    )),
-    [insurances],
+    () => sortTableRows(
+      insurances,
+      insuranceSortColumns,
+      insuranceSort,
+      (left, right) => left.companyName.localeCompare(right.companyName, 'pt-BR'),
+    ),
+    [insuranceSort, insurances],
   );
   const lookupInsurances = useMemo(() => {
     const query = normalizeText(lookupSearch);
@@ -324,14 +340,11 @@ export default function InsuranceRegistrationPage() {
           <table className="registered-launches-table registry-table">
             <thead>
               <tr>
-                <th>Seguradora</th>
-                <th>CNPJ</th>
-                <th>Apolice</th>
-                <th>Averbacao</th>
-                <th>Contato</th>
-                <th>E-mail</th>
-                <th>Ativo</th>
-                <th>Padrao</th>
+                <SortableTableHeader
+                  columns={insuranceSortColumns}
+                  sort={insuranceSort}
+                  onSortChange={setInsuranceSort}
+                />
               </tr>
             </thead>
             <tbody>

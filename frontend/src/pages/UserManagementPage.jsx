@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Power, RotateCcw, Save, Search, ShieldCheck, Trash2, UserPlus } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { navigationItems } from '../data/siteData.js';
 import { normalizeText } from '../data/financeData.js';
 import { auditActions, recordAuditEvent } from '../services/auditLog.js';
 import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const userStorageKey = 'systemUserManagementUsers';
 const currentAdminUsername = 'camila.aguiar';
@@ -21,6 +23,14 @@ const sectorOptions = [
 
 const roleOptions = ['Admin', 'Usuário'];
 const statusOptions = ['Ativo', 'Inativo'];
+
+const userSortColumns = [
+  { key: 'username', label: 'Usuário', type: 'text', getValue: (user) => `${user.firstName} ${user.lastName} ${user.username}` },
+  { key: 'sector', label: 'Setor', type: 'text', getValue: (user) => user.sector },
+  { key: 'role', label: 'Perfil', type: 'text', getValue: (user) => user.role },
+  { key: 'status', label: 'Status', type: 'text', getValue: (user) => user.status },
+  { key: 'activityCount', label: 'Vinculos', type: 'number', getValue: (user) => user.activityCount },
+];
 
 function collectAccessOptions(items, parents = []) {
   return items.flatMap((item) => {
@@ -246,6 +256,7 @@ export default function UserManagementPage() {
   const [accessSearch, setAccessSearch] = useState('');
   const [expandedAccessGroupIds, setExpandedAccessGroupIds] = useState(['gestao']);
   const [usernameTouched, setUsernameTouched] = useState(true);
+  const [userSort, setUserSort] = useState({ key: 'username', direction: 'asc' });
   const [message, setMessage] = useAutoClearMessage();
 
   useEffect(() => {
@@ -260,14 +271,19 @@ export default function UserManagementPage() {
 
   const filteredUsers = useMemo(() => {
     const query = normalizeText(userSearch);
-    const sortedUsers = [...users].sort((first, second) => first.username.localeCompare(second.username, 'pt-BR'));
+    const filtered = query
+      ? users.filter((user) => (
+        normalizeText(`${user.firstName} ${user.lastName} ${user.username} ${user.sector} ${user.role} ${user.status}`).includes(query)
+      ))
+      : users;
 
-    if (!query) return sortedUsers;
-
-    return sortedUsers.filter((user) => (
-      normalizeText(`${user.firstName} ${user.lastName} ${user.username} ${user.sector} ${user.role} ${user.status}`).includes(query)
-    ));
-  }, [users, userSearch]);
+    return sortTableRows(
+      filtered,
+      userSortColumns,
+      userSort,
+      (left, right) => left.username.localeCompare(right.username, 'pt-BR'),
+    );
+  }, [users, userSearch, userSort]);
 
   const filteredAccessGroups = useMemo(() => {
     const query = normalizeText(accessSearch);
@@ -707,11 +723,11 @@ export default function UserManagementPage() {
             <table className="registered-launches-table user-management-table">
               <thead>
                 <tr>
-                  <th>Usuário</th>
-                  <th>Setor</th>
-                  <th>Perfil</th>
-                  <th>Status</th>
-                  <th>Vinculos</th>
+                  <SortableTableHeader
+                    columns={userSortColumns}
+                    sort={userSort}
+                    onSortChange={setUserSort}
+                  />
                 </tr>
               </thead>
               <tbody>

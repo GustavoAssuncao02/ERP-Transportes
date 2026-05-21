@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { FileText, MapPinned, Route, Search, Truck, UserRound } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import { normalizeText } from '../data/financeData.js';
 import { getRegisteredManifests, pendingManifestIdKey } from '../data/operationRegistry.js';
 import {
@@ -12,6 +13,7 @@ import {
   onlyDigits,
   pendingVehiclePlateKey,
 } from '../data/transportRegistry.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const statusFilters = [
   { value: 'all', label: 'Todos' },
@@ -41,6 +43,21 @@ const driverTypeFilters = [
 const brazilBounds = [
   [-34.2, -74.1],
   [5.4, -33.7],
+];
+
+function fleetStatusLabel(row) {
+  if (row.inTransit) return 'Em trânsito';
+  if (row.inactive) return 'Inativo';
+  return 'Disponível';
+}
+
+const fleetSortColumns = [
+  { key: 'plate', label: 'Veiculo', type: 'text', getValue: (row) => `${row.plate} ${row.model || row.type}` },
+  { key: 'status', label: 'Status', type: 'text', getValue: (row) => fleetStatusLabel(row) },
+  { key: 'manifest', label: 'Manifesto', type: 'text', getValue: (row) => row.manifest?.id },
+  { key: 'driverName', label: 'Motorista', type: 'text', getValue: (row) => row.driverName },
+  { key: 'route', label: 'Rota', type: 'text', getValue: (row) => row.route },
+  { key: 'createdAt', label: 'Inicio', type: 'date', getValue: (row) => row.manifest?.createdAt },
 ];
 
 const cityGeoCacheKey = 'fleetCityGeoCache';
@@ -520,6 +537,7 @@ export default function FleetManagementPage({ onNavigate }) {
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedMetric, setSelectedMetric] = useState('fleet');
+  const [fleetSort, setFleetSort] = useState({ key: 'plate', direction: 'asc' });
   const [originFilter, setOriginFilter] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('');
   const [driverFilter, setDriverFilter] = useState('');
@@ -605,7 +623,7 @@ export default function FleetManagementPage({ onNavigate }) {
   const filteredRows = useMemo(() => {
     const normalizedQuery = normalizeText(query);
 
-    return fleetRows.filter((row) => {
+    const rows = fleetRows.filter((row) => {
       const statusMatches = statusFilter === 'all'
         || (statusFilter === 'transit' && row.inTransit)
         || (statusFilter === 'available' && !row.inTransit && !row.inactive)
@@ -623,7 +641,14 @@ export default function FleetManagementPage({ onNavigate }) {
 
       return statusMatches && queryMatches;
     });
-  }, [fleetRows, query, statusFilter]);
+
+    return sortTableRows(
+      rows,
+      fleetSortColumns,
+      fleetSort,
+      (left, right) => left.plate.localeCompare(right.plate, 'pt-BR'),
+    );
+  }, [fleetRows, fleetSort, query, statusFilter]);
 
   const originOptions = useMemo(() => uniqueOptions(manifests.map((manifest) => manifest.origin)), [manifests]);
   const destinationOptions = useMemo(() => uniqueOptions(manifests.map((manifest) => manifest.destination)), [manifests]);
@@ -1330,12 +1355,11 @@ export default function FleetManagementPage({ onNavigate }) {
             <table className="registered-launches-table fleet-table">
               <thead>
                 <tr>
-                  <th>Veiculo</th>
-                  <th>Status</th>
-                  <th>Manifesto</th>
-                  <th>Motorista</th>
-                  <th>Rota</th>
-                  <th>Inicio</th>
+                  <SortableTableHeader
+                    columns={fleetSortColumns}
+                    sort={fleetSort}
+                    onSortChange={setFleetSort}
+                  />
                 </tr>
               </thead>
               <tbody>
@@ -1361,7 +1385,7 @@ export default function FleetManagementPage({ onNavigate }) {
                     </td>
                     <td>
                       <span className={row.inTransit ? 'fleet-status-pill fleet-status-pill--transit' : row.inactive ? 'fleet-status-pill fleet-status-pill--inactive' : 'fleet-status-pill'}>
-                        {row.inTransit ? 'Em trânsito' : row.inactive ? 'Inativo' : 'Disponível'}
+                        {fleetStatusLabel(row)}
                       </span>
                     </td>
                     <td>{row.manifest?.id || '-'}</td>

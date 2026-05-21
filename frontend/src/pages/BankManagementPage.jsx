@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Building2, Plus, Search, Trash2 } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import { deleteBank, getRegisteredBanks, getRegisteredUnits, saveBank } from '../data/managementRegistry.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const initialForm = {
   id: '',
@@ -25,18 +27,31 @@ export default function BankManagementPage() {
   const [banks, setBanks] = useState(getRegisteredBanks);
   const [form, setForm] = useState(initialForm);
   const [search, setSearch] = useState('');
+  const [bankSort, setBankSort] = useState({ key: 'name', direction: 'asc' });
   const [message, setMessage] = useAutoClearMessage();
   const unitOptions = useMemo(() => getRegisteredUnits().filter((unit) => unit.active !== false), []);
   const unitMap = useMemo(() => new Map(unitOptions.map((unit) => [unit.id, unitLabel(unit)])), [unitOptions]);
+  const bankSortColumns = useMemo(() => [
+    { key: 'unit', label: 'Unidade', type: 'text', getValue: (bank) => unitMap.get(bank.unit) || bank.unit },
+    { key: 'name', label: 'Nome', type: 'text', getValue: (bank) => bank.name },
+    { key: 'agency', label: 'Agencia', type: 'text', getValue: (bank) => bank.agency },
+    { key: 'account', label: 'Conta', type: 'text', getValue: (bank) => bank.account },
+    { key: 'status', label: 'Status', type: 'text', getValue: (bank) => (bank.active ? 'Ativo' : 'Inativo') },
+  ], [unitMap]);
 
   const visibleBanks = useMemo(() => {
     const query = normalizeText(search);
-    const sortedBanks = [...banks].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR'));
+    const filteredBanks = query
+      ? banks.filter((bank) => bankSearchText(bank, unitMap).includes(query))
+      : banks;
 
-    if (!query) return sortedBanks;
-
-    return sortedBanks.filter((bank) => bankSearchText(bank, unitMap).includes(query));
-  }, [banks, search, unitMap]);
+    return sortTableRows(
+      filteredBanks,
+      bankSortColumns,
+      bankSort,
+      (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
+    );
+  }, [bankSort, bankSortColumns, banks, search, unitMap]);
   const activeBanks = useMemo(() => banks.filter((bank) => bank.active).length, [banks]);
   const uniqueAgencies = useMemo(() => new Set(banks.map((bank) => bank.agency).filter(Boolean)).size, [banks]);
   const linkedUnits = useMemo(() => new Set(banks.map((bank) => bank.unit).filter(Boolean)).size, [banks]);
@@ -165,11 +180,7 @@ export default function BankManagementPage() {
             <table className="registered-launches-table bank-table">
               <thead>
                 <tr>
-                  <th>Unidade</th>
-                  <th>Nome</th>
-                  <th>Agencia</th>
-                  <th>Conta</th>
-                  <th>Status</th>
+                  <SortableTableHeader columns={bankSortColumns} sort={bankSort} onSortChange={setBankSort} />
                 </tr>
               </thead>
               <tbody>

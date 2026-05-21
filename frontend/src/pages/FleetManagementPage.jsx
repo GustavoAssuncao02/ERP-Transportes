@@ -44,6 +44,72 @@ const brazilBounds = [
 ];
 
 const cityGeoCacheKey = 'fleetCityGeoCache';
+const mapTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const mapTileOptions = {
+  attribution: '&copy; OpenStreetMap contributors',
+  className: 'fleet-map-tile',
+  keepBuffer: 4,
+  maxZoom: 18,
+  updateWhenZooming: false,
+};
+const mapOptions = {
+  attributionControl: true,
+  fadeAnimation: false,
+  markerZoomAnimation: false,
+  minZoom: 3,
+  scrollWheelZoom: false,
+  zoomAnimation: false,
+  zoomControl: true,
+  zoomSnap: 1,
+};
+const seamlessTilePadding = 3;
+const seamlessTileCrop = 1;
+const SeamlessTileLayer = L.TileLayer.extend({
+  createTile(coords, done) {
+    const size = this.getTileSize();
+    const tile = document.createElement('canvas');
+    const pixelRatio = window.devicePixelRatio || 1;
+    const width = size.x + (seamlessTilePadding * 2);
+    const height = size.y + (seamlessTilePadding * 2);
+    const context = tile.getContext('2d');
+    const image = new Image();
+
+    tile.width = width * pixelRatio;
+    tile.height = height * pixelRatio;
+    tile.style.width = `${width}px`;
+    tile.style.height = `${height}px`;
+    tile.style.marginLeft = `-${seamlessTilePadding}px`;
+    tile.style.marginTop = `-${seamlessTilePadding}px`;
+
+    context.scale(pixelRatio, pixelRatio);
+
+    image.decoding = 'async';
+    image.onload = () => {
+      context.drawImage(
+        image,
+        seamlessTileCrop,
+        seamlessTileCrop,
+        size.x - (seamlessTileCrop * 2),
+        size.y - (seamlessTileCrop * 2),
+        0,
+        0,
+        width,
+        height,
+      );
+      done(null, tile);
+    };
+    image.onerror = () => {
+      done(new Error(`Nao foi possivel carregar o tile ${image.src}`), tile);
+    };
+    image.src = this.getTileUrl(coords);
+
+    return tile;
+  },
+});
+
+function createMapTileLayer() {
+  return new SeamlessTileLayer(mapTileUrl, mapTileOptions);
+}
 
 const stateNames = {
   AC: 'Acre',
@@ -463,6 +529,7 @@ export default function FleetManagementPage({ onNavigate }) {
   const [mapStatusFilter, setMapStatusFilter] = useState('active');
   const [manifestTypeFilter, setManifestTypeFilter] = useState('Manifesto de Trânsito');
   const [selectedManifestId, setSelectedManifestId] = useState('');
+  const [activeHeatRegionKey, setActiveHeatRegionKey] = useState('');
   const [cityGeoCache, setCityGeoCache] = useState(readStoredGeoCache);
   const [geocodingCities, setGeocodingCities] = useState([]);
   const mapElementRef = useRef(null);
@@ -579,7 +646,7 @@ export default function FleetManagementPage({ onNavigate }) {
   }, [drivers, manifests]);
   const filteredPlateSet = useMemo(() => new Set(filteredRows.map((row) => row.plate)), [filteredRows]);
 
-  const filteredMapManifests = useMemo(() => {
+  const baseFilteredMapManifests = useMemo(() => {
     const normalizedQuery = normalizeText(query);
 
     return manifests
@@ -644,6 +711,17 @@ export default function FleetManagementPage({ onNavigate }) {
     registeredDriverKeys,
     statusFilter,
   ]);
+
+  const filteredMapManifests = useMemo(() => {
+    if (!activeHeatRegionKey) {
+      return baseFilteredMapManifests;
+    }
+
+    return baseFilteredMapManifests.filter((manifest) => (
+      cityKey(manifest.origin) === activeHeatRegionKey
+      || cityKey(manifest.destination) === activeHeatRegionKey
+    ));
+  }, [activeHeatRegionKey, baseFilteredMapManifests]);
 
   const citiesToResolve = useMemo(
     () => uniqueOptions(filteredMapManifests.flatMap((manifest) => [manifest.origin, manifest.destination])),
@@ -842,6 +920,19 @@ export default function FleetManagementPage({ onNavigate }) {
   );
 
   useEffect(() => {
+    if (!activeHeatRegionKey) return;
+
+    const activeRegionStillAvailable = baseFilteredMapManifests.some((manifest) => (
+      cityKey(manifest.origin) === activeHeatRegionKey
+      || cityKey(manifest.destination) === activeHeatRegionKey
+    ));
+
+    if (!activeRegionStillAvailable) {
+      setActiveHeatRegionKey('');
+    }
+  }, [activeHeatRegionKey, baseFilteredMapManifests]);
+
+  useEffect(() => {
     if (!filteredMapManifests.length) {
       if (selectedManifestId) setSelectedManifestId('');
       return;
@@ -855,19 +946,9 @@ export default function FleetManagementPage({ onNavigate }) {
   useEffect(() => {
     if (!mapElementRef.current || mapRef.current) return undefined;
 
-    const map = L.map(mapElementRef.current, {
-      attributionControl: true,
-      maxBounds: brazilBounds,
-      maxBoundsViscosity: 0.35,
-      minZoom: 3,
-      scrollWheelZoom: false,
-      zoomControl: true,
-    });
+    const map = L.map(mapElementRef.current, mapOptions);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 18,
-    }).addTo(map);
+    createMapTileLayer().addTo(map);
 
     L.control.scale({ imperial: false, metric: true }).addTo(map);
     map.fitBounds(brazilBounds, { padding: [18, 18] });
@@ -962,8 +1043,7 @@ export default function FleetManagementPage({ onNavigate }) {
 
     if (routeSignature && bounds.isValid() && lastRouteSignatureRef.current !== routeSignature) {
       map.fitBounds(bounds.pad(0.18), {
-        animate: true,
-        duration: 0.4,
+        animate: false,
         maxZoom: 6,
         padding: [24, 24],
       });
@@ -979,19 +1059,9 @@ export default function FleetManagementPage({ onNavigate }) {
   useEffect(() => {
     if (!heatMapElementRef.current || heatMapRef.current) return undefined;
 
-    const map = L.map(heatMapElementRef.current, {
-      attributionControl: true,
-      maxBounds: brazilBounds,
-      maxBoundsViscosity: 0.35,
-      minZoom: 3,
-      scrollWheelZoom: false,
-      zoomControl: true,
-    });
+    const map = L.map(heatMapElementRef.current, mapOptions);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors',
-      maxZoom: 18,
-    }).addTo(map);
+    createMapTileLayer().addTo(map);
 
     L.control.scale({ imperial: false, metric: true }).addTo(map);
     map.fitBounds(brazilBounds, { padding: [18, 18] });
@@ -1043,12 +1113,12 @@ export default function FleetManagementPage({ onNavigate }) {
       }).addTo(layer);
 
       L.circleMarker(latLng, {
-        color: '#ffffff',
+        color: heatColor,
         fillColor: heatColor,
         fillOpacity: 0.48,
-        opacity: 0.96,
+        opacity: 0,
         radius,
-        weight: 2,
+        stroke: false,
       })
         .bindTooltip(tooltip, { sticky: true })
         .addTo(layer);
@@ -1075,8 +1145,7 @@ export default function FleetManagementPage({ onNavigate }) {
 
     if (heatSignature && bounds.isValid() && lastHeatSignatureRef.current !== heatSignature) {
       map.fitBounds(bounds.pad(0.22), {
-        animate: true,
-        duration: 0.4,
+        animate: false,
         maxZoom: 6,
         padding: [24, 24],
       });
@@ -1116,6 +1185,11 @@ export default function FleetManagementPage({ onNavigate }) {
     }
 
     onNavigate?.({ pageId: 'generate-manifest', label: 'Gerar Manifesto' });
+  }
+
+  function toggleHeatRegionFilter(regionKey) {
+    setActiveHeatRegionKey((currentRegionKey) => (currentRegionKey === regionKey ? '' : regionKey));
+    setSelectedManifestId('');
   }
 
   const metricDetails = {
@@ -1668,7 +1742,13 @@ export default function FleetManagementPage({ onNavigate }) {
             <div className="fleet-map-insight-block">
               <h3>Principais regiões</h3>
               {heatPoints.slice(0, 8).map((region) => (
-                <div className="fleet-heat-region-card" key={region.key}>
+                <button
+                  type="button"
+                  className={activeHeatRegionKey === region.key ? 'fleet-heat-region-card fleet-heat-region-card--active' : 'fleet-heat-region-card'}
+                  key={region.key}
+                  aria-pressed={activeHeatRegionKey === region.key}
+                  onClick={() => toggleHeatRegionFilter(region.key)}
+                >
                   <div>
                     <strong>{region.label}</strong>
                     <span>{`${region.originCount} origem(ns) | ${region.destinationCount} destino(s)`}</span>
@@ -1677,7 +1757,7 @@ export default function FleetManagementPage({ onNavigate }) {
                     <strong>{region.total}</strong>
                     <span>pontos</span>
                   </div>
-                </div>
+                </button>
               ))}
               {!heatPoints.length && <span>Nenhuma região encontrada</span>}
             </div>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import {
@@ -14,8 +15,17 @@ import {
   saveDriver,
 } from '../data/transportRegistry.js';
 import { getDriverDeletionBlockers } from '../data/deletionRules.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const licenseCategories = ['B', 'C', 'D', 'E'];
+
+const driverSortColumns = [
+  { key: 'cpf', label: 'CPF', type: 'text', getValue: (driver) => formatCpf(driver.cpf) },
+  { key: 'name', label: 'Nome', type: 'text', getValue: (driver) => driver.name },
+  { key: 'phone', label: 'Telefone', type: 'text', getValue: (driver) => driver.phone },
+  { key: 'cnh', label: 'CNH', type: 'text', getValue: (driver) => `${driver.cnh} ${driver.category}` },
+  { key: 'status', label: 'Status', type: 'text', getValue: (driver) => driver.status },
+];
 
 function pendingCpf() {
   try {
@@ -36,11 +46,17 @@ export default function DriverRegistrationPage() {
   const [cpfError, setCpfError] = useState('');
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [driverSort, setDriverSort] = useState({ key: 'name', direction: 'asc' });
   const [message, setMessage] = useAutoClearMessage();
 
   const sortedDrivers = useMemo(
-    () => [...drivers].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
-    [drivers],
+    () => sortTableRows(
+      drivers,
+      driverSortColumns,
+      driverSort,
+      (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
+    ),
+    [driverSort, drivers],
   );
   const lookupDrivers = useMemo(() => {
     const query = normalizeText(lookupSearch);
@@ -257,11 +273,7 @@ export default function DriverRegistrationPage() {
           <table className="registered-launches-table registry-table">
             <thead>
               <tr>
-                <th>CPF</th>
-                <th>Nome</th>
-                <th>Telefone</th>
-                <th>CNH</th>
-                <th>Status</th>
+                <SortableTableHeader columns={driverSortColumns} sort={driverSort} onSortChange={setDriverSort} />
               </tr>
             </thead>
             <tbody>

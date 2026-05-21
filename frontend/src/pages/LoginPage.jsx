@@ -40,6 +40,7 @@ export default function LoginPage() {
 
   function handleSubmit(event) {
     event.preventDefault();
+    window.location.assign('/');
   }
 
   return (

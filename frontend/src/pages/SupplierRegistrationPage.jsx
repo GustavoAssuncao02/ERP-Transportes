@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   deactivateSupplier,
@@ -14,6 +15,7 @@ import { normalizeText } from '../data/financeData.js';
 import { getSupplierDeletionBlockers } from '../data/deletionRules.js';
 import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
 import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const initialForm = {
   id: '',
@@ -25,17 +27,32 @@ const initialForm = {
   active: true,
 };
 
+const supplierSortColumns = [
+  { key: 'name', label: 'Nome', type: 'text', getValue: (supplier) => supplier.name },
+  { key: 'document', label: 'CNPJ/CPF', type: 'text', getValue: (supplier) => supplier.cnpj },
+  { key: 'contact', label: 'Contato', type: 'text', getValue: (supplier) => supplier.contact },
+  { key: 'email', label: 'E-mail', type: 'text', getValue: (supplier) => supplier.email },
+  { key: 'address', label: 'EndereÃ§o', type: 'text', getValue: (supplier) => supplier.address },
+  { key: 'active', label: 'Ativo', type: 'text', getValue: (supplier) => (supplier.active ? 'Sim' : 'Nao') },
+];
+
 export default function SupplierRegistrationPage() {
   const [suppliers, setSuppliers] = useState(getRegisteredSuppliers);
   const [form, setForm] = useState(initialForm);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [supplierSort, setSupplierSort] = useState({ key: 'name', direction: 'asc' });
   const [message, setMessage] = useAutoClearMessage();
   const companyLookupRequestRef = useRef(0);
 
   const sortedSuppliers = useMemo(
-    () => [...suppliers].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
-    [suppliers],
+    () => sortTableRows(
+      suppliers,
+      supplierSortColumns,
+      supplierSort,
+      (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
+    ),
+    [supplierSort, suppliers],
   );
   const lookupSuppliers = useMemo(() => {
     const query = normalizeText(lookupSearch);
@@ -274,12 +291,7 @@ export default function SupplierRegistrationPage() {
           <table className="registered-launches-table registry-table">
             <thead>
               <tr>
-                <th>Nome</th>
-                <th>CNPJ/CPF</th>
-                <th>Contato</th>
-                <th>E-mail</th>
-                <th>Endereço</th>
-                <th>Ativo</th>
+                <SortableTableHeader columns={supplierSortColumns} sort={supplierSort} onSortChange={setSupplierSort} />
               </tr>
             </thead>
             <tbody>

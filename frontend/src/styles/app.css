@@ -185,9 +185,7 @@
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.16);
 }
 
-.nav-subdropdown--open,
-.nav-dropdown-group:hover .nav-subdropdown,
-.nav-dropdown-group:focus-within .nav-subdropdown {
+.nav-subdropdown--open {
   display: block;
 }
 
@@ -3101,11 +3099,33 @@
   grid-template-columns: minmax(0, 1fr) minmax(50px, auto);
   gap: 10px;
   align-items: center;
+  width: 100%;
   padding: 9px 10px;
   border: 1px solid var(--border);
   border-radius: 6px;
   background: #ffffff;
   color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: border-color 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+}
+
+.fleet-heat-region-card:hover,
+.fleet-heat-region-card:focus-visible {
+  border-color: #9bc7c2;
+  background: #f6fbfa;
+}
+
+.fleet-heat-region-card:focus-visible {
+  outline: 2px solid rgba(26, 122, 114, 0.28);
+  outline-offset: 2px;
+}
+
+.fleet-heat-region-card--active {
+  border-color: #1a7a72;
+  background: #eef8f6;
+  box-shadow: inset 3px 0 0 #1a7a72;
 }
 
 .fleet-heat-region-card > div {
@@ -3135,6 +3155,11 @@
   border-radius: 999px;
   background: #f0f0ff;
   color: #3730a3;
+}
+
+.fleet-heat-region-card--active > div:last-child strong {
+  background: #d9efec;
+  color: #0f5f59;
 }
 
 .fleet-heat-region-card span {

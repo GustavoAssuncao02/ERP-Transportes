@@ -32,8 +32,6 @@ export default function Navbar({ onNavigate }) {
         <div
           className="nav-dropdown-group"
           key={item.id}
-          onMouseEnter={() => setActiveSubmenuId(item.id)}
-          onFocus={() => setActiveSubmenuId(item.id)}
         >
           <button
             type="button"

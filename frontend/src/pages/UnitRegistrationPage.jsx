@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   deactivateUnit,
@@ -13,6 +14,7 @@ import { onlyDigits } from '../data/transportRegistry.js';
 import { getUnitDeletionBlockers } from '../data/deletionRules.js';
 import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
 import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
+import { sortTableRows } from '../utils/tableSort.js';
 
 const cnaeApiUrl = 'https://servicodados.ibge.gov.br/api/v2/cnae/subclasses';
 const cnaeCacheKey = 'ibgeCnaeOptionsCache';
@@ -46,6 +48,17 @@ const initialForm = {
   active: true,
   cnae: '',
 };
+
+const unitSortColumns = [
+  { key: 'name', label: 'Nome', type: 'text', getValue: (unit) => unit.name },
+  { key: 'cnpj', label: 'CNPJ', type: 'text', getValue: (unit) => unit.cnpj },
+  { key: 'cnae', label: 'CNAE', type: 'text', getValue: (unit) => unit.cnae },
+  { key: 'zipCode', label: 'CEP', type: 'text', getValue: (unit) => unit.zipCode },
+  { key: 'street', label: 'Rua', type: 'text', getValue: (unit) => unit.street },
+  { key: 'addressNumber', label: 'Numero', type: 'text', getValue: (unit) => unit.addressNumber },
+  { key: 'district', label: 'Bairro', type: 'text', getValue: (unit) => unit.district },
+  { key: 'active', label: 'Ativo', type: 'text', getValue: (unit) => (unit.active ? 'Sim' : 'Nao') },
+];
 
 function formatCnaeCode(value) {
   const digits = onlyDigits(value).slice(0, 7);
@@ -102,12 +115,18 @@ export default function UnitRegistrationPage() {
   const [units, setUnits] = useState(getRegisteredUnits);
   const [form, setForm] = useState(initialForm);
   const [cnaeOptions, setCnaeOptions] = useState(() => readCachedCnaes()?.options || fallbackCnaes);
+  const [unitSort, setUnitSort] = useState({ key: 'name', direction: 'asc' });
   const [message, setMessage] = useAutoClearMessage();
   const companyLookupRequestRef = useRef(0);
 
   const sortedUnits = useMemo(
-    () => [...units].sort((left, right) => left.name.localeCompare(right.name, 'pt-BR')),
-    [units],
+    () => sortTableRows(
+      units,
+      unitSortColumns,
+      unitSort,
+      (left, right) => left.name.localeCompare(right.name, 'pt-BR'),
+    ),
+    [unitSort, units],
   );
   const visibleCnaeOptions = useMemo(() => {
     if (!form.cnae || cnaeOptions.some((option) => option.value === form.cnae)) {
@@ -364,10 +383,7 @@ export default function UnitRegistrationPage() {
           <table className="registered-launches-table registry-table">
             <thead>
               <tr>
-                <th>Nome</th>
-                <th>CNPJ</th>
-                <th>CNAE</th>
-                <th>CEP</th>
+                <SortableTableHeader columns={unitSortColumns} sort={unitSort} onSortChange={setUnitSort} />
                 <th>Rua</th>
                 <th>Número</th>
                 <th>Bairro</th>

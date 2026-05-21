@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, RotateCcw, Save, Search, X } from 'lucide-react';
+import { RotateCcw, Save, Search } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import {
@@ -21,10 +21,6 @@ export default function HomeShortcutsPage({ selectedShortcutIds, onSave }) {
       normalizeText(`${option.label} ${option.menuPath}`).includes(query)
     ));
   }, [search, shortcutOptions]);
-  const selectedOptions = useMemo(() => {
-    const optionsByPageId = new Map(shortcutOptions.map((option) => [option.pageId, option]));
-    return selectedIds.map((pageId) => optionsByPageId.get(pageId)).filter(Boolean);
-  }, [selectedIds, shortcutOptions]);
 
   function toggleShortcut(pageId) {
     setSelectedIds((currentIds) => (
@@ -32,27 +28,6 @@ export default function HomeShortcutsPage({ selectedShortcutIds, onSave }) {
         ? currentIds.filter((currentId) => currentId !== pageId)
         : [...currentIds, pageId]
     ));
-    setMessage('');
-  }
-
-  function removeShortcut(pageId) {
-    setSelectedIds((currentIds) => currentIds.filter((currentId) => currentId !== pageId));
-    setMessage('');
-  }
-
-  function moveShortcut(pageId, direction) {
-    setSelectedIds((currentIds) => {
-      const currentIndex = currentIds.indexOf(pageId);
-      const nextIndex = currentIndex + direction;
-
-      if (currentIndex < 0 || nextIndex < 0 || nextIndex >= currentIds.length) {
-        return currentIds;
-      }
-
-      const nextIds = [...currentIds];
-      [nextIds[currentIndex], nextIds[nextIndex]] = [nextIds[nextIndex], nextIds[currentIndex]];
-      return nextIds;
-    });
     setMessage('');
   }
 
@@ -83,6 +58,7 @@ export default function HomeShortcutsPage({ selectedShortcutIds, onSave }) {
             <h2 id="shortcut-options-title">Opções disponíveis</h2>
             <div>
               <span>{filteredOptions.length} opção(ões)</span>
+              <strong>{selectedIds.length} selecionado(s)</strong>
             </div>
           </div>
 
@@ -133,57 +109,6 @@ export default function HomeShortcutsPage({ selectedShortcutIds, onSave }) {
             </table>
 
             {!filteredOptions.length && <div className="empty-list">Nenhuma opção encontrada</div>}
-          </div>
-        </section>
-
-        <section className="selection-panel shortcut-selected-panel" aria-labelledby="selected-shortcuts-title">
-          <div className="selection-panel-header">
-            <h2 id="selected-shortcuts-title">Atalhos da tela inicial</h2>
-            <strong>{selectedOptions.length}</strong>
-          </div>
-
-          <div className="selected-list-box shortcut-selected-list">
-            {selectedOptions.map((option, index) => (
-              <div className="shortcut-selected-row" key={option.pageId}>
-                <div>
-                  <strong>{option.label}</strong>
-                  <span>{option.menuPath}</span>
-                </div>
-                <div className="shortcut-row-actions">
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Mover atalho para cima"
-                    title="Mover para cima"
-                    disabled={index === 0}
-                    onClick={() => moveShortcut(option.pageId, -1)}
-                  >
-                    <ArrowUp size={15} strokeWidth={2.2} />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Mover atalho para baixo"
-                    title="Mover para baixo"
-                    disabled={index === selectedOptions.length - 1}
-                    onClick={() => moveShortcut(option.pageId, 1)}
-                  >
-                    <ArrowDown size={15} strokeWidth={2.2} />
-                  </button>
-                  <button
-                    type="button"
-                    className="icon-button"
-                    aria-label="Remover atalho"
-                    title="Remover"
-                    onClick={() => removeShortcut(option.pageId)}
-                  >
-                    <X size={15} strokeWidth={2.4} />
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            {!selectedOptions.length && <div className="empty-list">Nenhum atalho selecionado</div>}
           </div>
 
           <div className="shortcut-manager-actions">

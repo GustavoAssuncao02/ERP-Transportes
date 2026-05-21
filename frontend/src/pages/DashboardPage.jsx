@@ -12,7 +12,7 @@ import {
   saveHomeShortcutIds,
 } from '../data/homeShortcuts.js';
 import { getPageTitle } from '../data/pageCatalog.js';
-import { getQuickQueryCards, quickQueryUpdatedEventName } from '../data/quickQueries.js';
+import { getQuickQueryCards, quickQueryUpdatedEventName, saveQuickQueryOrder } from '../data/quickQueries.js';
 import { tabs as initialTabs } from '../data/siteData.js';
 
 const AccountsPayableDeletionPage = lazy(() => import('./AccountsPayableDeletionPage.jsx'));
@@ -187,6 +187,41 @@ export default function DashboardPage() {
     return savedShortcutIds;
   }
 
+  function reorderIds(ids, draggedId, targetId, placement = 'before') {
+    if (!draggedId || !targetId || draggedId === targetId) return ids;
+
+    const nextIds = ids.filter((id) => id !== draggedId);
+    const targetIndex = nextIds.indexOf(targetId);
+
+    if (targetIndex < 0) return ids;
+
+    nextIds.splice(placement === 'after' ? targetIndex + 1 : targetIndex, 0, draggedId);
+    return nextIds;
+  }
+
+  function reorderHomeShortcutCards(draggedCard, targetCard, placement) {
+    const nextShortcutIds = reorderIds(homeShortcutIds, draggedCard.pageId, targetCard.pageId, placement);
+
+    if (nextShortcutIds === homeShortcutIds) return;
+
+    saveHomeShortcuts(nextShortcutIds);
+  }
+
+  function reorderQuickQueryCards(draggedCard, targetCard, placement) {
+    const currentQueryIds = quickQueryCards.map((card) => card.id);
+    const nextQueryIds = reorderIds(
+      currentQueryIds,
+      draggedCard.id,
+      targetCard.id,
+      placement,
+    );
+
+    if (nextQueryIds === currentQueryIds) return;
+
+    saveQuickQueryOrder(nextQueryIds);
+    setQuickQueryCards(getQuickQueryCards());
+  }
+
   function reorderTabs(draggedTabId, targetTabId, placement) {
     setOpenTabs((currentTabs) => {
       const draggedTab = currentTabs.find((tab) => tab.id === draggedTabId);
@@ -346,12 +381,12 @@ export default function DashboardPage() {
     return (
       <>
         <DashboardSection title="Acesso rápido">
-          <CardGrid cards={homeShortcutCards} variant="tall" onCardClick={openPage} />
+          <CardGrid cards={homeShortcutCards} variant="tall" onCardClick={openPage} onReorder={reorderHomeShortcutCards} />
         </DashboardSection>
 
         <DashboardSection title="Consultas rápidas">
           {quickQueryCards.length ? (
-            <CardGrid cards={quickQueryCards} variant="short" onCardClick={openPage} />
+            <CardGrid cards={quickQueryCards} variant="short" onCardClick={openPage} onReorder={reorderQuickQueryCards} />
           ) : (
             <div className="empty-list">Nenhuma consulta rapida salva para este usuario</div>
           )}

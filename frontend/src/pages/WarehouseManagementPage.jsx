@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, ChevronDown, ChevronRight, PackagePlus, Plus, Save, Search, Warehouse, X } from 'lucide-react';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
@@ -738,6 +738,8 @@ export default function WarehouseManagementPage({ initialSavedQuery = null, onSa
   const [warehouseReportExpandedInvoices, setWarehouseReportExpandedInvoices] = useState({});
   const [warehouseReportExpandedCustomers, setWarehouseReportExpandedCustomers] = useState({});
   const [warehouseReportShowCompletedInvoices, setWarehouseReportShowCompletedInvoices] = useState(false);
+  const warehouseReportPanelRef = useRef(null);
+  const shouldScrollWarehouseReportRef = useRef(false);
 
   useEffect(() => {
     try {
@@ -995,10 +997,25 @@ export default function WarehouseManagementPage({ initialSavedQuery = null, onSa
   useEffect(() => {
     if (!initialSavedQuery?.filters) return;
 
+    shouldScrollWarehouseReportRef.current = initialSavedQuery.reportType === 'warehouse-report';
     applyWarehouseReportSavedFilters(initialSavedQuery.filters);
     setWarehouseReportQuickQueryName(initialSavedQuery.name || '');
     setWarehouseReportMessage(`Consulta rapida "${initialSavedQuery.name}" carregada`);
   }, [initialSavedQuery?.id, initialSavedQuery?.updatedAt, initialSavedQuery?.appliedAt]);
+
+  useEffect(() => {
+    if (!shouldScrollWarehouseReportRef.current || !warehouseReportOpen) return undefined;
+
+    const animationFrame = window.requestAnimationFrame(() => {
+      warehouseReportPanelRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+      shouldScrollWarehouseReportRef.current = false;
+    });
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [warehouseReportOpen, warehouseReportApplied, initialSavedQuery?.appliedAt]);
 
   useEffect(() => {
     if (!warehouseReportApplied) return;
@@ -2571,7 +2588,7 @@ export default function WarehouseManagementPage({ initialSavedQuery = null, onSa
         </article>
       </section>
 
-      <section className="registered-launches-panel warehouse-filter-report-panel" aria-labelledby="warehouse-filter-report-title">
+      <section ref={warehouseReportPanelRef} className="registered-launches-panel warehouse-filter-report-panel" aria-labelledby="warehouse-filter-report-title">
         <button
           type="button"
           className="warehouse-filter-report-toggle"

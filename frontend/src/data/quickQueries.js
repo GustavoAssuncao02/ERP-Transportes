@@ -3,6 +3,7 @@ import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 import { companyDetails } from './siteData.js';
 
 export const quickQueryStorageKey = 'savedReportQuickQueries';
+export const quickQueryOrderStorageKey = 'savedReportQuickQueryOrder';
 export const quickQueryUpdatedEventName = 'quickQueries:updated';
 export const maxQuickQueriesPerUser = 10;
 export const maxQuickQueryNameLength = 25;
@@ -75,6 +76,38 @@ function readAllQuickQueries() {
     .filter(Boolean);
 }
 
+function readQuickQueryOrderMap() {
+  return readJsonStorage(quickQueryOrderStorageKey, {}, {
+    validate: (value) => value && typeof value === 'object' && !Array.isArray(value),
+  });
+}
+
+function readQuickQueryOrder(userKey) {
+  const normalizedUserKey = normalizeKey(userKey);
+  const orderMap = readQuickQueryOrderMap();
+  const order = orderMap[normalizedUserKey];
+
+  return Array.isArray(order) ? order.filter(Boolean) : [];
+}
+
+function writeQuickQueryOrder(userKey, ids) {
+  const normalizedUserKey = normalizeKey(userKey);
+  const orderMap = readQuickQueryOrderMap();
+  const seenIds = new Set();
+  const normalizedIds = ids.filter((id) => {
+    if (!id || seenIds.has(id)) return false;
+    seenIds.add(id);
+    return true;
+  });
+
+  writeJsonStorage(quickQueryOrderStorageKey, {
+    ...orderMap,
+    [normalizedUserKey]: normalizedIds,
+  });
+
+  return normalizedIds;
+}
+
 function emitQuickQueryUpdate() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent(quickQueryUpdatedEventName));
@@ -83,10 +116,18 @@ function emitQuickQueryUpdate() {
 
 export function readQuickQueries(userKey = getCurrentQuickQueryUserKey()) {
   const normalizedUserKey = normalizeKey(userKey);
-
-  return readAllQuickQueries()
+  const order = readQuickQueryOrder(normalizedUserKey);
+  const orderSet = new Set(order);
+  const sortedQueries = readAllQuickQueries()
     .filter((query) => query.userKey === normalizedUserKey)
     .sort((left, right) => String(right.updatedAt).localeCompare(String(left.updatedAt)));
+  const queriesById = new Map(sortedQueries.map((query) => [query.id, query]));
+  const orderedQueries = order
+    .map((queryId) => queriesById.get(queryId))
+    .filter(Boolean);
+  const remainingQueries = sortedQueries.filter((query) => !orderSet.has(query.id));
+
+  return [...orderedQueries, ...remainingQueries];
 }
 
 export function getQuickQueryCards(userKey = getCurrentQuickQueryUserKey()) {
@@ -136,6 +177,11 @@ export function saveQuickQuery({ name, reportType, pageId, filters, module = 'Fi
     : [nextQuery, ...allQueries];
 
   writeJsonStorage(quickQueryStorageKey, nextQueries);
+
+  if (!existingQuery) {
+    writeQuickQueryOrder(userKey, [nextQuery.id, ...readQuickQueryOrder(userKey)]);
+  }
+
   recordAuditEvent({
     module,
     action: existingQuery ? auditActions.update : auditActions.create,
@@ -152,4 +198,32 @@ export function saveQuickQuery({ name, reportType, pageId, filters, module = 'Fi
     quickQuery: nextQuery,
     queries: readQuickQueries(userKey),
   };
+}
+
+export function saveQuickQueryOrder(orderedIds, userKey = getCurrentQuickQueryUserKey()) {
+  const normalizedUserKey = normalizeKey(userKey);
+  const userQueryIds = new Set(
+    readAllQuickQueries()
+      .filter((query) => query.userKey === normalizedUserKey)
+      .map((query) => query.id),
+  );
+  const previousOrder = readQuickQueryOrder(normalizedUserKey);
+  const nextOrder = writeQuickQueryOrder(
+    normalizedUserKey,
+    orderedIds.filter((queryId) => userQueryIds.has(queryId)),
+  );
+
+  recordAuditEvent({
+    module: 'Sistema',
+    action: auditActions.configChange,
+    entityType: 'ordem de consultas rapidas',
+    entityId: quickQueryOrderStorageKey,
+    entityLabel: 'Consultas rapidas',
+    before: previousOrder,
+    after: nextOrder,
+    summary: 'Ordem das consultas rapidas atualizada',
+  });
+  emitQuickQueryUpdate();
+
+  return readQuickQueries(normalizedUserKey);
 }

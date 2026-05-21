@@ -452,6 +452,24 @@
   transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease;
 }
 
+.dashboard-card[draggable='true'] {
+  cursor: grab;
+}
+
+.dashboard-card[draggable='true']:active {
+  cursor: grabbing;
+}
+
+.dashboard-card--dragging {
+  opacity: 0.55;
+  transform: scale(0.98);
+}
+
+.dashboard-card--drop-target {
+  border-color: var(--primary);
+  box-shadow: inset 0 0 0 2px rgba(19, 130, 123, 0.18), var(--shadow);
+}
+
 .dashboard-card--tall {
   height: 140px;
   flex-direction: column;
@@ -4133,7 +4151,7 @@
 .shortcut-manager-layout {
   display: grid;
   max-width: 1280px;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.45fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
@@ -4179,52 +4197,6 @@
   width: 17px;
   height: 17px;
   accent-color: var(--primary);
-}
-
-.shortcut-selected-list {
-  max-height: 472px;
-}
-
-.shortcut-selected-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid #eeeeee;
-}
-
-.shortcut-selected-row > div:first-child {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.shortcut-selected-row strong {
-  overflow: hidden;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shortcut-selected-row span {
-  overflow: hidden;
-  color: var(--text-muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.shortcut-row-actions {
-  display: flex;
-  gap: 6px;
-}
-
-.shortcut-row-actions .icon-button {
-  width: 30px;
-  height: 30px;
-  flex-basis: 30px;
 }
 
 .shortcut-manager-actions {

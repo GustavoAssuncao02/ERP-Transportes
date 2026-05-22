@@ -36,11 +36,16 @@ import {
   driverStorageKey,
   vehicleStorageKey,
 } from './transportRegistry.js';
-import { blueprintSectors, warehouseCargoStorageKey } from './warehouseRegistry.js';
+import {
+  blueprintSectors,
+  createVariedWarehouseWeightSettings,
+  warehouseCargoStorageKey,
+  warehouseWeightSettingsStorageKey,
+} from './warehouseRegistry.js';
 import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 
 const seedVersionKey = 'erpTransportesLargeTestDataSeedVersion';
-const seedVersion = 'large-test-data-2026-05-22-v2';
+const seedVersion = 'large-test-data-2026-05-22-v3';
 const mainRecordCount = 180;
 const referenceRecordCount = 180;
 
@@ -804,6 +809,7 @@ export function seedSystemTestData({ force = false } = {}) {
     receivables: writeMergedRecords(receivableStorageKey, defaultReceivables, receivables, (receivable) => receivable.id),
     driverSettlements: writeMergedRecords(driverSettlementStorageKey, [], settlements, (settlement) => settlement.id),
     warehouseCargo: writeMergedRecords(warehouseCargoStorageKey, [], warehouseCargo, (item) => item.id),
+    warehouseWeightSettings: writeJsonStorage(warehouseWeightSettingsStorageKey, createVariedWarehouseWeightSettings(warehouseCargo)),
   };
 
   setSequenceValues();

@@ -178,6 +178,50 @@ export const sectorDepotMap = new Map(blueprintSectors.map((sector) => [
   columnLabelIndex(sector.column) >= depotSplitColumnIndex ? 'deposit-2' : 'deposit-1',
 ]));
 
+function seededSectorRatio(sectorId) {
+  return [...String(sectorId)].reduce((hash, char) => (
+    ((hash * 31) + char.charCodeAt(0)) % 1009
+  ), 17) / 1009;
+}
+
+function roundedLimit(value) {
+  return Number(Math.max(0.5, value).toFixed(1));
+}
+
+export function createVariedWarehouseWeightSettings(cargoItems = []) {
+  const sectorWeights = cargoItems.reduce((weights, item) => {
+    const sectorId = item?.sectorId;
+    if (!validSectorIds.has(sectorId)) return weights;
+
+    return {
+      ...weights,
+      [sectorId]: (weights[sectorId] || 0) + (Number(item.weight || 0) * Number(item.quantity || 1)),
+    };
+  }, {});
+  const sectorLimits = blueprintSectors.reduce((limits, sector, index) => {
+    const ratio = seededSectorRatio(sector.id);
+    const currentWeight = sectorWeights[sector.id] || 0;
+    const baseLimit = currentWeight > 0
+      ? currentWeight * (ratio < 0.46 ? 0.62 + (ratio * 0.42) : 1.18 + (ratio * 0.9))
+      : 4 + ((index * 7) % 34) + (ratio * 6);
+    const limit = roundedLimit(baseLimit);
+
+    if (limit === defaultWarehouseSectorLimitKg) {
+      return limits;
+    }
+
+    return {
+      ...limits,
+      [sector.id]: limit,
+    };
+  }, {});
+
+  return normalizeWarehouseWeightSettings({
+    globalLimitKg: defaultWarehouseSectorLimitKg,
+    sectorLimits,
+  });
+}
+
 export function parseWeightLimit(value) {
   const number = Number(String(value).replace(',', '.'));
   return Number.isFinite(number) && number > 0 ? number : defaultWarehouseSectorLimitKg;
@@ -209,10 +253,10 @@ export function normalizeWarehouseWeightSettings(settings = {}) {
 
 export function readWarehouseWeightSettings() {
   if (typeof window === 'undefined') {
-    return normalizeWarehouseWeightSettings();
+    return createVariedWarehouseWeightSettings();
   }
 
-  return normalizeWarehouseWeightSettings(readJsonStorage(warehouseWeightSettingsStorageKey, normalizeWarehouseWeightSettings(), {
+  return normalizeWarehouseWeightSettings(readJsonStorage(warehouseWeightSettingsStorageKey, createVariedWarehouseWeightSettings(), {
     validate: (value) => value && typeof value === 'object' && !Array.isArray(value),
   }));
 }

@@ -46,6 +46,63 @@ const VehicleRegistrationPage = lazy(() => import('./VehicleRegistrationPage.jsx
 const WarehouseManagementPage = lazy(() => import('./WarehouseManagementPage.jsx'));
 const WarehouseSettingsPage = lazy(() => import('./WarehouseSettingsPage.jsx'));
 
+const pageModulePreloaders = [
+  () => import('./AccountsPayableDeletionPage.jsx'),
+  () => import('./AccountsPayablePage.jsx'),
+  () => import('./AccountsPayableReportPage.jsx'),
+  () => import('./AccountsPayableSchedulePage.jsx'),
+  () => import('./AccountsPayableSettlementPage.jsx'),
+  () => import('./AccountsReceivableDashboardPage.jsx'),
+  () => import('./AccountsReceivablePage.jsx'),
+  () => import('./AccountsReceivableReportPage.jsx'),
+  () => import('./AccountsReceivableSettlementPage.jsx'),
+  () => import('./BankManagementPage.jsx'),
+  () => import('./BusinessIntelligencePage.jsx'),
+  () => import('./CollectionOrderPage.jsx'),
+  () => import('./CreateMinutaPage.jsx'),
+  () => import('./DriverRegistrationPage.jsx'),
+  () => import('./DriverAccountabilityPage.jsx'),
+  () => import('./FleetManagementPage.jsx'),
+  () => import('./GenerateManifestPage.jsx'),
+  () => import('./HomeShortcutsPage.jsx'),
+  () => import('./InsuranceRegistrationPage.jsx'),
+  () => import('./IssueCtePage.jsx'),
+  () => import('./OneOffPaymentPage.jsx'),
+  () => import('./RegisteredLaunchesPage.jsx'),
+  () => import('./SettlementReversalPage.jsx'),
+  () => import('./SupplierRegistrationPage.jsx'),
+  () => import('./SystemUpdatesPage.jsx'),
+  () => import('./UnitRegistrationPage.jsx'),
+  () => import('./UserManagementPage.jsx'),
+  () => import('./VehicleRegistrationPage.jsx'),
+  () => import('./WarehouseManagementPage.jsx'),
+  () => import('./WarehouseSettingsPage.jsx'),
+];
+let pageModulesPreloadStarted = false;
+
+function scheduleIdleTask(callback, delay = 0) {
+  if ('requestIdleCallback' in window) {
+    const idleId = window.requestIdleCallback(callback, { timeout: 3500 + delay });
+    return () => window.cancelIdleCallback?.(idleId);
+  }
+
+  const timeoutId = window.setTimeout(callback, 650 + delay);
+  return () => window.clearTimeout(timeoutId);
+}
+
+function preloadPageModules() {
+  if (pageModulesPreloadStarted) return () => {};
+
+  pageModulesPreloadStarted = true;
+  const cancelers = pageModulePreloaders.map((preload, index) => (
+    scheduleIdleTask(() => {
+      preload().catch(() => {});
+    }, index * 80)
+  ));
+
+  return () => cancelers.forEach((cancel) => cancel());
+}
+
 export default function DashboardPage() {
   const [openTabs, setOpenTabs] = useState(initialTabs);
   const [activeTabId, setActiveTabId] = useState('home');
@@ -57,6 +114,10 @@ export default function DashboardPage() {
   const scrollPositionsRef = useRef(new Map());
   const resetScrollTabsRef = useRef(new Set(['home']));
   const homeShortcutCards = useMemo(() => getHomeShortcutCards(homeShortcutIds), [homeShortcutIds]);
+
+  useEffect(() => {
+    preloadPageModules();
+  }, []);
 
   useEffect(() => {
     function refreshQuickQueries() {

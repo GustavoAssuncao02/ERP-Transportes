@@ -7,7 +7,7 @@ import {
   accountingTypes,
   businessUnits,
   currency,
-  financeLaunches,
+  getFinanceLaunches,
   normalizeText,
   suppliers,
 } from '../data/financeData.js';
@@ -25,7 +25,7 @@ const searchTypes = [
   { label: 'Data de Previsao de Pagamento', field: 'paymentForecastDate' },
 ];
 
-const openLaunches = financeLaunches.filter((launch) => launch.status === 'Aberto');
+const openLaunches = getFinanceLaunches().filter((launch) => launch.status === 'Aberto');
 const supplierOptions = [...new Set(openLaunches.map((launch) => launch.supplier))];
 const typeOptions = [...new Set(openLaunches.map((launch) => launch.type))];
 

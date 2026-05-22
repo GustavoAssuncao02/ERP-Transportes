@@ -144,6 +144,22 @@ function dateDistance(value) {
   return Math.abs(date.getTime() - Date.now());
 }
 
+function dateTimeInputValue(value = new Date()) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
 function readManifests() {
   try {
     const rawValue = localStorage.getItem(manifestStorageKey);
@@ -204,6 +220,8 @@ export default function GenerateManifestPage() {
   const [insurancePolicy, setInsurancePolicy] = useState(() => defaultManifestInsurance().insurancePolicy);
   const [manifestType, setManifestType] = useState('Manifesto de Trânsito');
   const [manifestStatus, setManifestStatus] = useState('Emitido');
+  const [startedAt, setStartedAt] = useState(() => dateTimeInputValue());
+  const [closedAt, setClosedAt] = useState('');
   const [status, setStatus] = useAutoClearMessage();
 
   useEffect(() => {
@@ -294,6 +312,8 @@ export default function GenerateManifestPage() {
     setInsurancePolicy(manifest.insurancePolicy || '');
     setManifestType(manifest.manifestType || 'Manifesto de Trânsito');
     setManifestStatus(manifest.status || 'Emitido');
+    setStartedAt(dateTimeInputValue(manifest.startedAt || manifest.createdAt || new Date()));
+    setClosedAt(manifest.closedAt ? dateTimeInputValue(manifest.closedAt) : '');
     setStatus(`Manifesto ${manifest.id} carregado para edição`);
   }
 
@@ -374,6 +394,9 @@ export default function GenerateManifestPage() {
     }
 
     const generatedManifestNumber = manifestNumber.trim().toUpperCase() || nextManifestNumber();
+    const currentManifest = manifests.find((manifest) => normalizeText(manifest.id) === normalizeText(generatedManifestNumber));
+    const nextStartedAt = startedAt || currentManifest?.startedAt || currentManifest?.createdAt || new Date().toISOString();
+    const nextClosedAt = manifestStatus === 'Fechado' ? (closedAt || new Date().toISOString()) : closedAt;
     const nextManifest = {
       id: generatedManifestNumber,
       unit,
@@ -391,7 +414,10 @@ export default function GenerateManifestPage() {
       insurancePolicy,
       manifestType,
       status: manifestStatus,
-      createdAt: new Date().toISOString(),
+      startedAt: nextStartedAt,
+      closedAt: nextClosedAt,
+      createdAt: currentManifest?.createdAt || nextStartedAt,
+      updatedAt: new Date().toISOString(),
     };
     const nextManifests = saveManifest(nextManifest);
     setManifests(nextManifests);
@@ -421,6 +447,8 @@ export default function GenerateManifestPage() {
     setInsurancePolicy(insurance.insurancePolicy);
     setManifestType('Manifesto de Trânsito');
     setManifestStatus('Emitido');
+    setStartedAt(dateTimeInputValue());
+    setClosedAt('');
     setStatus('');
   }
 
@@ -503,10 +531,35 @@ export default function GenerateManifestPage() {
 
           <label className="field">
             <span>Status do manifesto</span>
-            <select value={manifestStatus} onChange={(event) => setManifestStatus(event.target.value)}>
+            <select
+              value={manifestStatus}
+              onChange={(event) => {
+                setManifestStatus(event.target.value);
+                if (event.target.value !== 'Fechado') {
+                  setClosedAt('');
+                }
+              }}
+            >
               <option>Emitido</option>
+              <option>Fechado</option>
               <option>Cancelado</option>
             </select>
+          </label>
+
+          <label className="field">
+            <span>Inicio do manifesto</span>
+            <input type="datetime-local" value={startedAt} onChange={(event) => setStartedAt(event.target.value)} required />
+          </label>
+
+          <label className="field">
+            <span>Fechamento do manifesto</span>
+            <input
+              type="datetime-local"
+              value={closedAt}
+              onChange={(event) => setClosedAt(event.target.value)}
+              disabled={manifestStatus !== 'Fechado'}
+              required={manifestStatus === 'Fechado'}
+            />
           </label>
         </div>
 

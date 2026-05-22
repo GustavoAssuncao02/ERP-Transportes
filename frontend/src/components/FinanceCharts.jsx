@@ -69,7 +69,16 @@ export function LineChart({ data }) {
   );
 }
 
-export function PieChart({ data }) {
+function formatPercentage(value, total) {
+  if (!total) return '0%';
+
+  return `${((value / total) * 100).toLocaleString('pt-BR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  })}%`;
+}
+
+export function PieChart({ data, showPercentage = false }) {
   const total = data.reduce((sum, item) => sum + item.value, 0);
   let cumulative = 0;
 
@@ -105,7 +114,10 @@ export function PieChart({ data }) {
           <div className="pie-legend-row" key={item.label}>
             <span style={{ background: palette[index % palette.length] }} />
             <strong>{item.label}</strong>
-            <em>{item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</em>
+            <em>
+              {item.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              {showPercentage ? ` - ${formatPercentage(item.value, total)}` : ''}
+            </em>
           </div>
         ))}
       </div>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import AddressFields from '../components/AddressFields.jsx';
 import DataTable from '../components/DataTable.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
@@ -15,14 +16,18 @@ import {
   saveDriver,
 } from '../data/transportRegistry.js';
 import { getDriverDeletionBlockers } from '../data/deletionRules.js';
+import { getRegisteredSuppliers, saveSupplier } from '../data/managementRegistry.js';
+import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const licenseCategories = ['B', 'C', 'D', 'E'];
+const blankAddress = blankAddressFields();
 
 const driverSortColumns = [
   { key: 'cpf', label: 'CPF', type: 'text', getValue: (driver) => formatCpf(driver.cpf), render: (driver) => <strong>{formatCpf(driver.cpf)}</strong> },
   { key: 'name', label: 'Nome', type: 'text', getValue: (driver) => driver.name },
   { key: 'phone', label: 'Telefone', type: 'text', getValue: (driver) => driver.phone },
+  { key: 'supplierCode', label: 'Fornecedor', type: 'text', getValue: (driver) => driver.supplierCode || '-' },
   { key: 'cnh', label: 'CNH', type: 'text', getValue: (driver) => `${driver.cnh} ${driver.category}`, render: (driver) => `${driver.cnh} / ${driver.category}` },
   { key: 'status', label: 'Status', type: 'text', getValue: (driver) => driver.status, status: true },
 ];
@@ -35,6 +40,26 @@ function pendingCpf() {
   }
 }
 
+function findSupplierForDriver(driverOrCpf) {
+  const cpf = onlyDigits(driverOrCpf?.cpf || driverOrCpf);
+  const supplierCode = String(driverOrCpf?.supplierCode || '').trim();
+
+  return getRegisteredSuppliers().find((supplier) => (
+    supplier.id === supplierCode
+    || supplier.code === supplierCode
+    || onlyDigits(supplier.cnpj) === cpf
+  )) || null;
+}
+
+function driverAddressFields(driver) {
+  const supplier = findSupplierForDriver(driver);
+  return normalizeAddressFields({
+    ...blankAddress,
+    ...(supplier || {}),
+    ...driver,
+  });
+}
+
 export default function DriverRegistrationPage() {
   const [drivers, setDrivers] = useState(getRegisteredDrivers);
   const [cpf, setCpf] = useState(pendingCpf);
@@ -42,6 +67,8 @@ export default function DriverRegistrationPage() {
   const [phone, setPhone] = useState('');
   const [cnh, setCnh] = useState('');
   const [category, setCategory] = useState('E');
+  const [supplierCode, setSupplierCode] = useState('');
+  const [address, setAddress] = useState(blankAddress);
   const [statusValue, setStatusValue] = useState('Ativo');
   const [cpfError, setCpfError] = useState('');
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -64,7 +91,7 @@ export default function DriverRegistrationPage() {
     if (!query) return sortedDrivers;
 
     return sortedDrivers.filter((driver) => (
-      normalizeText(`${driver.name} ${formatCpf(driver.cpf)} ${driver.cnh} ${driver.phone} ${driver.status}`).includes(query)
+      normalizeText(`${driver.name} ${formatCpf(driver.cpf)} ${driver.cnh} ${driver.phone} ${driver.supplierCode} ${driver.address} ${driver.status}`).includes(query)
     ));
   }, [driverSearch, sortedDrivers]);
   const lookupDrivers = useMemo(() => {
@@ -75,11 +102,20 @@ export default function DriverRegistrationPage() {
   }, [lookupSearch, sortedDrivers]);
 
   function loadDriver(driver) {
+    const normalizedDriver = driverAddressFields(driver);
     setCpf(formatCpf(driver.cpf));
     setName(driver.name || '');
     setPhone(driver.phone || '');
     setCnh(driver.cnh || '');
     setCategory(driver.category || 'E');
+    setSupplierCode(driver.supplierCode || findSupplierForDriver(driver)?.id || '');
+    setAddress({
+      zipCode: normalizedDriver.zipCode || '',
+      street: normalizedDriver.street || '',
+      addressNumber: normalizedDriver.addressNumber || '',
+      district: normalizedDriver.district || '',
+      address: normalizedDriver.address || '',
+    });
     setStatusValue(driver.status || 'Ativo');
     setCpfError('');
     setMessage(`Motorista ${driver.name} carregado para edição`);
@@ -99,6 +135,22 @@ export default function DriverRegistrationPage() {
       const driver = findDriverByCpf(nextCpf);
       if (driver) {
         loadDriver(driver);
+        return;
+      }
+
+      const supplier = findSupplierForDriver(nextCpf);
+      if (supplier) {
+        const normalizedSupplier = normalizeAddressFields(supplier);
+        setSupplierCode(supplier.id || supplier.code || '');
+        setName((current) => current || supplier.name || '');
+        setPhone((current) => current || supplier.contact || '');
+        setAddress({
+          zipCode: normalizedSupplier.zipCode || '',
+          street: normalizedSupplier.street || '',
+          addressNumber: normalizedSupplier.addressNumber || '',
+          district: normalizedSupplier.district || '',
+          address: normalizedSupplier.address || '',
+        });
       }
     }
   }
@@ -112,12 +164,25 @@ export default function DriverRegistrationPage() {
       return;
     }
 
+    const savedSuppliers = saveSupplier({
+      id: supplierCode || '',
+      name,
+      cnpj: cpf,
+      contact: phone,
+      email: '',
+      ...address,
+      active: statusValue === 'Ativo',
+    });
+    const linkedSupplier = savedSuppliers.find((supplier) => onlyDigits(supplier.cnpj) === onlyDigits(cpf));
+    const nextAddress = normalizeAddressFields(address);
     const nextDrivers = saveDriver({
       cpf,
       name,
       phone,
       cnh,
       category,
+      supplierCode: linkedSupplier?.id || supplierCode,
+      ...nextAddress,
       status: statusValue,
     });
 
@@ -128,7 +193,15 @@ export default function DriverRegistrationPage() {
     }
 
     setDrivers(nextDrivers);
-    setMessage(`Motorista ${name} cadastrado`);
+    setSupplierCode(linkedSupplier?.id || supplierCode);
+    setAddress({
+      zipCode: nextAddress.zipCode || '',
+      street: nextAddress.street || '',
+      addressNumber: nextAddress.addressNumber || '',
+      district: nextAddress.district || '',
+      address: nextAddress.address || '',
+    });
+    setMessage(`Motorista ${name} cadastrado e fornecedor ${linkedSupplier?.id || supplierCode} vinculado`);
   }
 
   function openLookup() {
@@ -146,12 +219,24 @@ export default function DriverRegistrationPage() {
     closeLookup();
   }
 
+  function updateAddressField(field, value) {
+    setAddress((current) => normalizeAddressFields({ ...current, [field]: value }));
+    setMessage('');
+  }
+
+  function updateAddressFields(updates) {
+    setAddress((current) => normalizeAddressFields({ ...current, ...updates }));
+    setMessage('');
+  }
+
   function handleReset() {
     setCpf('');
     setName('');
     setPhone('');
     setCnh('');
     setCategory('E');
+    setSupplierCode('');
+    setAddress(blankAddress);
     setStatusValue('Ativo');
     setCpfError('');
     closeLookup();
@@ -183,6 +268,8 @@ export default function DriverRegistrationPage() {
     setPhone('');
     setCnh('');
     setCategory('E');
+    setSupplierCode('');
+    setAddress(blankAddress);
     setStatusValue('Ativo');
     setCpfError('');
     closeLookup();
@@ -251,6 +338,18 @@ export default function DriverRegistrationPage() {
           </label>
 
           <label className="field">
+            <span>Fornecedor gerado</span>
+            <input type="text" value={supplierCode || 'Gerado ao salvar'} readOnly />
+          </label>
+
+          <AddressFields
+            values={address}
+            onChange={updateAddressField}
+            onChangeMany={updateAddressFields}
+            onStatus={setMessage}
+          />
+
+          <label className="field">
             <span>Status</span>
             <select value={statusValue} onChange={(event) => setStatusValue(event.target.value)}>
               <option>Ativo</option>
@@ -286,7 +385,7 @@ export default function DriverRegistrationPage() {
         summary={<span>{visibleDrivers.length} motorista(s)</span>}
         panelClassName="registry-list-panel"
         tableClassName="registry-table"
-        minWidth={760}
+        minWidth={920}
         emptyMessage="Nenhum motorista encontrado"
       />
 

@@ -1,11 +1,11 @@
-import { businessUnits, financeLaunches, normalizeText } from './financeData.js';
+import { businessUnits, getFinanceLaunches, normalizeText } from './financeData.js';
 import {
   getRegisteredCtes,
   getRegisteredCollectionOrders,
   getRegisteredManifests,
   getRegisteredMinutas,
 } from './operationRegistry.js';
-import { getRegisteredVehicles, normalizePlate, onlyDigits } from './transportRegistry.js';
+import { getRegisteredDrivers, getRegisteredVehicles, normalizePlate, onlyDigits } from './transportRegistry.js';
 
 function addBlocker(blockers, label, matched) {
   if (matched && !blockers.includes(label)) {
@@ -54,7 +54,7 @@ export function getSupplierDeletionBlockers(supplier) {
   const blockers = [];
   const candidates = getSupplierCandidates(supplier);
 
-  addBlocker(blockers, 'lancamentos financeiros', financeLaunches.some((launch) => (
+  addBlocker(blockers, 'lancamentos financeiros', getFinanceLaunches().some((launch) => (
     matchesAny(launch.supplier, candidates) || matchesAny(launch.supplierCode, candidates)
   )));
 
@@ -70,6 +70,12 @@ export function getSupplierDeletionBlockers(supplier) {
   )));
 
   addBlocker(blockers, 'CT-e', getRegisteredCtes().some((cte) => matchesAny(cte.issuer, candidates)));
+
+  addBlocker(blockers, 'motoristas', getRegisteredDrivers().some((driver) => (
+    matchesAny(driver.supplierCode, candidates)
+    || matchesAny(driver.name, candidates)
+    || matchesAny(onlyDigits(driver.cpf), candidates)
+  )));
 
   return blockers;
 }
@@ -96,7 +102,7 @@ export function getUnitDeletionBlockers(unit) {
   const blockers = [];
   const candidates = getUnitCandidates(unit);
 
-  addBlocker(blockers, 'lancamentos financeiros', financeLaunches.some((launch) => matchesAny(launch.unit, candidates)));
+  addBlocker(blockers, 'lancamentos financeiros', getFinanceLaunches().some((launch) => matchesAny(launch.unit, candidates)));
   addBlocker(blockers, 'veiculos', getRegisteredVehicles().some((vehicle) => matchesAny(vehicle.unit, candidates)));
   addBlocker(blockers, 'CT-e', getRegisteredCtes().some((cte) => matchesAny(cte.unit, candidates)));
   addBlocker(blockers, 'manifestos', getRegisteredManifests().some((manifest) => matchesAny(manifest.unit, candidates)));
@@ -139,6 +145,11 @@ export function getDriverDeletionBlockers(driver) {
 
   addBlocker(blockers, 'manifestos', getRegisteredManifests().some((manifest) => (
     onlyDigits(manifest.driverCpf) === cpf || matchesAny(manifest.driverName, names)
+  )));
+
+  addBlocker(blockers, 'lancamentos financeiros', getFinanceLaunches().some((launch) => (
+    matchesAny(launch.supplierCode, [driver.supplierCode, cpf])
+    || matchesAny(launch.supplier, [driver.supplierCode, ...names])
   )));
 
   return blockers;

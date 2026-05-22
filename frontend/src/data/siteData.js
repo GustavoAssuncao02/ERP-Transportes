@@ -87,6 +87,11 @@ export const navigationItems = [
         ],
       },
       {
+        id: 'prestacao-conta',
+        label: 'Prestacao de conta',
+        pageId: 'driver-accountability',
+      },
+      {
         id: 'consultar-lancamentos',
         label: 'Consultar Lançamentos',
         pageId: 'registered-launches',

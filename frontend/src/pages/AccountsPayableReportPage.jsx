@@ -3,15 +3,13 @@ import { Save } from 'lucide-react';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
-  accountingTypeNames,
+  accountingTypes,
   businessUnits,
   chargeTypes,
   currency,
-  documentNumbers,
-  financeLaunches,
+  getFinanceLaunches,
   normalizeText,
   paymentBanks,
-  supplierNames,
   todayValue,
 } from '../data/financeData.js';
 import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
@@ -26,10 +24,16 @@ const searchTypes = [
   { value: 'paymentForecastDate', label: 'Data de Previsao de Pagamento' },
 ];
 
-const reportLaunches = financeLaunches.map((launch) => ({
+const reportLaunches = getFinanceLaunches().map((launch) => ({
   ...launch,
   paymentMethod: launch.chargeType,
 }));
+const supplierNames = [...new Set(reportLaunches.map((launch) => launch.supplier))];
+const accountingTypeNames = [...new Set([
+  ...accountingTypes.map((type) => type.name),
+  ...reportLaunches.map((launch) => launch.type),
+])];
+const documentNumbers = [...new Set(reportLaunches.map((launch) => launch.document))];
 
 const bankOptions = ['Sem banco', ...paymentBanks];
 

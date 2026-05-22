@@ -1,13 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import {
-  accountingTypeNames,
   businessUnits,
   currency,
-  financeLaunches,
+  financeLaunchesUpdatedEventName,
+  getFinanceAccountingTypeNames,
+  getFinanceLaunches,
+  getFinanceSupplierNames,
   normalizeText,
   paymentBanks,
-  supplierNames,
 } from '../data/financeData.js';
 import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
@@ -110,24 +111,54 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
 }
 
 export default function RegisteredLaunchesPage({ onEditLaunch }) {
+  const [launches, setLaunches] = useState(getFinanceLaunches);
   const [businessUnit, setBusinessUnit] = useState('');
   const [searchType, setSearchType] = useState('issueDate');
   const [statusFilter, setStatusFilter] = useState('Ambos');
-  const [selectedSuppliers, setSelectedSuppliers] = useState(supplierNames);
-  const [selectedTypes, setSelectedTypes] = useState(accountingTypeNames);
+  const [selectedSuppliers, setSelectedSuppliers] = useState(() => getFinanceSupplierNames(getFinanceLaunches()));
+  const [selectedTypes, setSelectedTypes] = useState(() => getFinanceAccountingTypeNames(getFinanceLaunches()));
   const [selectedBanks, setSelectedBanks] = useState(bankOptions);
   const [dateStart, setDateStart] = useState('');
   const [dateEnd, setDateEnd] = useState('');
   const [minValue, setMinValue] = useState('');
   const [maxValue, setMaxValue] = useState('');
   const [launchSort, setLaunchSort] = useState({ key: 'id', direction: 'desc' });
+  const supplierOptions = useMemo(() => getFinanceSupplierNames(launches), [launches]);
+  const typeOptions = useMemo(() => getFinanceAccountingTypeNames(launches), [launches]);
+
+  useEffect(() => {
+    function refreshLaunches() {
+      setLaunches(getFinanceLaunches());
+    }
+
+    window.addEventListener(financeLaunchesUpdatedEventName, refreshLaunches);
+    window.addEventListener('storage', refreshLaunches);
+    return () => {
+      window.removeEventListener(financeLaunchesUpdatedEventName, refreshLaunches);
+      window.removeEventListener('storage', refreshLaunches);
+    };
+  }, []);
+
+  useEffect(() => {
+    setSelectedSuppliers((current) => {
+      const validSelection = current.filter((supplier) => supplierOptions.includes(supplier));
+      return validSelection.length ? validSelection : supplierOptions;
+    });
+  }, [supplierOptions]);
+
+  useEffect(() => {
+    setSelectedTypes((current) => {
+      const validSelection = current.filter((type) => typeOptions.includes(type));
+      return validSelection.length ? validSelection : typeOptions;
+    });
+  }, [typeOptions]);
 
   const filteredLaunches = useMemo(() => {
     const min = numberValue(minValue);
     const max = numberValue(maxValue);
     const selectedDateField = searchTypes.find((type) => type.field === searchType)?.field || 'issueDate';
 
-    return financeLaunches.filter((launch) => {
+    return launches.filter((launch) => {
       const dateValue = launch[selectedDateField];
       const unitMatches = !businessUnit || launch.unit === businessUnit;
       const statusMatches = statusFilter === 'Ambos' || launch.status === statusFilter;
@@ -141,7 +172,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
 
       return unitMatches && statusMatches && bankMatches && supplierMatches && typeMatches && startMatches && endMatches && minMatches && maxMatches;
     });
-  }, [businessUnit, dateEnd, dateStart, maxValue, minValue, searchType, selectedBanks, selectedSuppliers, selectedTypes, statusFilter]);
+  }, [businessUnit, dateEnd, dateStart, launches, maxValue, minValue, searchType, selectedBanks, selectedSuppliers, selectedTypes, statusFilter]);
 
   const filteredTotal = filteredLaunches.reduce((total, launch) => total + launch.amount, 0);
   const sortedFilteredLaunches = useMemo(
@@ -158,8 +189,8 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
     setBusinessUnit('');
     setSearchType('issueDate');
     setStatusFilter('Ambos');
-    setSelectedSuppliers(supplierNames);
-    setSelectedTypes(accountingTypeNames);
+    setSelectedSuppliers(supplierOptions);
+    setSelectedTypes(typeOptions);
     setSelectedBanks(bankOptions);
     setDateStart('');
     setDateEnd('');
@@ -218,7 +249,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
 
           <MultiCheckField
             label="Fornecedor"
-            options={supplierNames}
+            options={supplierOptions}
             selected={selectedSuppliers}
             onChange={setSelectedSuppliers}
             placeholder="Pesquisar fornecedor"
@@ -226,7 +257,7 @@ export default function RegisteredLaunchesPage({ onEditLaunch }) {
 
           <MultiCheckField
             label="Tipo"
-            options={accountingTypeNames}
+            options={typeOptions}
             selected={selectedTypes}
             onChange={setSelectedTypes}
             placeholder="Pesquisar tipo contábil"

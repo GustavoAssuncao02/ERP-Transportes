@@ -8,14 +8,17 @@ import {
   chargeTypes,
   currency,
   findFinanceLaunchById,
-  financeLaunches,
   formatAccountingType,
   formatSupplier,
   formatUnit,
+  getFinanceLaunches,
+  nextFinanceLaunchNumber,
   suppliers,
   todayValue,
   toNumber,
+  upsertFinanceLaunch,
 } from '../data/financeData.js';
+import { getRegisteredSuppliers } from '../data/managementRegistry.js';
 
 const defaultUnit = businessUnits[0].label;
 
@@ -32,9 +35,7 @@ const lookupConfig = {
   launch: {
     title: 'Pesquisar lançamento',
     columns: ['Lançamento', 'Data', 'Fornecedor', 'Documento', 'Situação', 'Valor'],
-    items: [...financeLaunches].sort((left, right) => (
-      dateDistance(left.dueDate || left.issueDate || left.createdDate) - dateDistance(right.dueDate || right.issueDate || right.createdDate)
-    )),
+    items: [],
     format: (item) => item.id,
   },
   unit: {
@@ -104,18 +105,7 @@ function buildInstallments({ total, quantity, dueDate, interval, fixedValue }) {
 }
 
 function nextLaunchNumber() {
-  const now = new Date();
-  const key = 'accountsPayableSequence';
-  let sequence = 1;
-
-  try {
-    sequence = Number.parseInt(localStorage.getItem(key) || '0', 10) + 1;
-    localStorage.setItem(key, String(sequence));
-  } catch {
-    sequence = now.getTime() % 100000;
-  }
-
-  return `CAP-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(sequence).padStart(5, '0')}`;
+  return nextFinanceLaunchNumber('CAP');
 }
 
 function getLookupCells(type, item) {
@@ -131,13 +121,66 @@ function getLookupCells(type, item) {
   }
 
   if (type === 'supplier') {
-    return [item.code, item.name, item.cnpj];
+    return [item.code || item.id, item.name, item.cnpj];
   }
 
   return [item.code, item.name];
 }
 
+function codeFromLabel(value) {
+  return String(value || '').match(/\d{3,}/)?.[0] || String(value || '').trim();
+}
+
+function supplierFromLabel(value, supplierOptions) {
+  const code = codeFromLabel(value);
+  const query = String(value || '').trim();
+
+  return supplierOptions.find((supplier) => (
+    supplier.id === code
+    || supplier.code === code
+    || query.includes(supplier.name)
+    || query.includes(supplier.cnpj)
+  )) || {
+    id: code,
+    code,
+    name: query.replace(/^\d+\s+-\s+/, '').split(' - ')[0] || query,
+    cnpj: '',
+  };
+}
+
+function accountingTypeFromLabel(value) {
+  const code = codeFromLabel(value);
+  const query = String(value || '').trim();
+
+  return accountingTypes.find((type) => (
+    type.code === code
+    || query.includes(type.name)
+  )) || {
+    code,
+    name: query.replace(/^\d+\s+-\s+/, '') || query,
+  };
+}
+
+function serializeAttachments(attachments) {
+  return attachments.map((attachment) => ({
+    id: attachment.id || `${attachment.name}-${attachment.size || 0}`,
+    name: attachment.name,
+    type: attachment.type || 'Documento anexado',
+    size: attachment.size || 0,
+    source: attachment.source || 'local',
+    url: attachment.url || '',
+  }));
+}
+
 export default function AccountsPayablePage({ initialLaunch = null }) {
+  const [launches, setLaunches] = useState(getFinanceLaunches);
+  const supplierOptions = useMemo(() => {
+    const registeredSuppliers = getRegisteredSuppliers();
+    const registeredIds = new Set(registeredSuppliers.map((supplier) => supplier.id || supplier.code));
+    const fallbackSuppliers = suppliers.filter((supplier) => !registeredIds.has(supplier.code));
+
+    return [...registeredSuppliers, ...fallbackSuppliers];
+  }, []);
   const [unit, setUnit] = useState(defaultUnit);
   const [launchNumber, setLaunchNumber] = useState('');
   const [loadedLaunchId, setLoadedLaunchId] = useState('');
@@ -162,7 +205,21 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
   const [attachments, setAttachments] = useState([]);
   const [status, setStatus] = useAutoClearMessage();
 
-  const activeLookup = lookupType ? lookupConfig[lookupType] : null;
+  const lookupConfigMap = useMemo(() => ({
+    ...lookupConfig,
+    launch: {
+      ...lookupConfig.launch,
+      items: [...launches].sort((left, right) => (
+        dateDistance(left.dueDate || left.issueDate || left.createdDate) - dateDistance(right.dueDate || right.issueDate || right.createdDate)
+      )),
+    },
+    supplier: {
+      ...lookupConfig.supplier,
+      items: supplierOptions,
+      format: (item) => `${item.id || item.code} - ${item.name} - ${item.cnpj}`,
+    },
+  }), [launches, supplierOptions]);
+  const activeLookup = lookupType ? lookupConfigMap[lookupType] : null;
   const isSettledLaunch = loadedLaunchStatus === 'Baixado';
   const lookupItems = useMemo(() => {
     if (!activeLookup) return [];
@@ -327,6 +384,40 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
       return;
     }
 
+    const supplierRecord = supplierFromLabel(supplier, supplierOptions);
+    const accountingTypeRecord = accountingTypeFromLabel(accountingType);
+    const existingLaunch = launches.find((launch) => launch.id === generatedLaunchNumber);
+    const savedLaunches = upsertFinanceLaunch({
+      id: generatedLaunchNumber,
+      unit: codeFromLabel(unit),
+      supplier: supplierRecord.name,
+      supplierCode: supplierRecord.id || supplierRecord.code,
+      type: accountingTypeRecord.name,
+      accountingTypeCode: accountingTypeRecord.code,
+      document: documentNumber,
+      chargeType,
+      paymentBank,
+      issueDate,
+      dueDate,
+      createdDate: existingLaunch?.createdDate || todayValue(),
+      createdAt: existingLaunch?.createdAt || new Date().toISOString(),
+      paymentDate: '',
+      appropriationDate: issueDate,
+      paymentForecastDate: dueDate,
+      amount: toNumber(launchValue),
+      interestAmount: existingLaunch?.interestAmount || 0,
+      discountAmount: existingLaunch?.discountAmount || 0,
+      finalAmount: existingLaunch?.finalAmount || 0,
+      status: 'Aberto',
+      notes,
+      settlementNote,
+      installments,
+      attachments: serializeAttachments(attachments),
+    }, {
+      summary: loadedLaunchId ? 'Conta a pagar atualizada' : 'Conta a pagar criada',
+    });
+
+    setLaunches(savedLaunches);
     setLaunchNumber(generatedLaunchNumber);
     setLoadedLaunchId(generatedLaunchNumber);
     setLoadedLaunchStatus('Aberto');
@@ -702,7 +793,7 @@ export default function AccountsPayablePage({ initialLaunch = null }) {
                 </thead>
                 <tbody>
                   {lookupItems.map((item) => (
-                    <tr key={`${lookupType}-${item.code}`} onClick={() => selectLookupItem(item)}>
+                    <tr key={`${lookupType}-${item.id || item.code}`} onClick={() => selectLookupItem(item)}>
                       {getLookupCells(lookupType, item).map((cell) => (
                         <td key={cell}>{cell}</td>
                       ))}

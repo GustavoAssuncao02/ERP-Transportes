@@ -5,7 +5,7 @@ import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   businessUnits,
   currency,
-  financeLaunches,
+  getFinanceLaunches,
   normalizeText,
 } from '../data/financeData.js';
 import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
@@ -18,7 +18,7 @@ const searchTypes = [
   { label: 'Data de Previsao de Pagamento', field: 'paymentForecastDate' },
 ];
 
-const deletableLaunches = financeLaunches.filter((launch) => launch.status === 'Aberto');
+const deletableLaunches = getFinanceLaunches().filter((launch) => launch.status === 'Aberto');
 const supplierOptions = [...new Set(deletableLaunches.map((launch) => launch.supplier))];
 const typeOptions = [...new Set(deletableLaunches.map((launch) => launch.type))];
 const chargeTypeOptions = [...new Set(deletableLaunches.map((launch) => launch.chargeType))];

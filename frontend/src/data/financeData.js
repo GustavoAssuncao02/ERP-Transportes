@@ -1,3 +1,6 @@
+import { recordAuditEvent, auditActions } from '../services/auditLog.js';
+import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
+
 export const businessUnits = [
   { value: '001', code: '001', name: 'JTD Transportes LTDA', label: '001 - JTD Transportes LTDA' },
   { value: '002', code: '002', name: 'JTD Logística Nordeste', label: '002 - JTD Logística Nordeste' },
@@ -80,6 +83,7 @@ export const accountingTypes = [
   { code: '04', name: 'Pedágio' },
   { code: '05', name: 'Administrativo' },
   { code: '06', name: 'Seguro' },
+  { code: '07', name: 'Saldo de Prestacao de conta' },
 ];
 
 export const chargeTypes = [
@@ -105,6 +109,10 @@ export const paymentBanks = [
   'Caixa Econômica',
   'Sicoob',
 ];
+
+export const financeLaunchStorageKey = 'financeLaunchesRegistry';
+export const financeLaunchesUpdatedEventName = 'financeLaunches:updated';
+export const settlementBalanceAccountingType = 'Saldo de Prestacao de conta';
 
 export const financeLaunches = [
   {
@@ -391,6 +399,149 @@ export const supplierNames = [...new Set(financeLaunches.map((launch) => launch.
 export const accountingTypeNames = [...new Set(accountingTypes.map((type) => type.name))];
 export const documentNumbers = [...new Set(financeLaunches.map((launch) => launch.document))];
 
+function emitFinanceLaunchesUpdated() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(financeLaunchesUpdatedEventName));
+  }
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.filter(Boolean))]
+    .sort((left, right) => String(left).localeCompare(String(right), 'pt-BR'));
+}
+
+function normalizeFinanceLaunch(launch) {
+  return {
+    ...launch,
+    id: String(launch.id || '').trim(),
+    unit: String(launch.unit || '').trim(),
+    supplier: String(launch.supplier || '').trim(),
+    supplierCode: String(launch.supplierCode || '').trim(),
+    type: String(launch.type || '').trim(),
+    accountingTypeCode: String(launch.accountingTypeCode || '').trim(),
+    document: String(launch.document || '').trim(),
+    chargeType: String(launch.chargeType || '').trim(),
+    paymentBank: String(launch.paymentBank || '').trim(),
+    issueDate: launch.issueDate || '',
+    dueDate: launch.dueDate || '',
+    createdDate: launch.createdDate || launch.issueDate || '',
+    paymentDate: launch.paymentDate || '',
+    appropriationDate: launch.appropriationDate || launch.issueDate || '',
+    paymentForecastDate: launch.paymentForecastDate || launch.dueDate || '',
+    amount: Number(launch.amount || 0),
+    interestAmount: Number(launch.interestAmount || 0),
+    discountAmount: Number(launch.discountAmount || 0),
+    finalAmount: Number(launch.finalAmount || 0),
+    status: launch.status || 'Aberto',
+    notes: launch.notes || '',
+    settlementNote: launch.settlementNote || '',
+    installments: Array.isArray(launch.installments) ? launch.installments : undefined,
+    attachments: Array.isArray(launch.attachments) ? launch.attachments : [],
+  };
+}
+
+function writeFinanceLaunches(records) {
+  const normalizedRecords = records.map(normalizeFinanceLaunch).filter((launch) => launch.id);
+  writeJsonStorage(financeLaunchStorageKey, normalizedRecords);
+  emitFinanceLaunchesUpdated();
+  return normalizedRecords;
+}
+
+export function getFinanceLaunches() {
+  return readJsonStorage(financeLaunchStorageKey, financeLaunches, {
+    validate: Array.isArray,
+  }).map(normalizeFinanceLaunch);
+}
+
+export function getFinanceSupplierNames(launches = getFinanceLaunches()) {
+  return uniqueSorted(launches.map((launch) => launch.supplier));
+}
+
+export function getFinanceAccountingTypeNames(launches = getFinanceLaunches()) {
+  return uniqueSorted([
+    ...accountingTypes.map((type) => type.name),
+    ...launches.map((launch) => launch.type),
+  ]);
+}
+
+export function getFinanceDocumentNumbers(launches = getFinanceLaunches()) {
+  return uniqueSorted(launches.map((launch) => launch.document));
+}
+
+export function upsertFinanceLaunch(record, options = {}) {
+  const launches = getFinanceLaunches();
+  const nextRecord = normalizeFinanceLaunch(record);
+  const existingIndex = launches.findIndex((launch) => normalizeText(launch.id) === normalizeText(nextRecord.id));
+  const previousRecord = existingIndex >= 0 ? launches[existingIndex] : null;
+  const nextLaunches = [...launches];
+
+  if (existingIndex >= 0) {
+    nextLaunches[existingIndex] = nextRecord;
+  } else {
+    nextLaunches.push(nextRecord);
+  }
+
+  const savedLaunches = writeFinanceLaunches(nextLaunches);
+
+  recordAuditEvent({
+    module: 'Financeiro',
+    action: previousRecord ? auditActions.update : auditActions.create,
+    entityType: 'lancamento financeiro',
+    entityId: nextRecord.id,
+    entityLabel: nextRecord.supplier || nextRecord.document || nextRecord.id,
+    before: previousRecord,
+    after: nextRecord,
+    summary: options.summary || (previousRecord ? 'Lancamento financeiro atualizado' : 'Lancamento financeiro criado'),
+  });
+
+  return savedLaunches;
+}
+
+export function deleteFinanceLaunch(id, options = {}) {
+  const launches = getFinanceLaunches();
+  const previousRecord = launches.find((launch) => normalizeText(launch.id) === normalizeText(id));
+  const nextLaunches = launches.filter((launch) => normalizeText(launch.id) !== normalizeText(id));
+
+  if (!previousRecord) {
+    return launches;
+  }
+
+  const savedLaunches = writeFinanceLaunches(nextLaunches);
+
+  recordAuditEvent({
+    module: 'Financeiro',
+    action: auditActions.delete,
+    entityType: 'lancamento financeiro',
+    entityId: previousRecord.id,
+    entityLabel: previousRecord.supplier || previousRecord.document || previousRecord.id,
+    before: previousRecord,
+    after: null,
+    summary: options.summary || 'Lancamento financeiro excluido',
+  });
+
+  return savedLaunches;
+}
+
+export function nextFinanceLaunchNumber(prefix = 'CAP') {
+  const now = new Date();
+  const key = `financeSequence:${prefix}`;
+  let sequence = 1;
+
+  try {
+    sequence = Number.parseInt(localStorage.getItem(key) || '0', 10) + 1;
+    localStorage.setItem(key, String(sequence));
+  } catch {
+    sequence = now.getTime() % 100000;
+  }
+
+  return `${prefix}-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(sequence).padStart(5, '0')}`;
+}
+
+export function isSettlementBalanceLaunch(launch) {
+  return normalizeText(launch?.type) === normalizeText(settlementBalanceAccountingType)
+    || normalizeText(launch?.accountingType) === normalizeText(settlementBalanceAccountingType);
+}
+
 export function currency(value) {
   return Number(value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -411,7 +562,7 @@ export function toNumber(value) {
 }
 
 export function findFinanceLaunchById(id) {
-  return financeLaunches.find((launch) => normalizeText(launch.id) === normalizeText(String(id).trim()));
+  return getFinanceLaunches().find((launch) => normalizeText(launch.id) === normalizeText(String(id).trim()));
 }
 
 export function formatUnit(unitCode) {

@@ -29,6 +29,7 @@ const BusinessIntelligencePage = lazy(() => import('./BusinessIntelligencePage.j
 const CollectionOrderPage = lazy(() => import('./CollectionOrderPage.jsx'));
 const CreateMinutaPage = lazy(() => import('./CreateMinutaPage.jsx'));
 const DriverRegistrationPage = lazy(() => import('./DriverRegistrationPage.jsx'));
+const DriverAccountabilityPage = lazy(() => import('./DriverAccountabilityPage.jsx'));
 const FleetManagementPage = lazy(() => import('./FleetManagementPage.jsx'));
 const GenerateManifestPage = lazy(() => import('./GenerateManifestPage.jsx'));
 const HomeShortcutsPage = lazy(() => import('./HomeShortcutsPage.jsx'));
@@ -310,6 +311,10 @@ export default function DashboardPage() {
 
     if (activeTabId === 'registered-launches') {
       return <RegisteredLaunchesPage onEditLaunch={openLaunchEditor} />;
+    }
+
+    if (activeTabId === 'driver-accountability') {
+      return <DriverAccountabilityPage />;
     }
 
     if (activeTabId === 'accounts-payable') {

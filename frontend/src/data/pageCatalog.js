@@ -14,6 +14,7 @@ export const pageCatalog = {
   'fleet-management': { title: 'Gestao de Frota', module: 'Operacao' },
   'bank-management': { title: 'Bancos', module: 'Financeiro' },
   'one-off-payment': { title: 'Movimentacao de Tesouraria', module: 'Financeiro' },
+  'driver-accountability': { title: 'Prestacao de conta', module: 'Financeiro' },
   'registered-launches': { title: 'Lancamentos Financeiros', module: 'Financeiro' },
   'accounts-payable-schedule': { title: 'Programacao de Contas a Pagar', module: 'Financeiro' },
   'accounts-payable': { title: 'Cadastro de Contas a Pagar', module: 'Financeiro' },

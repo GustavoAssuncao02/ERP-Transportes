@@ -2,8 +2,14 @@ import { useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import AttachmentPanel from '../components/AttachmentPanel.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
-import { chargeTypes, currency, financeLaunches } from '../data/financeData.js';
-import { getRegisteredBanks } from '../data/managementRegistry.js';
+import {
+  chargeTypes,
+  currency,
+  getFinanceLaunches,
+  nextFinanceLaunchNumber,
+  upsertFinanceLaunch,
+} from '../data/financeData.js';
+import { getRegisteredBanks, getRegisteredSuppliers } from '../data/managementRegistry.js';
 
 const units = [
   { code: '001', name: 'JTD Transportes LTDA' },
@@ -35,9 +41,7 @@ const lookupConfig = {
   payment: {
     title: 'Pesquisar pagamento',
     columns: ['Pagamento', 'Data', 'Fornecedor', 'Documento', 'Situação', 'Valor'],
-    items: financeLaunches
-      .filter((launch) => launch.id.startsWith('PAV-'))
-      .sort((left, right) => dateDistance(left.paymentDate || left.issueDate) - dateDistance(right.paymentDate || right.issueDate)),
+    items: [],
     format: (item) => item.id,
   },
   unit: {
@@ -82,18 +86,7 @@ function unitCodeFromValue(value) {
 }
 
 function nextPaymentNumber() {
-  const now = new Date();
-  const key = 'oneOffPaymentSequence';
-  let sequence = 1;
-
-  try {
-    sequence = Number.parseInt(localStorage.getItem(key) || '0', 10) + 1;
-    localStorage.setItem(key, String(sequence));
-  } catch {
-    sequence = now.getTime() % 100000;
-  }
-
-  return `PAV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${String(sequence).padStart(5, '0')}`;
+  return nextFinanceLaunchNumber('PAV');
 }
 
 function getLookupCells(type, item) {
@@ -109,13 +102,66 @@ function getLookupCells(type, item) {
   }
 
   if (type === 'supplier') {
-    return [item.code, item.name, item.cnpj];
+    return [item.code || item.id, item.name, item.cnpj];
   }
 
   return [item.code, item.name];
 }
 
+function codeFromLabel(value) {
+  return String(value || '').match(/\d{3,}/)?.[0] || String(value || '').trim();
+}
+
+function supplierFromLabel(value, supplierOptions) {
+  const code = codeFromLabel(value);
+  const query = String(value || '').trim();
+
+  return supplierOptions.find((supplier) => (
+    supplier.id === code
+    || supplier.code === code
+    || query.includes(supplier.name)
+    || query.includes(supplier.cnpj)
+  )) || {
+    id: code,
+    code,
+    name: query.replace(/^\d+\s+-\s+/, '').split(' - ')[0] || query,
+    cnpj: '',
+  };
+}
+
+function accountingTypeFromLabel(value) {
+  const code = codeFromLabel(value);
+  const query = String(value || '').trim();
+
+  return accountingTypes.find((type) => (
+    type.code === code
+    || query.includes(type.name)
+  )) || {
+    code,
+    name: query.replace(/^\d+\s+-\s+/, '') || query,
+  };
+}
+
+function serializeAttachments(attachments) {
+  return attachments.map((attachment) => ({
+    id: attachment.id || `${attachment.name}-${attachment.size || 0}`,
+    name: attachment.name,
+    type: attachment.type || 'Documento anexado',
+    size: attachment.size || 0,
+    source: attachment.source || 'local',
+    url: attachment.url || '',
+  }));
+}
+
 export default function OneOffPaymentPage() {
+  const [launches, setLaunches] = useState(getFinanceLaunches);
+  const supplierOptions = useMemo(() => {
+    const registeredSuppliers = getRegisteredSuppliers();
+    const registeredIds = new Set(registeredSuppliers.map((supplier) => supplier.id || supplier.code));
+    const fallbackSuppliers = suppliers.filter((supplier) => !registeredIds.has(supplier.code));
+
+    return [...registeredSuppliers, ...fallbackSuppliers];
+  }, []);
   const [unit, setUnit] = useState(defaultUnit);
   const [paymentNumber, setPaymentNumber] = useState('');
   const [supplier, setSupplier] = useState('');
@@ -134,7 +180,21 @@ export default function OneOffPaymentPage() {
   const [supplierSearchBy, setSupplierSearchBy] = useState('name');
   const [status, setStatus] = useAutoClearMessage();
 
-  const activeLookup = lookupType ? lookupConfig[lookupType] : null;
+  const lookupConfigMap = useMemo(() => ({
+    ...lookupConfig,
+    payment: {
+      ...lookupConfig.payment,
+      items: launches
+        .filter((launch) => String(launch.id || '').startsWith('PAV-'))
+        .sort((left, right) => dateDistance(left.paymentDate || left.issueDate) - dateDistance(right.paymentDate || right.issueDate)),
+    },
+    supplier: {
+      ...lookupConfig.supplier,
+      items: supplierOptions,
+      format: (item) => `${item.id || item.code} - ${item.name} - ${item.cnpj}`,
+    },
+  }), [launches, supplierOptions]);
+  const activeLookup = lookupType ? lookupConfigMap[lookupType] : null;
   const selectedUnitCode = unitCodeFromValue(unit);
   const bankOptions = useMemo(() => getRegisteredBanks()
     .filter((bank) => bank.active && bank.unit === selectedUnitCode)
@@ -205,8 +265,8 @@ export default function OneOffPaymentPage() {
   }
 
   function formatSupplierLabel(launch) {
-    const selectedSupplier = suppliers.find((item) => item.code === launch.supplierCode || item.name === launch.supplier);
-    return selectedSupplier ? `${selectedSupplier.code} - ${selectedSupplier.name} - ${selectedSupplier.cnpj}` : launch.supplier;
+    const selectedSupplier = supplierOptions.find((item) => item.id === launch.supplierCode || item.code === launch.supplierCode || item.name === launch.supplier);
+    return selectedSupplier ? `${selectedSupplier.id || selectedSupplier.code} - ${selectedSupplier.name} - ${selectedSupplier.cnpj}` : launch.supplier;
   }
 
   function formatAccountingTypeLabel(launch) {
@@ -247,7 +307,39 @@ export default function OneOffPaymentPage() {
     }
 
     const generatedPaymentNumber = paymentNumber || nextPaymentNumber();
+    const supplierRecord = supplierFromLabel(supplier, supplierOptions);
+    const accountingTypeRecord = accountingTypeFromLabel(accountingType);
+    const paymentAmount = numberValue(paymentValue);
+    const savedLaunches = upsertFinanceLaunch({
+      id: generatedPaymentNumber,
+      unit: unitCodeFromValue(unit),
+      supplier: supplierRecord.name,
+      supplierCode: supplierRecord.id || supplierRecord.code,
+      type: accountingTypeRecord.name,
+      accountingTypeCode: accountingTypeRecord.code,
+      document: documentNumber,
+      chargeType: paymentMethod,
+      paymentBank,
+      issueDate: paymentDate,
+      dueDate: paymentDate,
+      createdDate: todayValue(),
+      createdAt: new Date().toISOString(),
+      paymentDate,
+      appropriationDate: paymentDate,
+      paymentForecastDate: paymentDate,
+      amount: paymentAmount,
+      interestAmount: paymentType === 'Juros' ? numberValue(adjustmentAmount) : 0,
+      discountAmount: paymentType === 'Desconto' ? numberValue(adjustmentAmount) : 0,
+      finalAmount: finalPaymentValue,
+      status: 'Baixado',
+      notes,
+      settlementNote: '',
+      attachments: serializeAttachments(attachments),
+    }, {
+      summary: 'Movimentacao avulsa baixada',
+    });
 
+    setLaunches(savedLaunches);
     setPaymentNumber(generatedPaymentNumber);
     setStatus(`Movimentação ${generatedPaymentNumber} baixada em ${paymentDate} no valor final de ${currency(finalPaymentValue)} com ${attachments.length} anexo(s)`);
   }

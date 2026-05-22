@@ -1177,6 +1177,12 @@
   font-weight: 600;
 }
 
+.launch-status-pill--warning {
+  border-color: #f1c27d;
+  background: #fff7e8;
+  color: #8a5200;
+}
+
 .multi-check-field {
   min-height: 220px;
 }
@@ -6346,6 +6352,77 @@
   margin-top: 16px;
 }
 
+.driver-accountability-form {
+  display: grid;
+  gap: 18px;
+}
+
+.accountability-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.accountability-layout,
+.accountability-adjustment-layout {
+  align-items: start;
+}
+
+.accountability-table {
+  min-width: 920px;
+}
+
+.accountability-row--muted {
+  color: var(--text-muted);
+}
+
+.accountability-row--muted strong,
+.accountability-row--muted .launch-status-pill {
+  opacity: 0.7;
+}
+
+.accountability-route-line {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+.accountability-one-off-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 0.8fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+}
+
+.accountability-adjustment-list {
+  margin: 0 14px 14px;
+}
+
+.accountability-chart-panel {
+  min-height: 100%;
+}
+
+.accountability-actions {
+  align-items: end;
+  gap: 12px;
+}
+
+.accountability-due-date {
+  min-width: 190px;
+}
+
+.accountability-history-panel {
+  margin-top: 18px;
+}
+
+.accountability-reopen-button {
+  min-height: 32px;
+  padding: 0 10px;
+}
+
 @media (max-width: 1180px) {
   .main-layout {
     flex-direction: column;
@@ -6549,6 +6626,7 @@
   .receivable-settlement-summary,
   .receivable-balance-grid,
   .receivable-accounting-preview,
+  .accountability-summary-grid,
   .bi-chart-grid,
   .schedule-chart-grid {
     grid-template-columns: 1fr;
@@ -6572,6 +6650,15 @@
   }
 
   .schedule-direct-search > div {
+    flex-direction: column;
+  }
+
+  .accountability-one-off-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .accountability-actions {
+    align-items: stretch;
     flex-direction: column;
   }
 

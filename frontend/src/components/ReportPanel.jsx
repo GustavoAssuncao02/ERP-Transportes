@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronDown, ChevronRight, FileText, Save } from 'lucide-react';
+import { ChevronDown, ChevronRight, FileText, Save, Search, X } from 'lucide-react';
+import TriStateCheckbox from './TriStateCheckbox.jsx';
 import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
 import {
   createPdfContent,
   downloadBlob,
   fitPdfText,
   htmlEscape,
+  normalizeReportSelection,
+  normalizeReportText,
   optionLabel,
   optionValue,
+  reportOptionValue,
+  reportSelectionLabel,
   todayValue,
 } from '../utils/report.js';
 
@@ -21,14 +26,46 @@ function defaultGetRowKey(row, index) {
 }
 
 function normalizeFilters(defaultFilters, filters) {
-  return {
+  const savedFilters = filters || {};
+
+  return Object.entries({
     ...defaultFilters,
-    ...(filters || {}),
-  };
+    ...savedFilters,
+  }).reduce((normalizedFilters, [key, value]) => {
+    if (Array.isArray(defaultFilters[key]) && value !== undefined && !Array.isArray(value)) {
+      return {
+        ...normalizedFilters,
+        [key]: value ? [String(value)] : defaultFilters[key],
+      };
+    }
+
+    return { ...normalizedFilters, [key]: value };
+  }, {});
 }
 
 function reportFilename(prefix, extension) {
   return `${prefix}-${todayValue()}.${extension}`;
+}
+
+function normalizedFieldOptions(field) {
+  return (field.options || []).map((option) => {
+    const meta = option?.meta || {};
+
+    return {
+      value: reportOptionValue(option),
+      label: optionLabel(option),
+      meta,
+      searchText: [
+        optionLabel(option),
+        option?.searchText,
+        ...Object.values(meta),
+      ].filter(Boolean).join(' '),
+    };
+  }).filter((option) => option.value);
+}
+
+function optionValues(field) {
+  return normalizedFieldOptions(field).map((option) => option.value);
 }
 
 export default function ReportPanel({
@@ -57,6 +94,8 @@ export default function ReportPanel({
   const [filters, setFilters] = useState(defaultFilters);
   const [quickQueryName, setQuickQueryName] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [lookupFieldKey, setLookupFieldKey] = useState(null);
+  const [lookupSearch, setLookupSearch] = useState('');
   const [message, setMessage] = useState('');
 
   const rows = useMemo(
@@ -99,10 +138,54 @@ export default function ReportPanel({
     setMessage('');
   }
 
+  function selectedValues(field) {
+    return normalizeReportSelection(filters[field.key]);
+  }
+
+  function setSelectedValues(field, values) {
+    updateFilter(field.key, values);
+  }
+
+  function toggleSelectedValue(field, value) {
+    const selected = selectedValues(field);
+    const nextValue = String(value);
+
+    setSelectedValues(
+      field,
+      selected.includes(nextValue)
+        ? selected.filter((item) => item !== nextValue)
+        : [...selected, nextValue],
+    );
+  }
+
+  function selectAllValues(field) {
+    setSelectedValues(field, optionValues(field));
+  }
+
+  function clearSelectedValues(field) {
+    setSelectedValues(field, []);
+  }
+
+  function selectionSummary(field) {
+    const label = reportSelectionLabel(selectedValues(field), field.options || []);
+    return label === 'Todos' ? 'Todos selecionados' : label;
+  }
+
+  function openLookupField(field) {
+    setLookupFieldKey(field.key);
+    setLookupSearch('');
+  }
+
+  function closeLookupField() {
+    setLookupFieldKey(null);
+    setLookupSearch('');
+  }
+
   function clearFilters() {
     setFilters(defaultFilters);
     setApplied(false);
     setMenuOpen(false);
+    closeLookupField();
     setMessage('');
   }
 
@@ -134,6 +217,68 @@ export default function ReportPanel({
   }
 
   function renderField(field) {
+    if (field.hidden?.(filters)) {
+      return null;
+    }
+
+    if (field.type === 'lookupMulti') {
+      return (
+        <div className={`field report-lookup-multi-field${field.className ? ` ${field.className}` : ''}`} key={field.key}>
+          <span>{field.label}</span>
+          <div className="lookup-field">
+            <input
+              type="text"
+              value={selectionSummary(field)}
+              readOnly
+              aria-label={field.label}
+            />
+            <button
+              type="button"
+              className="icon-button"
+              aria-label={`Pesquisar ${field.label.toLocaleLowerCase('pt-BR')}`}
+              title={`Pesquisar ${field.label.toLocaleLowerCase('pt-BR')}`}
+              onClick={() => openLookupField(field)}
+            >
+              <Search size={17} strokeWidth={2.2} />
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (field.type === 'checkboxGroup') {
+      const values = optionValues(field);
+      const selected = selectedValues(field);
+      const allSelected = values.length > 0 && selected.length === values.length;
+
+      return (
+        <div className={`warehouse-report-filter-box report-check-filter${field.className ? ` ${field.className}` : ''}`} key={field.key}>
+          <span>{field.label}</span>
+          <div className="report-check-filter-toolbar">
+            <label>
+              <TriStateCheckbox
+                checked={allSelected}
+                onChange={(event) => (event.target.checked ? selectAllValues(field) : clearSelectedValues(field))}
+              />
+              <span>Todos</span>
+            </label>
+          </div>
+          <div className={(field.options || []).length > 8 ? 'warehouse-report-check-list warehouse-report-check-list--scroll' : 'warehouse-report-check-list'}>
+            {normalizedFieldOptions(field).map((option) => (
+              <label key={option.value}>
+                <input
+                  type="checkbox"
+                  checked={selected.includes(option.value)}
+                  onChange={() => toggleSelectedValue(field, option.value)}
+                />
+                <span>{option.label}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     if (field.type === 'dateRange') {
       return (
         <div className="warehouse-report-filter-box report-date-filter" key={field.key}>
@@ -202,6 +347,84 @@ export default function ReportPanel({
           onChange={(event) => updateFilter(field.key, event.target.value)}
         />
       </label>
+    );
+  }
+
+  function renderLookupModal() {
+    const field = fields.find((item) => item.key === lookupFieldKey);
+
+    if (!field) {
+      return null;
+    }
+
+    const selected = selectedValues(field);
+    const columns = field.columns || [];
+    const query = normalizeReportText(lookupSearch);
+    const visibleOptions = normalizedFieldOptions(field).filter((option) => (
+      !query || normalizeReportText(option.searchText).includes(query)
+    ));
+
+    return (
+      <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby={`${reportPanelTitleId}-${field.key}-lookup-title`}>
+        <button type="button" className="lookup-modal-backdrop" aria-label="Fechar pesquisa" onClick={closeLookupField} />
+        <div className="lookup-modal-panel">
+          <header className="lookup-modal-header">
+            <h2 id={`${reportPanelTitleId}-${field.key}-lookup-title`}>Selecionar {field.label}</h2>
+            <button type="button" className="modal-close-button" aria-label="Fechar" onClick={closeLookupField}>
+              <X size={18} strokeWidth={2.4} />
+            </button>
+          </header>
+
+          <div className="lookup-modal-toolbar report-lookup-toolbar">
+            <input
+              type="search"
+              className="lookup-search"
+              placeholder={field.searchPlaceholder || `Pesquisar ${field.label.toLocaleLowerCase('pt-BR')}`}
+              value={lookupSearch}
+              onChange={(event) => setLookupSearch(event.target.value)}
+              autoFocus
+            />
+            <button type="button" className="secondary-button" onClick={() => selectAllValues(field)}>
+              Selecionar todos
+            </button>
+            <button type="button" className="secondary-button" onClick={() => clearSelectedValues(field)}>
+              Limpar
+            </button>
+          </div>
+
+          <div className="lookup-table-wrap">
+            <table className="lookup-table report-lookup-table">
+              <thead>
+                <tr>
+                  <th>{field.label}</th>
+                  {columns.map((column) => <th key={column.key}>{column.label}</th>)}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleOptions.map((option) => (
+                  <tr key={option.value}>
+                    <td>
+                      <label className="report-lookup-check">
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(option.value)}
+                          onChange={() => toggleSelectedValue(field, option.value)}
+                        />
+                        <span>{option.label}</span>
+                      </label>
+                    </td>
+                    {columns.map((column) => (
+                      <td key={column.key}>{valueText(option.meta?.[column.key])}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {!visibleOptions.length && <div className="lookup-empty">Nenhuma opcao encontrada</div>}
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -336,6 +559,8 @@ export default function ReportPanel({
               <span className="status-line" aria-live="polite">{message}</span>
             </div>
           </form>
+
+          {renderLookupModal()}
 
           {applied && (
             <section className="warehouse-filter-report-results report-results-panel" aria-labelledby={reportResultsTitleId}>

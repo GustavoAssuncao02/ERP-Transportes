@@ -23,7 +23,7 @@ import {
   pendingVehiclePlateKey,
 } from '../data/transportRegistry.js';
 import { fetchCityOptions, initialCityOptions } from '../utils/cities.js';
-import { formatReportDateTime, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
+import { formatReportDateTime, isDateInRange, isReportOptionSelected, reportSelectionLabel, uniqueSortedOptions } from '../utils/report.js';
 
 const cityApiUrl = 'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome';
 
@@ -36,18 +36,18 @@ const fallbackCities = [
   'Recife - PE',
   'Salvador - BA',
 ];
-const cteReportDefaultFilters = {
-  search: '',
+const cteReportBaseFilters = {
+  cteIds: [],
   periodField: 'issueDateTime',
   periodStart: '',
   periodEnd: '',
   unit: '',
   status: '',
-  origin: '',
-  destination: '',
-  driver: '',
-  vehicle: '',
-  insuranceCompany: '',
+  origin: [],
+  destination: [],
+  driver: [],
+  vehicle: [],
+  insuranceCompany: [],
 };
 
 const cteReportColumns = [
@@ -65,6 +65,19 @@ const cteReportColumns = [
 
 function reportFilterLabel(value, allLabel = 'Todos') {
   return value || allLabel;
+}
+
+function cteReportOption(cte) {
+  return {
+    value: cte.id,
+    label: cte.id,
+    meta: {
+      emissor: cte.issuer || '-',
+      status: cte.status || '-',
+      placa: cte.vehiclePlate || '-',
+    },
+    searchText: [cte.id, cte.number, cte.issuer, cte.origin, cte.destination, cte.driverName, cte.vehiclePlate, cte.status].join(' '),
+  };
 }
 
 function cityLabel(city) {
@@ -192,8 +205,46 @@ export default function IssueCtePage({ onNavigate, initialSavedQuery = null, onS
       normalizeText(`${cte.id} ${cte.number} ${cte.issuer} ${cte.origin} ${cte.destination} ${cte.driverName} ${cte.vehiclePlate} ${cte.status}`).includes(query)
     ));
   }, [cteSearch, ctes]);
+  const cteReportOptions = useMemo(
+    () => [...ctes]
+      .sort((left, right) => String(right.issueDateTime || right.createdAt || right.id).localeCompare(String(left.issueDateTime || left.createdAt || left.id)))
+      .map(cteReportOption),
+    [ctes],
+  );
+  const cteOriginOptions = useMemo(() => uniqueSortedOptions(ctes.map((cte) => cte.origin)), [ctes]);
+  const cteDestinationOptions = useMemo(() => uniqueSortedOptions(ctes.map((cte) => cte.destination)), [ctes]);
+  const cteDriverOptions = useMemo(() => uniqueSortedOptions(ctes.map((cte) => cte.driverName)), [ctes]);
+  const cteVehicleOptions = useMemo(() => uniqueSortedOptions(ctes.map((cte) => cte.vehiclePlate)), [ctes]);
+  const cteInsuranceOptions = useMemo(() => uniqueSortedOptions(ctes.map((cte) => cte.insuranceCompany)), [ctes]);
+  const cteReportDefaultFilters = useMemo(() => ({
+    ...cteReportBaseFilters,
+    cteIds: cteReportOptions.map((option) => option.value),
+    origin: cteOriginOptions,
+    destination: cteDestinationOptions,
+    driver: cteDriverOptions,
+    vehicle: cteVehicleOptions,
+    insuranceCompany: cteInsuranceOptions,
+  }), [cteDestinationOptions, cteDriverOptions, cteInsuranceOptions, cteOriginOptions, cteReportOptions, cteVehicleOptions]);
   const cteReportFields = useMemo(() => [
-    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'CT-e, emissor, rota, motorista ou placa' },
+    {
+      type: 'lookupMulti',
+      key: 'cteIds',
+      label: 'CT-e',
+      options: cteReportOptions,
+      searchPlaceholder: 'Pesquisar CT-e',
+      columns: [
+        { key: 'emissor', label: 'Emissor' },
+        { key: 'status', label: 'Status' },
+        { key: 'placa', label: 'Placa' },
+      ],
+    },
+    { type: 'select', key: 'unit', label: 'Unidade', options: businessUnits.map((businessUnit) => ({ value: businessUnit.value, label: businessUnit.label })) },
+    { type: 'select', key: 'status', label: 'Status', options: uniqueSortedOptions(ctes.map((cte) => cte.status)) },
+    { type: 'lookupMulti', key: 'origin', label: 'Origem', options: cteOriginOptions, searchPlaceholder: 'Pesquisar origem' },
+    { type: 'lookupMulti', key: 'destination', label: 'Destino', options: cteDestinationOptions, searchPlaceholder: 'Pesquisar destino' },
+    { type: 'lookupMulti', key: 'driver', label: 'Motorista', options: cteDriverOptions, searchPlaceholder: 'Pesquisar motorista' },
+    { type: 'lookupMulti', key: 'vehicle', label: 'Placa', options: cteVehicleOptions, searchPlaceholder: 'Pesquisar placa' },
+    { type: 'lookupMulti', key: 'insuranceCompany', label: 'Seguradora', options: cteInsuranceOptions, searchPlaceholder: 'Pesquisar seguradora' },
     {
       type: 'dateRange',
       key: 'period',
@@ -206,41 +257,22 @@ export default function IssueCtePage({ onNavigate, initialSavedQuery = null, onS
         { value: 'createdAt', label: 'Cadastro' },
       ],
     },
-    { type: 'select', key: 'unit', label: 'Unidade', options: businessUnits.map((businessUnit) => ({ value: businessUnit.value, label: businessUnit.label })) },
-    { type: 'select', key: 'status', label: 'Status', options: uniqueSortedOptions(ctes.map((cte) => cte.status)) },
-    { type: 'select', key: 'origin', label: 'Origem', options: uniqueSortedOptions(ctes.map((cte) => cte.origin)) },
-    { type: 'select', key: 'destination', label: 'Destino', options: uniqueSortedOptions(ctes.map((cte) => cte.destination)) },
-    { type: 'select', key: 'driver', label: 'Motorista', options: uniqueSortedOptions(ctes.map((cte) => cte.driverName)) },
-    { type: 'select', key: 'vehicle', label: 'Placa', options: uniqueSortedOptions(ctes.map((cte) => cte.vehiclePlate)) },
-    { type: 'select', key: 'insuranceCompany', label: 'Seguradora', options: uniqueSortedOptions(ctes.map((cte) => cte.insuranceCompany)) },
-  ], [ctes]);
+  ], [cteDestinationOptions, cteDriverOptions, cteInsuranceOptions, cteOriginOptions, cteReportOptions, cteVehicleOptions, ctes]);
 
   function buildCteReportRows(filters) {
-    const query = normalizeReportText(filters.search);
-
     return [...ctes]
       .sort((left, right) => String(right.issueDateTime || right.createdAt || right.id).localeCompare(String(left.issueDateTime || left.createdAt || left.id)))
       .filter((cte) => {
         const periodValue = filters.periodField === 'createdAt' ? cte.createdAt : cte.issueDateTime || cte.createdAt;
 
-        return (!query || normalizeReportText([
-          cte.id,
-          cte.number,
-          cte.issuer,
-          cte.origin,
-          cte.destination,
-          cte.driverName,
-          cte.vehiclePlate,
-          cte.status,
-          cte.insuranceCompany,
-        ].join(' ')).includes(query))
+        return isReportOptionSelected(cte.id, filters.cteIds)
           && (!filters.unit || cte.unit === filters.unit)
           && (!filters.status || cte.status === filters.status)
-          && (!filters.origin || cte.origin === filters.origin)
-          && (!filters.destination || cte.destination === filters.destination)
-          && (!filters.driver || cte.driverName === filters.driver)
-          && (!filters.vehicle || cte.vehiclePlate === filters.vehicle)
-          && (!filters.insuranceCompany || cte.insuranceCompany === filters.insuranceCompany)
+          && isReportOptionSelected(cte.origin, filters.origin)
+          && isReportOptionSelected(cte.destination, filters.destination)
+          && isReportOptionSelected(cte.driverName, filters.driver)
+          && isReportOptionSelected(cte.vehiclePlate, filters.vehicle)
+          && isReportOptionSelected(cte.insuranceCompany, filters.insuranceCompany)
           && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
       });
   }
@@ -251,17 +283,17 @@ export default function IssueCtePage({ onNavigate, initialSavedQuery = null, onS
       ?.options.find((option) => option.value === filters.periodField);
 
     return [
-      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['CT-e', reportSelectionLabel(filters.cteIds, cteReportOptions)],
+      ['Unidade', reportFilterLabel(filters.unit)],
+      ['Status', reportFilterLabel(filters.status)],
+      ['Origem', reportSelectionLabel(filters.origin, cteOriginOptions)],
+      ['Destino', reportSelectionLabel(filters.destination, cteDestinationOptions)],
+      ['Motorista', reportSelectionLabel(filters.driver, cteDriverOptions)],
+      ['Placa', reportSelectionLabel(filters.vehicle, cteVehicleOptions)],
+      ['Seguradora', reportSelectionLabel(filters.insuranceCompany, cteInsuranceOptions)],
       ['Periodo por', periodOption?.label || 'Emissao'],
       ['Periodo de', reportFilterLabel(filters.periodStart)],
       ['Periodo ate', reportFilterLabel(filters.periodEnd)],
-      ['Unidade', reportFilterLabel(filters.unit)],
-      ['Status', reportFilterLabel(filters.status)],
-      ['Origem', reportFilterLabel(filters.origin)],
-      ['Destino', reportFilterLabel(filters.destination)],
-      ['Motorista', reportFilterLabel(filters.driver)],
-      ['Placa', reportFilterLabel(filters.vehicle)],
-      ['Seguradora', reportFilterLabel(filters.insuranceCompany)],
       ['Resultado', `${rows.length} CT-e(s)`],
     ];
   }

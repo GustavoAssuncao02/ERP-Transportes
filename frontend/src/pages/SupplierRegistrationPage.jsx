@@ -14,11 +14,11 @@ import {
   saveSupplier,
 } from '../data/managementRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
-import { normalizeText } from '../data/financeData.js';
+import { getFinanceLaunches, normalizeText } from '../data/financeData.js';
 import { getSupplierDeletionBlockers } from '../data/deletionRules.js';
 import { blankAddressFields, brazilianStateOptions, normalizeAddressFields } from '../utils/address.js';
 import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
-import { formatReportDate, isDateInRange, normalizeReportText } from '../utils/report.js';
+import { formatReportDate, isDateInRange, isReportOptionSelected, normalizeReportText, reportSelectionLabel } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const initialForm = {
@@ -30,8 +30,8 @@ const initialForm = {
   ...blankAddressFields(),
   active: true,
 };
-const supplierReportDefaultFilters = {
-  search: '',
+const supplierReportBaseFilters = {
+  supplierIds: [],
   active: '',
   state: '',
   documentType: '',
@@ -40,8 +40,7 @@ const supplierReportDefaultFilters = {
   periodEnd: '',
 };
 
-const supplierReportFields = [
-  { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Nome, documento, contato ou operacao' },
+const supplierReportBaseFields = [
   { type: 'select', key: 'active', label: 'Status', options: [{ value: 'active', label: 'Ativo' }, { value: 'inactive', label: 'Inativo' }] },
   { type: 'select', key: 'state', label: 'UF', options: brazilianStateOptions },
   { type: 'select', key: 'documentType', label: 'Tipo de documento', options: ['CNPJ', 'CPF'] },
@@ -56,6 +55,7 @@ const supplierReportFields = [
       { value: 'createdAt', label: 'Cadastro' },
       { value: 'lastMinutaDate', label: 'Ultima minuta' },
       { value: 'lastOrderDate', label: 'Ultima ordem de coleta' },
+      { value: 'lastPayableDate', label: 'Ultimo lancamento a pagar' },
     ],
   },
 ];
@@ -77,6 +77,7 @@ const supplierReportColumns = [
   { key: 'state', label: 'UF', pdfWidth: 4, getValue: (supplier) => supplier.state || '-' },
   { key: 'active', label: 'Ativo', pdfWidth: 6, getValue: (supplier) => (supplier.active ? 'Sim' : 'Nao') },
   { key: 'createdAt', label: 'Cadastro', pdfWidth: 10, getValue: (supplier) => formatReportDate(supplier.createdAt) },
+  { key: 'lastPayable', label: 'Ultimo a pagar', pdfWidth: 20, getValue: (supplier) => (supplier.lastPayableId ? `${supplier.lastPayableId} ${formatReportDate(supplier.lastPayableDate)}` : '-') },
   { key: 'lastMinutaId', label: 'Ultima minuta', pdfWidth: 18, getValue: (supplier) => supplier.lastMinutaId || '-' },
   { key: 'lastOrderId', label: 'Ultima ordem', pdfWidth: 18, getValue: (supplier) => supplier.lastOrderId || '-' },
 ];
@@ -101,6 +102,33 @@ function sameSupplier(supplier, name, document = '') {
     || (supplierDocument && onlyDigits(document) === supplierDocument);
 }
 
+function supplierReportKey(supplier) {
+  return String(supplier.id || supplier.code || onlyDigits(supplier.cnpj) || supplier.name || '');
+}
+
+function supplierReportOption(supplier) {
+  return {
+    value: supplierReportKey(supplier),
+    label: supplier.name,
+    meta: {
+      document: supplier.cnpj || '-',
+      status: supplier.active ? 'Ativo' : 'Inativo',
+    },
+    searchText: [supplier.name, supplier.cnpj, supplier.contact, supplier.email].join(' '),
+  };
+}
+
+function financeLaunchDate(launch) {
+  return launch.createdDate || launch.issueDate || launch.appropriationDate || launch.paymentDate || launch.dueDate || '';
+}
+
+function sameSupplierLaunch(supplier, launch) {
+  const supplierCodes = [supplier.id, supplier.code].map((value) => String(value || '').trim()).filter(Boolean);
+
+  return supplierCodes.includes(String(launch.supplierCode || '').trim())
+    || sameSupplier(supplier, launch.supplier);
+}
+
 function lastSupplierMinuta(supplier, minutas) {
   return minutas
     .filter((minuta) => (
@@ -114,6 +142,12 @@ function lastSupplierOrder(supplier, orders) {
   return orders
     .filter((order) => sameSupplier(supplier, order.senderName) || sameSupplier(supplier, order.recipientName))
     .sort((left, right) => dateTimeMs(recordDate(right)) - dateTimeMs(recordDate(left)))[0] || null;
+}
+
+function lastSupplierPayable(supplier, launches) {
+  return launches
+    .filter((launch) => sameSupplierLaunch(supplier, launch))
+    .sort((left, right) => dateTimeMs(financeLaunchDate(right)) - dateTimeMs(financeLaunchDate(left)))[0] || null;
 }
 
 export default function SupplierRegistrationPage({ initialSavedQuery = null, onSavedQueriesChange }) {
@@ -153,21 +187,46 @@ export default function SupplierRegistrationPage({ initialSavedQuery = null, onS
   }, [lookupSearch, sortedSuppliers]);
   const minutas = useMemo(() => getRegisteredMinutas(), []);
   const collectionOrders = useMemo(() => getRegisteredCollectionOrders(), []);
+  const financeLaunches = useMemo(() => getFinanceLaunches(), []);
+  const supplierReportOptions = useMemo(
+    () => sortedSuppliers.map(supplierReportOption),
+    [sortedSuppliers],
+  );
+  const supplierReportDefaultFilters = useMemo(() => ({
+    ...supplierReportBaseFilters,
+    supplierIds: supplierReportOptions.map((option) => option.value),
+  }), [supplierReportOptions]);
+  const supplierReportFields = useMemo(() => [
+    {
+      type: 'lookupMulti',
+      key: 'supplierIds',
+      label: 'Fornecedor',
+      options: supplierReportOptions,
+      searchPlaceholder: 'Pesquisar fornecedor',
+      columns: [
+        { key: 'document', label: 'Documento' },
+        { key: 'status', label: 'Status' },
+      ],
+    },
+    ...supplierReportBaseFields,
+  ], [supplierReportOptions]);
 
   function buildSupplierReportRows(filters) {
-    const query = normalizeReportText(filters.search);
-
     return sortedSuppliers
       .map((supplier) => {
         const lastMinuta = lastSupplierMinuta(supplier, minutas);
         const lastOrder = lastSupplierOrder(supplier, collectionOrders);
+        const lastPayable = lastSupplierPayable(supplier, financeLaunches);
 
         return {
           ...supplier,
+          reportKey: supplierReportKey(supplier),
           lastMinutaId: lastMinuta?.id || '',
           lastMinutaDate: lastMinuta ? recordDate(lastMinuta) : '',
           lastOrderId: lastOrder?.id || '',
           lastOrderDate: lastOrder ? recordDate(lastOrder) : '',
+          lastPayableId: lastPayable?.id || lastPayable?.document || '',
+          lastPayableDate: lastPayable ? financeLaunchDate(lastPayable) : '',
         };
       })
       .filter((supplier) => {
@@ -175,19 +234,12 @@ export default function SupplierRegistrationPage({ initialSavedQuery = null, onS
           ? supplier.lastMinutaDate
           : filters.periodField === 'lastOrderDate'
             ? supplier.lastOrderDate
+            : filters.periodField === 'lastPayableDate'
+              ? supplier.lastPayableDate
             : supplier.createdAt;
         const documentType = onlyDigits(supplier.cnpj).length <= 11 ? 'CPF' : 'CNPJ';
 
-        return (!query || normalizeReportText([
-          supplier.name,
-          supplier.cnpj,
-          supplier.contact,
-          supplier.email,
-          supplier.address,
-          supplier.state,
-          supplier.lastMinutaId,
-          supplier.lastOrderId,
-        ].join(' ')).includes(query))
+        return isReportOptionSelected(supplier.reportKey, filters.supplierIds)
           && (!filters.active || (filters.active === 'active' ? supplier.active : !supplier.active))
           && (!filters.state || supplier.state === filters.state)
           && (!filters.documentType || documentType === filters.documentType)
@@ -201,7 +253,7 @@ export default function SupplierRegistrationPage({ initialSavedQuery = null, onS
       ?.options.find((option) => option.value === filters.periodField);
 
     return [
-      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Fornecedor', reportSelectionLabel(filters.supplierIds, supplierReportOptions)],
       ['Status', filters.active === 'active' ? 'Ativo' : filters.active === 'inactive' ? 'Inativo' : 'Todos'],
       ['UF', reportFilterLabel(filters.state)],
       ['Documento', reportFilterLabel(filters.documentType)],

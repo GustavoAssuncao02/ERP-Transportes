@@ -5,8 +5,9 @@ import ReportPanel from '../components/ReportPanel.jsx';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
-import { normalizeText } from '../data/financeData.js';
+import { getFinanceLaunches, normalizeText } from '../data/financeData.js';
 import { getInsuranceDeletionBlockers } from '../data/deletionRules.js';
+import { getRegisteredCtes, getRegisteredManifests } from '../data/operationRegistry.js';
 import {
   deactivateInsurance,
   deleteInsurance,
@@ -17,7 +18,7 @@ import {
 import { onlyDigits } from '../data/transportRegistry.js';
 import { blankAddressFields, brazilianStateOptions, normalizeAddressFields } from '../utils/address.js';
 import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
-import { formatReportDate, isDateInRange, normalizeReportText } from '../utils/report.js';
+import { formatReportDate, formatReportDateTime, isDateInRange, isReportOptionSelected, normalizeReportText, reportSelectionLabel } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const initialForm = {
@@ -32,8 +33,8 @@ const initialForm = {
   active: true,
   defaultInsurance: false,
 };
-const insuranceReportDefaultFilters = {
-  search: '',
+const insuranceReportBaseFilters = {
+  insuranceIds: [],
   active: '',
   defaultInsurance: '',
   state: '',
@@ -42,19 +43,21 @@ const insuranceReportDefaultFilters = {
   periodEnd: '',
 };
 
-const insuranceReportFields = [
-  { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Seguradora, CNPJ, apolice ou contato' },
+const insuranceReportBaseFields = [
   { type: 'select', key: 'active', label: 'Status', options: [{ value: 'active', label: 'Ativo' }, { value: 'inactive', label: 'Inativo' }] },
   { type: 'select', key: 'defaultInsurance', label: 'Seguro padrao', options: [{ value: 'yes', label: 'Sim' }, { value: 'no', label: 'Nao' }] },
   { type: 'select', key: 'state', label: 'UF', options: brazilianStateOptions },
   {
     type: 'dateRange',
     key: 'period',
-    label: 'Periodo de cadastro',
+    label: 'Periodo',
     fieldKey: 'periodField',
     startKey: 'periodStart',
     endKey: 'periodEnd',
-    options: [{ value: 'createdAt', label: 'Cadastro' }],
+    options: [
+      { value: 'createdAt', label: 'Cadastro' },
+      { value: 'lastUsageDate', label: 'Data de utilizacao' },
+    ],
   },
 ];
 
@@ -79,10 +82,63 @@ const insuranceReportColumns = [
   { key: 'active', label: 'Ativo', pdfWidth: 6, getValue: (insurance) => (insurance.active ? 'Sim' : 'Nao') },
   { key: 'defaultInsurance', label: 'Padrao', pdfWidth: 6, getValue: (insurance) => (insurance.defaultInsurance ? 'Sim' : 'Nao') },
   { key: 'createdAt', label: 'Cadastro', pdfWidth: 10, getValue: (insurance) => formatReportDate(insurance.createdAt) },
+  { key: 'lastUsageDate', label: 'Ultima utiliz.', pdfWidth: 16, getValue: (insurance) => formatReportDateTime(insurance.lastUsageDate) },
 ];
 
 function reportFilterLabel(value, allLabel = 'Todos') {
   return value || allLabel;
+}
+
+function dateTimeMs(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function insuranceReportKey(insurance) {
+  return String(insurance.id || insurance.cnpj || insurance.policyNumber || insurance.companyName || '');
+}
+
+function insuranceReportOption(insurance) {
+  return {
+    value: insuranceReportKey(insurance),
+    label: insurance.companyName,
+    meta: {
+      cnpj: insurance.cnpj || '-',
+      apolice: insurance.policyNumber || '-',
+      status: insurance.active ? 'Ativo' : 'Inativo',
+    },
+    searchText: [insurance.companyName, insurance.cnpj, insurance.policyNumber, insurance.contact].join(' '),
+  };
+}
+
+function sameInsuranceName(insurance, name) {
+  return normalizeReportText(insurance.companyName) === normalizeReportText(name);
+}
+
+function financeLaunchDate(launch) {
+  return launch.createdDate || launch.issueDate || launch.appropriationDate || launch.paymentDate || launch.dueDate || '';
+}
+
+function insuranceUsageDate(usage) {
+  return usage.date || usage.createdAt || '';
+}
+
+function lastInsuranceUsage(insurance, ctes, manifests, launches) {
+  const usageItems = [
+    ...ctes
+      .filter((cte) => sameInsuranceName(insurance, cte.insuranceCompany))
+      .map((cte) => ({ date: cte.issueDateTime || cte.createdAt, id: cte.id })),
+    ...manifests
+      .filter((manifest) => sameInsuranceName(insurance, manifest.insuranceCompany))
+      .map((manifest) => ({ date: manifest.updatedAt || manifest.closedAt || manifest.startedAt || manifest.createdAt, id: manifest.id })),
+    ...launches
+      .filter((launch) => sameInsuranceName(insurance, launch.supplier))
+      .map((launch) => ({ date: financeLaunchDate(launch), id: launch.id })),
+  ];
+
+  return usageItems
+    .filter((usage) => usage.date)
+    .sort((left, right) => dateTimeMs(insuranceUsageDate(right)) - dateTimeMs(insuranceUsageDate(left)))[0] || null;
 }
 
 export default function InsuranceRegistrationPage({ initialSavedQuery = null, onSavedQueriesChange }) {
@@ -116,33 +172,67 @@ export default function InsuranceRegistrationPage({ initialSavedQuery = null, on
       insurance.email,
     ].join(' ')).includes(query));
   }, [lookupSearch, sortedInsurances]);
+  const ctes = useMemo(() => getRegisteredCtes(), []);
+  const manifests = useMemo(() => getRegisteredManifests(), []);
+  const financeLaunches = useMemo(() => getFinanceLaunches(), []);
+  const insuranceReportOptions = useMemo(
+    () => sortedInsurances.map(insuranceReportOption),
+    [sortedInsurances],
+  );
+  const insuranceReportDefaultFilters = useMemo(() => ({
+    ...insuranceReportBaseFilters,
+    insuranceIds: insuranceReportOptions.map((option) => option.value),
+  }), [insuranceReportOptions]);
+  const insuranceReportFields = useMemo(() => [
+    {
+      type: 'lookupMulti',
+      key: 'insuranceIds',
+      label: 'Seguradora',
+      options: insuranceReportOptions,
+      searchPlaceholder: 'Pesquisar seguradora',
+      columns: [
+        { key: 'cnpj', label: 'CNPJ' },
+        { key: 'apolice', label: 'Apolice' },
+        { key: 'status', label: 'Status' },
+      ],
+    },
+    ...insuranceReportBaseFields,
+  ], [insuranceReportOptions]);
 
   function buildInsuranceReportRows(filters) {
-    const query = normalizeReportText(filters.search);
+    return sortedInsurances
+      .map((insurance) => {
+        const lastUsage = lastInsuranceUsage(insurance, ctes, manifests, financeLaunches);
 
-    return sortedInsurances.filter((insurance) => (
-      (!query || normalizeReportText([
-        insurance.companyName,
-        insurance.cnpj,
-        insurance.policyNumber,
-        insurance.endorsementNumber,
-        insurance.contact,
-        insurance.email,
-        insurance.state,
-      ].join(' ')).includes(query))
-      && (!filters.active || (filters.active === 'active' ? insurance.active : !insurance.active))
-      && (!filters.defaultInsurance || (filters.defaultInsurance === 'yes' ? insurance.defaultInsurance : !insurance.defaultInsurance))
-      && (!filters.state || insurance.state === filters.state)
-      && isDateInRange(insurance.createdAt, filters.periodStart, filters.periodEnd)
-    ));
+        return {
+          ...insurance,
+          reportKey: insuranceReportKey(insurance),
+          lastUsageDate: lastUsage ? insuranceUsageDate(lastUsage) : '',
+          lastUsageId: lastUsage?.id || '',
+        };
+      })
+      .filter((insurance) => {
+        const periodValue = filters.periodField === 'lastUsageDate' ? insurance.lastUsageDate : insurance.createdAt;
+
+        return isReportOptionSelected(insurance.reportKey, filters.insuranceIds)
+          && (!filters.active || (filters.active === 'active' ? insurance.active : !insurance.active))
+          && (!filters.defaultInsurance || (filters.defaultInsurance === 'yes' ? insurance.defaultInsurance : !insurance.defaultInsurance))
+          && (!filters.state || insurance.state === filters.state)
+          && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
+      });
   }
 
   function insuranceReportMetadata(filters, rows) {
+    const periodOption = insuranceReportFields
+      .find((field) => field.type === 'dateRange')
+      ?.options.find((option) => option.value === filters.periodField);
+
     return [
-      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Seguradora', reportSelectionLabel(filters.insuranceIds, insuranceReportOptions)],
       ['Status', filters.active === 'active' ? 'Ativo' : filters.active === 'inactive' ? 'Inativo' : 'Todos'],
       ['Seguro padrao', filters.defaultInsurance === 'yes' ? 'Sim' : filters.defaultInsurance === 'no' ? 'Nao' : 'Todos'],
       ['UF', reportFilterLabel(filters.state)],
+      ['Periodo por', periodOption?.label || 'Cadastro'],
       ['Periodo de', reportFilterLabel(filters.periodStart)],
       ['Periodo ate', reportFilterLabel(filters.periodEnd)],
       ['Resultado', `${rows.length} seguro(s)`],

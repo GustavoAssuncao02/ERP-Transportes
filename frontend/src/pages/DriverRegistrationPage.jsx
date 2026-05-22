@@ -20,26 +20,26 @@ import {
 import { getDriverDeletionBlockers } from '../data/deletionRules.js';
 import { getRegisteredSuppliers, saveSupplier } from '../data/managementRegistry.js';
 import { blankAddressFields, brazilianStateOptions, normalizeAddressFields } from '../utils/address.js';
-import { formatReportDate, formatReportDateTime, isDateInRange, normalizeReportText } from '../utils/report.js';
+import { formatReportDate, formatReportDateTime, isDateInRange, isReportOptionSelected, normalizeReportText, reportSelectionLabel } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const licenseCategories = ['B', 'C', 'D', 'E'];
+const licenseCategoryOptions = licenseCategories.map((licenseCategory) => ({ value: licenseCategory, label: licenseCategory }));
 const blankAddress = blankAddressFields();
-const driverReportDefaultFilters = {
-  search: '',
+const driverReportBaseFilters = {
+  driverIds: [],
   status: '',
-  category: '',
-  state: '',
+  categories: [],
+  states: [],
   periodField: 'createdAt',
   periodStart: '',
   periodEnd: '',
 };
 
-const driverReportFields = [
-  { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Nome, CPF, CNH, fornecedor ou placa' },
+const driverReportBaseFields = [
   { type: 'select', key: 'status', label: 'Status', options: ['Ativo', 'Inativo'] },
-  { type: 'select', key: 'category', label: 'Categoria da CNH', options: licenseCategories },
-  { type: 'select', key: 'state', label: 'UF onde mora', options: brazilianStateOptions },
+  { type: 'checkboxGroup', key: 'categories', label: 'Categoria da CNH', options: licenseCategoryOptions },
+  { type: 'checkboxGroup', key: 'states', label: 'UF', options: brazilianStateOptions },
   {
     type: 'dateRange',
     key: 'period',
@@ -77,6 +77,23 @@ const driverReportColumns = [
 
 function reportFilterLabel(value, allLabel = 'Todos') {
   return value || allLabel;
+}
+
+function driverReportKey(driver) {
+  return onlyDigits(driver.cpf);
+}
+
+function driverReportOption(driver) {
+  return {
+    value: driverReportKey(driver),
+    label: driver.name,
+    meta: {
+      cpf: formatCpf(driver.cpf),
+      cnh: `${driver.cnh || '-'} / ${driver.category || '-'}`,
+      status: driver.status || '-',
+    },
+    searchText: [driver.name, formatCpf(driver.cpf), driver.cnh, driver.category, driver.phone, driver.status].join(' '),
+  };
 }
 
 function dateTimeMs(value) {
@@ -169,16 +186,40 @@ export default function DriverRegistrationPage({ initialSavedQuery = null, onSav
     return sortedDrivers.filter((driver) => normalizeText(`${driver.name} ${formatCpf(driver.cpf)} ${driver.cnh} ${driver.phone}`).includes(query));
   }, [lookupSearch, sortedDrivers]);
   const manifests = useMemo(() => getRegisteredManifests(), []);
+  const driverReportOptions = useMemo(
+    () => sortedDrivers.map(driverReportOption),
+    [sortedDrivers],
+  );
+  const driverReportDefaultFilters = useMemo(() => ({
+    ...driverReportBaseFilters,
+    driverIds: driverReportOptions.map((option) => option.value),
+    categories: licenseCategoryOptions.map((option) => option.value),
+    states: brazilianStateOptions,
+  }), [driverReportOptions]);
+  const driverReportFields = useMemo(() => [
+    {
+      type: 'lookupMulti',
+      key: 'driverIds',
+      label: 'Motoristas',
+      options: driverReportOptions,
+      searchPlaceholder: 'Pesquisar motorista',
+      columns: [
+        { key: 'cpf', label: 'CPF' },
+        { key: 'cnh', label: 'CNH' },
+        { key: 'status', label: 'Status' },
+      ],
+    },
+    ...driverReportBaseFields,
+  ], [driverReportOptions]);
 
   function buildDriverReportRows(filters) {
-    const query = normalizeReportText(filters.search);
-
     return sortedDrivers
       .map((driver) => {
         const lastManifest = lastDriverManifest(driver, manifests);
 
         return {
           ...driver,
+          reportKey: driverReportKey(driver),
           state: driver.state || '',
           lastManifestId: lastManifest?.id || '',
           lastManifestDate: lastManifest ? manifestDriverDate(lastManifest) : '',
@@ -187,21 +228,12 @@ export default function DriverRegistrationPage({ initialSavedQuery = null, onSav
       })
       .filter((driver) => {
         const periodValue = filters.periodField === 'lastManifestDate' ? driver.lastManifestDate : driver.createdAt;
+        const allStatesSelected = (filters.states || []).length === brazilianStateOptions.length;
 
-        return (!query || normalizeReportText([
-          driver.name,
-          formatCpf(driver.cpf),
-          driver.cnh,
-          driver.category,
-          driver.status,
-          driver.supplierCode,
-          driver.state,
-          driver.lastManifestId,
-          driver.lastManifestPlate,
-        ].join(' ')).includes(query))
+        return isReportOptionSelected(driver.reportKey, filters.driverIds)
           && (!filters.status || driver.status === filters.status)
-          && (!filters.category || driver.category === filters.category)
-          && (!filters.state || driver.state === filters.state)
+          && isReportOptionSelected(driver.category, filters.categories)
+          && (driver.state ? isReportOptionSelected(driver.state, filters.states) : allStatesSelected)
           && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
       });
   }
@@ -212,10 +244,10 @@ export default function DriverRegistrationPage({ initialSavedQuery = null, onSav
       ?.options.find((option) => option.value === filters.periodField);
 
     return [
-      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Motoristas', reportSelectionLabel(filters.driverIds, driverReportOptions)],
       ['Status', reportFilterLabel(filters.status)],
-      ['Categoria', reportFilterLabel(filters.category)],
-      ['UF', reportFilterLabel(filters.state)],
+      ['Categoria', reportSelectionLabel(filters.categories, licenseCategoryOptions)],
+      ['UF', reportSelectionLabel(filters.states, brazilianStateOptions)],
       ['Periodo por', periodOption?.label || 'Cadastro'],
       ['Periodo de', reportFilterLabel(filters.periodStart)],
       ['Periodo ate', reportFilterLabel(filters.periodEnd)],

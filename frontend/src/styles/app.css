@@ -5596,6 +5596,59 @@ input.tri-state-checkbox:disabled {
   accent-color: var(--primary);
 }
 
+.report-check-filter-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+}
+
+.report-check-filter-toolbar label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.report-check-filter-toolbar .tri-state-checkbox {
+  width: 14px;
+  min-width: 14px;
+  height: 14px;
+  min-height: 14px;
+}
+
+.report-lookup-toolbar {
+  flex-wrap: wrap;
+}
+
+.report-lookup-check {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.report-lookup-check input {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  accent-color: var(--primary);
+}
+
+.report-lookup-check span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-lookup-table tbody tr {
+  cursor: default;
+}
+
 .warehouse-report-options em {
   padding: 10px 0;
   color: var(--text-muted);

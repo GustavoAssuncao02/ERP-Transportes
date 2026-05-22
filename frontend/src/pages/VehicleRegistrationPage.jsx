@@ -18,18 +18,24 @@ import {
   saveVehicle,
 } from '../data/transportRegistry.js';
 import { getVehicleDeletionBlockers } from '../data/deletionRules.js';
-import { formatReportDate, formatReportDateTime, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
+import { formatReportDate, formatReportDateTime, isDateInRange, isReportOptionSelected, reportSelectionLabel, uniqueSortedOptions } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const vehicleTypes = ['Cavalo mecânico', 'Truck', 'Toco', 'Bitruck', 'Van', 'Carreta'];
+const vehicleTypeReportOptions = vehicleTypes.map((vehicleType) => ({ value: vehicleType, label: vehicleType }));
+const vehicleOwnerTypeOptions = [
+  { value: 'company', label: 'Empresa' },
+  { value: 'driver', label: 'Terceiro' },
+];
 
-const vehicleReportDefaultFilters = {
-  search: '',
+const vehicleReportBaseFilters = {
+  vehicleIds: [],
   periodField: 'createdAt',
   periodStart: '',
   periodEnd: '',
-  owner: '',
-  type: '',
+  ownerType: '',
+  thirdPartyOwners: [],
+  types: [],
   status: '',
   unit: '',
 };
@@ -43,6 +49,27 @@ function vehicleOwnerLabel(vehicle) {
   return vehicle.ownerType === 'driver'
     ? `Motorista - ${vehicle.owner || ''}`
     : `Empresa - ${vehicle.owner || businessUnitOwnerLabel(vehicle.unit)}`;
+}
+
+function vehicleOwnerType(vehicle) {
+  return vehicle.ownerType || (vehicle.ownerCpf ? 'driver' : 'company');
+}
+
+function vehicleReportKey(vehicle) {
+  return normalizePlate(vehicle.plate);
+}
+
+function vehicleReportOption(vehicle) {
+  return {
+    value: vehicleReportKey(vehicle),
+    label: normalizePlate(vehicle.plate),
+    meta: {
+      modelo: vehicle.model || '-',
+      tipo: vehicle.type || '-',
+      status: vehicle.status || '-',
+    },
+    searchText: [vehicle.plate, vehicle.model, vehicle.type, vehicle.owner, vehicle.status].join(' '),
+  };
 }
 
 const vehicleReportColumns = [
@@ -140,12 +167,49 @@ export default function VehicleRegistrationPage({ initialSavedQuery = null, onSa
     ));
   }, [driverOptions, driverSearch]);
   const manifests = useMemo(() => getRegisteredManifests(), []);
-  const vehicleOwnerOptions = useMemo(
-    () => uniqueSortedOptions(sortedVehicles.map((vehicle) => vehicleOwnerLabel(vehicle))),
+  const vehicleReportOptions = useMemo(
+    () => sortedVehicles.map(vehicleReportOption),
     [sortedVehicles],
   );
+  const thirdPartyOwnerOptions = useMemo(
+    () => uniqueSortedOptions(
+      sortedVehicles
+        .filter((vehicle) => vehicleOwnerType(vehicle) === 'driver')
+        .map((vehicle) => vehicle.owner),
+    ).map((ownerName) => ({ value: ownerName, label: ownerName })),
+    [sortedVehicles],
+  );
+  const vehicleReportDefaultFilters = useMemo(() => ({
+    ...vehicleReportBaseFilters,
+    vehicleIds: vehicleReportOptions.map((option) => option.value),
+    thirdPartyOwners: thirdPartyOwnerOptions.map((option) => option.value),
+    types: vehicleTypeReportOptions.map((option) => option.value),
+  }), [thirdPartyOwnerOptions, vehicleReportOptions]);
   const vehicleReportFields = useMemo(() => [
-    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Placa, modelo, proprietario ou motorista' },
+    {
+      type: 'lookupMulti',
+      key: 'vehicleIds',
+      label: 'Placa',
+      options: vehicleReportOptions,
+      searchPlaceholder: 'Pesquisar placa',
+      columns: [
+        { key: 'modelo', label: 'Modelo' },
+        { key: 'tipo', label: 'Tipo' },
+        { key: 'status', label: 'Status' },
+      ],
+    },
+    { type: 'select', key: 'ownerType', label: 'Proprietario', options: vehicleOwnerTypeOptions },
+    {
+      type: 'lookupMulti',
+      key: 'thirdPartyOwners',
+      label: 'Terceiro',
+      options: thirdPartyOwnerOptions,
+      searchPlaceholder: 'Pesquisar terceiro',
+      hidden: (currentFilters) => currentFilters.ownerType !== 'driver',
+    },
+    { type: 'checkboxGroup', key: 'types', label: 'Tipo de veiculo', options: vehicleTypeReportOptions },
+    { type: 'select', key: 'status', label: 'Status', options: ['Ativo', 'Inativo'] },
+    { type: 'select', key: 'unit', label: 'Unidade', options: businessUnits.map((businessUnit) => ({ value: businessUnit.value, label: businessUnit.label })) },
     {
       type: 'dateRange',
       key: 'period',
@@ -158,22 +222,18 @@ export default function VehicleRegistrationPage({ initialSavedQuery = null, onSa
         { value: 'lastManifestDate', label: 'Ultima utilizacao em manifesto' },
       ],
     },
-    { type: 'select', key: 'owner', label: 'Proprietario', options: vehicleOwnerOptions },
-    { type: 'select', key: 'type', label: 'Tipo de veiculo', options: vehicleTypes },
-    { type: 'select', key: 'status', label: 'Status', options: ['Ativo', 'Inativo'] },
-    { type: 'select', key: 'unit', label: 'Unidade', options: businessUnits.map((businessUnit) => ({ value: businessUnit.value, label: businessUnit.label })) },
-  ], [vehicleOwnerOptions]);
+  ], [thirdPartyOwnerOptions, vehicleReportOptions]);
 
   function buildVehicleReportRows(filters) {
-    const query = normalizeReportText(filters.search);
-
     return sortedVehicles
       .map((vehicle) => {
         const lastManifest = lastVehicleManifest(vehicle, manifests);
 
         return {
           ...vehicle,
+          reportKey: vehicleReportKey(vehicle),
           ownerLabel: vehicleOwnerLabel(vehicle),
+          ownerTypeValue: vehicleOwnerType(vehicle),
           lastManifestId: lastManifest?.id || '',
           lastManifestDate: lastManifest ? manifestVehicleDate(lastManifest) : '',
           lastManifestDriver: lastManifest?.driverName || '',
@@ -182,18 +242,10 @@ export default function VehicleRegistrationPage({ initialSavedQuery = null, onSa
       .filter((vehicle) => {
         const periodValue = filters.periodField === 'lastManifestDate' ? vehicle.lastManifestDate : vehicle.createdAt;
 
-        return (!query || normalizeReportText([
-          vehicle.plate,
-          vehicle.model,
-          vehicle.type,
-          vehicle.ownerLabel,
-          vehicle.status,
-          vehicle.unit,
-          vehicle.lastManifestId,
-          vehicle.lastManifestDriver,
-        ].join(' ')).includes(query))
-          && (!filters.owner || vehicle.ownerLabel === filters.owner)
-          && (!filters.type || vehicle.type === filters.type)
+        return isReportOptionSelected(vehicle.reportKey, filters.vehicleIds)
+          && (!filters.ownerType || vehicle.ownerTypeValue === filters.ownerType)
+          && (filters.ownerType !== 'driver' || isReportOptionSelected(vehicle.owner, filters.thirdPartyOwners))
+          && isReportOptionSelected(vehicle.type, filters.types)
           && (!filters.status || vehicle.status === filters.status)
           && (!filters.unit || vehicle.unit === filters.unit)
           && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
@@ -204,16 +256,25 @@ export default function VehicleRegistrationPage({ initialSavedQuery = null, onSa
     const periodOption = vehicleReportFields
       .find((field) => field.type === 'dateRange')
       ?.options.find((option) => option.value === filters.periodField);
+    const ownerTypeOption = vehicleOwnerTypeOptions.find((option) => option.value === filters.ownerType);
+
+    const metadata = [
+      ['Placa', reportSelectionLabel(filters.vehicleIds, vehicleReportOptions)],
+      ['Proprietario', ownerTypeOption?.label || 'Todos'],
+    ];
+
+    if (filters.ownerType === 'driver') {
+      metadata.push(['Terceiro', reportSelectionLabel(filters.thirdPartyOwners, thirdPartyOwnerOptions)]);
+    }
 
     return [
-      ['Pesquisa', reportFilterLabel(filters.search)],
+      ...metadata,
+      ['Tipo', reportSelectionLabel(filters.types, vehicleTypeReportOptions)],
+      ['Status', reportFilterLabel(filters.status)],
+      ['Unidade', reportFilterLabel(filters.unit)],
       ['Periodo por', periodOption?.label || 'Cadastro'],
       ['Periodo de', reportFilterLabel(filters.periodStart)],
       ['Periodo ate', reportFilterLabel(filters.periodEnd)],
-      ['Proprietario', reportFilterLabel(filters.owner)],
-      ['Tipo', reportFilterLabel(filters.type)],
-      ['Status', reportFilterLabel(filters.status)],
-      ['Unidade', reportFilterLabel(filters.unit)],
       ['Resultado', `${rows.length} veiculo(s)`],
     ];
   }

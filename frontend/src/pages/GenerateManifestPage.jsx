@@ -15,7 +15,7 @@ import {
   saveManifest,
 } from '../data/operationRegistry.js';
 import { fetchCityOptions, initialCityOptions } from '../utils/cities.js';
-import { formatReportDateTime, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
+import { formatReportDateTime, isDateInRange, isReportOptionSelected, reportSelectionLabel, uniqueSortedOptions } from '../utils/report.js';
 import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const openCtes = [
@@ -78,19 +78,19 @@ const manifestTypeOptions = [
   'Manifesto de Trânsito',
 ];
 
-const manifestReportDefaultFilters = {
-  search: '',
+const manifestReportBaseFilters = {
+  manifestIds: [],
   periodField: 'createdAt',
   periodStart: '',
   periodEnd: '',
   status: '',
   manifestType: '',
-  unit: '',
-  origin: '',
-  destination: '',
-  driverName: '',
-  truckPlate: '',
-  hasInsurance: '',
+  unit: [],
+  origin: [],
+  destination: [],
+  driverName: [],
+  truckPlate: [],
+  hasInsurance: [],
 };
 
 const manifestReportColumns = [
@@ -110,6 +110,19 @@ const manifestReportColumns = [
 
 function reportFilterLabel(value, allLabel = 'Todos') {
   return value || allLabel;
+}
+
+function manifestReportOption(manifest) {
+  return {
+    value: manifest.id,
+    label: manifest.id,
+    meta: {
+      tipo: manifest.manifestType || '-',
+      motorista: manifest.driverName || '-',
+      placa: manifest.truckPlate || '-',
+    },
+    searchText: [manifest.id, manifest.manifestType, manifest.origin, manifest.destination, manifest.driverName, manifest.truckPlate, manifest.status].join(' '),
+  };
 }
 
 const defaultManifests = [
@@ -322,8 +335,57 @@ export default function GenerateManifestPage({ initialSavedQuery = null, onSaved
 
   const selectedWeight = selectedCtes.reduce((sum, cte) => sum + Number(cte.cargoWeight || 0), 0);
   const selectedValue = selectedCtes.reduce((sum, cte) => sum + Number(cte.cargoValue || 0), 0);
+  const manifestReportOptions = useMemo(
+    () => [...manifests]
+      .sort((left, right) => String(right.createdAt || right.startedAt || right.id).localeCompare(String(left.createdAt || left.startedAt || left.id)))
+      .map(manifestReportOption),
+    [manifests],
+  );
+  const manifestUnitOptions = useMemo(() => businessUnits.map((businessUnit) => ({ value: businessUnit.value, label: businessUnit.label })), []);
+  const manifestOriginOptions = useMemo(() => uniqueSortedOptions(manifests.map((manifest) => manifest.origin)), [manifests]);
+  const manifestDestinationOptions = useMemo(() => uniqueSortedOptions(manifests.map((manifest) => manifest.destination)), [manifests]);
+  const manifestDriverOptions = useMemo(() => uniqueSortedOptions(manifests.map((manifest) => manifest.driverName)), [manifests]);
+  const manifestPlateOptions = useMemo(() => uniqueSortedOptions(manifests.map((manifest) => manifest.truckPlate)), [manifests]);
+  const manifestInsuranceOptions = useMemo(() => uniqueSortedOptions(manifests.map((manifest) => manifest.hasInsurance)), [manifests]);
+  const manifestReportDefaultFilters = useMemo(() => ({
+    ...manifestReportBaseFilters,
+    manifestIds: manifestReportOptions.map((option) => option.value),
+    unit: manifestUnitOptions.map((option) => option.value),
+    origin: manifestOriginOptions,
+    destination: manifestDestinationOptions,
+    driverName: manifestDriverOptions,
+    truckPlate: manifestPlateOptions,
+    hasInsurance: manifestInsuranceOptions,
+  }), [
+    manifestDestinationOptions,
+    manifestDriverOptions,
+    manifestInsuranceOptions,
+    manifestOriginOptions,
+    manifestPlateOptions,
+    manifestReportOptions,
+    manifestUnitOptions,
+  ]);
   const manifestReportFields = useMemo(() => [
-    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Manifesto, rota, motorista, placa ou seguro' },
+    {
+      type: 'lookupMulti',
+      key: 'manifestIds',
+      label: 'Manifesto',
+      options: manifestReportOptions,
+      searchPlaceholder: 'Pesquisar manifesto',
+      columns: [
+        { key: 'tipo', label: 'Tipo' },
+        { key: 'motorista', label: 'Motorista' },
+        { key: 'placa', label: 'Placa' },
+      ],
+    },
+    { type: 'select', key: 'status', label: 'Status', options: uniqueSortedOptions(manifests.map((manifest) => manifest.status)) },
+    { type: 'select', key: 'manifestType', label: 'Tipo de manifesto', options: manifestTypeOptions },
+    { type: 'lookupMulti', key: 'unit', label: 'Unidade', options: manifestUnitOptions, searchPlaceholder: 'Pesquisar unidade' },
+    { type: 'lookupMulti', key: 'origin', label: 'Origem', options: manifestOriginOptions, searchPlaceholder: 'Pesquisar origem' },
+    { type: 'lookupMulti', key: 'destination', label: 'Destino', options: manifestDestinationOptions, searchPlaceholder: 'Pesquisar destino' },
+    { type: 'lookupMulti', key: 'driverName', label: 'Motorista', options: manifestDriverOptions, searchPlaceholder: 'Pesquisar motorista' },
+    { type: 'lookupMulti', key: 'truckPlate', label: 'Placa', options: manifestPlateOptions, searchPlaceholder: 'Pesquisar placa' },
+    { type: 'lookupMulti', key: 'hasInsurance', label: 'Seguro', options: manifestInsuranceOptions, searchPlaceholder: 'Pesquisar seguro' },
     {
       type: 'dateRange',
       key: 'period',
@@ -337,19 +399,18 @@ export default function GenerateManifestPage({ initialSavedQuery = null, onSaved
         { value: 'closedAt', label: 'Fechamento' },
       ],
     },
-    { type: 'select', key: 'status', label: 'Status', options: uniqueSortedOptions(manifests.map((manifest) => manifest.status)) },
-    { type: 'select', key: 'manifestType', label: 'Tipo de manifesto', options: manifestTypeOptions },
-    { type: 'select', key: 'unit', label: 'Unidade', options: businessUnits.map((businessUnit) => ({ value: businessUnit.value, label: businessUnit.label })) },
-    { type: 'select', key: 'origin', label: 'Origem', options: uniqueSortedOptions(manifests.map((manifest) => manifest.origin)) },
-    { type: 'select', key: 'destination', label: 'Destino', options: uniqueSortedOptions(manifests.map((manifest) => manifest.destination)) },
-    { type: 'select', key: 'driverName', label: 'Motorista', options: uniqueSortedOptions(manifests.map((manifest) => manifest.driverName)) },
-    { type: 'select', key: 'truckPlate', label: 'Placa', options: uniqueSortedOptions(manifests.map((manifest) => manifest.truckPlate)) },
-    { type: 'select', key: 'hasInsurance', label: 'Seguro', options: ['Sim', 'Nao'] },
-  ], [manifests]);
+  ], [
+    manifestDestinationOptions,
+    manifestDriverOptions,
+    manifestInsuranceOptions,
+    manifestOriginOptions,
+    manifestPlateOptions,
+    manifestReportOptions,
+    manifestUnitOptions,
+    manifests,
+  ]);
 
   function buildManifestReportRows(filters) {
-    const query = normalizeReportText(filters.search);
-
     return [...manifests]
       .sort((left, right) => String(right.createdAt || right.startedAt || right.id).localeCompare(String(left.createdAt || left.startedAt || left.id)))
       .filter((manifest) => {
@@ -359,25 +420,15 @@ export default function GenerateManifestPage({ initialSavedQuery = null, onSaved
             ? manifest.closedAt
             : manifest.createdAt || manifest.startedAt;
 
-        return (!query || normalizeReportText([
-          manifest.id,
-          manifest.manifestType,
-          manifest.origin,
-          manifest.destination,
-          manifest.driverName,
-          manifest.truckPlate,
-          manifest.status,
-          manifest.insuranceCompany,
-          manifest.insurancePolicy,
-        ].join(' ')).includes(query))
+        return isReportOptionSelected(manifest.id, filters.manifestIds)
           && (!filters.status || manifest.status === filters.status)
           && (!filters.manifestType || manifest.manifestType === filters.manifestType)
-          && (!filters.unit || manifest.unit === filters.unit)
-          && (!filters.origin || manifest.origin === filters.origin)
-          && (!filters.destination || manifest.destination === filters.destination)
-          && (!filters.driverName || manifest.driverName === filters.driverName)
-          && (!filters.truckPlate || manifest.truckPlate === filters.truckPlate)
-          && (!filters.hasInsurance || normalizeReportText(manifest.hasInsurance) === normalizeReportText(filters.hasInsurance))
+          && isReportOptionSelected(manifest.unit, filters.unit)
+          && isReportOptionSelected(manifest.origin, filters.origin)
+          && isReportOptionSelected(manifest.destination, filters.destination)
+          && isReportOptionSelected(manifest.driverName, filters.driverName)
+          && isReportOptionSelected(manifest.truckPlate, filters.truckPlate)
+          && isReportOptionSelected(manifest.hasInsurance, filters.hasInsurance)
           && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
       });
   }
@@ -388,18 +439,18 @@ export default function GenerateManifestPage({ initialSavedQuery = null, onSaved
       ?.options.find((option) => option.value === filters.periodField);
 
     return [
-      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Manifesto', reportSelectionLabel(filters.manifestIds, manifestReportOptions)],
+      ['Status', reportFilterLabel(filters.status)],
+      ['Tipo', reportFilterLabel(filters.manifestType)],
+      ['Unidade', reportSelectionLabel(filters.unit, manifestUnitOptions)],
+      ['Origem', reportSelectionLabel(filters.origin, manifestOriginOptions)],
+      ['Destino', reportSelectionLabel(filters.destination, manifestDestinationOptions)],
+      ['Motorista', reportSelectionLabel(filters.driverName, manifestDriverOptions)],
+      ['Placa', reportSelectionLabel(filters.truckPlate, manifestPlateOptions)],
+      ['Seguro', reportSelectionLabel(filters.hasInsurance, manifestInsuranceOptions)],
       ['Periodo por', periodOption?.label || 'Cadastro'],
       ['Periodo de', reportFilterLabel(filters.periodStart)],
       ['Periodo ate', reportFilterLabel(filters.periodEnd)],
-      ['Status', reportFilterLabel(filters.status)],
-      ['Tipo', reportFilterLabel(filters.manifestType)],
-      ['Unidade', reportFilterLabel(filters.unit)],
-      ['Origem', reportFilterLabel(filters.origin)],
-      ['Destino', reportFilterLabel(filters.destination)],
-      ['Motorista', reportFilterLabel(filters.driverName)],
-      ['Placa', reportFilterLabel(filters.truckPlate)],
-      ['Seguro', reportFilterLabel(filters.hasInsurance)],
       ['Resultado', `${rows.length} manifesto(s)`],
     ];
   }

@@ -23,7 +23,7 @@ import {
   normalizeAddressFields,
 } from '../utils/address.js';
 import { fetchCityOptions, initialCityOptions } from '../utils/cities.js';
-import { formatReportDate, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
+import { formatReportDate, isDateInRange, isReportOptionSelected, reportSelectionLabel, uniqueSortedOptions } from '../utils/report.js';
 import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const pickupAddressFields = addressFieldSet('pickup', 'pickupAddress');
@@ -54,20 +54,20 @@ const minutaStatuses = [
   'Entregue',
   'Cancelada',
 ];
-const minutaReportDefaultFilters = {
-  search: '',
+const minutaReportBaseFilters = {
+  minutaIds: [],
   periodField: 'issueDate',
   periodStart: '',
   periodEnd: '',
-  status: '',
-  freightType: '',
-  cargoType: '',
-  originCity: '',
-  destinationCity: '',
-  senderName: '',
-  recipientName: '',
-  driverName: '',
-  vehiclePlate: '',
+  status: [],
+  freightType: [],
+  cargoType: [],
+  originCity: [],
+  destinationCity: [],
+  senderName: [],
+  recipientName: [],
+  driverName: [],
+  vehiclePlate: [],
 };
 
 const minutaSortColumns = [
@@ -97,6 +97,19 @@ const minutaReportColumns = [
 
 function reportFilterLabel(value, allLabel = 'Todos') {
   return value || allLabel;
+}
+
+function minutaReportOption(minuta) {
+  return {
+    value: minuta.id,
+    label: minuta.id,
+    meta: {
+      remetente: minuta.senderName || '-',
+      destinatario: minuta.recipientName || '-',
+      status: minuta.status || '-',
+    },
+    searchText: [minuta.id, minuta.senderName, minuta.recipientName, minuta.linkedInvoice, minuta.driverName, minuta.vehiclePlate, minuta.status].join(' '),
+  };
 }
 
 const defaultMinutas = [
@@ -360,8 +373,65 @@ export default function CreateMinutaPage({ initialSavedQuery = null, onSavedQuer
         : 'Pesquisar por nome, CNPJ ou status';
   const originOptions = form.originCity && !cities.includes(form.originCity) ? [form.originCity, ...cities] : cities;
   const destinationOptions = form.destinationCity && !cities.includes(form.destinationCity) ? [form.destinationCity, ...cities] : cities;
+  const minutaReportOptions = useMemo(
+    () => sortedMinutas.map(minutaReportOption),
+    [sortedMinutas],
+  );
+  const minutaStatusOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.status)), [minutas]);
+  const minutaFreightTypeOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.freightType)), [minutas]);
+  const minutaCargoTypeOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.cargoType)), [minutas]);
+  const minutaOriginOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.originCity)), [minutas]);
+  const minutaDestinationOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.destinationCity)), [minutas]);
+  const minutaSenderOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.senderName)), [minutas]);
+  const minutaRecipientOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.recipientName)), [minutas]);
+  const minutaDriverOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.driverName)), [minutas]);
+  const minutaVehicleOptions = useMemo(() => uniqueSortedOptions(minutas.map((minuta) => minuta.vehiclePlate)), [minutas]);
+  const minutaReportDefaultFilters = useMemo(() => ({
+    ...minutaReportBaseFilters,
+    minutaIds: minutaReportOptions.map((option) => option.value),
+    status: minutaStatusOptions,
+    freightType: minutaFreightTypeOptions,
+    cargoType: minutaCargoTypeOptions,
+    originCity: minutaOriginOptions,
+    destinationCity: minutaDestinationOptions,
+    senderName: minutaSenderOptions,
+    recipientName: minutaRecipientOptions,
+    driverName: minutaDriverOptions,
+    vehiclePlate: minutaVehicleOptions,
+  }), [
+    minutaCargoTypeOptions,
+    minutaDestinationOptions,
+    minutaDriverOptions,
+    minutaFreightTypeOptions,
+    minutaOriginOptions,
+    minutaRecipientOptions,
+    minutaReportOptions,
+    minutaSenderOptions,
+    minutaStatusOptions,
+    minutaVehicleOptions,
+  ]);
   const minutaReportFields = useMemo(() => [
-    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Minuta, NF, cliente, rota, motorista ou placa' },
+    {
+      type: 'lookupMulti',
+      key: 'minutaIds',
+      label: 'Minuta',
+      options: minutaReportOptions,
+      searchPlaceholder: 'Pesquisar minuta',
+      columns: [
+        { key: 'remetente', label: 'Remetente' },
+        { key: 'destinatario', label: 'Destinatario' },
+        { key: 'status', label: 'Status' },
+      ],
+    },
+    { type: 'lookupMulti', key: 'status', label: 'Status', options: minutaStatusOptions.length ? minutaStatusOptions : minutaStatuses, searchPlaceholder: 'Pesquisar status' },
+    { type: 'lookupMulti', key: 'freightType', label: 'Tipo de frete', options: minutaFreightTypeOptions.length ? minutaFreightTypeOptions : freightTypes, searchPlaceholder: 'Pesquisar tipo de frete' },
+    { type: 'lookupMulti', key: 'cargoType', label: 'Tipo da carga', options: minutaCargoTypeOptions.length ? minutaCargoTypeOptions : cargoTypes, searchPlaceholder: 'Pesquisar tipo da carga' },
+    { type: 'lookupMulti', key: 'originCity', label: 'Origem', options: minutaOriginOptions, searchPlaceholder: 'Pesquisar origem' },
+    { type: 'lookupMulti', key: 'destinationCity', label: 'Destino', options: minutaDestinationOptions, searchPlaceholder: 'Pesquisar destino' },
+    { type: 'lookupMulti', key: 'senderName', label: 'Cliente/remetente', options: minutaSenderOptions, searchPlaceholder: 'Pesquisar cliente/remetente' },
+    { type: 'lookupMulti', key: 'recipientName', label: 'Destinatario', options: minutaRecipientOptions, searchPlaceholder: 'Pesquisar destinatario' },
+    { type: 'lookupMulti', key: 'driverName', label: 'Motorista', options: minutaDriverOptions, searchPlaceholder: 'Pesquisar motorista' },
+    { type: 'lookupMulti', key: 'vehiclePlate', label: 'Placa', options: minutaVehicleOptions, searchPlaceholder: 'Pesquisar placa' },
     {
       type: 'dateRange',
       key: 'period',
@@ -374,43 +444,33 @@ export default function CreateMinutaPage({ initialSavedQuery = null, onSavedQuer
         { value: 'createdAt', label: 'Cadastro' },
       ],
     },
-    { type: 'select', key: 'status', label: 'Status', options: minutaStatuses },
-    { type: 'select', key: 'freightType', label: 'Tipo de frete', options: freightTypes },
-    { type: 'select', key: 'cargoType', label: 'Tipo da carga', options: cargoTypes },
-    { type: 'select', key: 'originCity', label: 'Origem', options: uniqueSortedOptions(minutas.map((minuta) => minuta.originCity)) },
-    { type: 'select', key: 'destinationCity', label: 'Destino', options: uniqueSortedOptions(minutas.map((minuta) => minuta.destinationCity)) },
-    { type: 'select', key: 'senderName', label: 'Cliente/remetente', options: uniqueSortedOptions(minutas.map((minuta) => minuta.senderName)) },
-    { type: 'select', key: 'recipientName', label: 'Destinatario', options: uniqueSortedOptions(minutas.map((minuta) => minuta.recipientName)) },
-    { type: 'select', key: 'driverName', label: 'Motorista', options: uniqueSortedOptions(minutas.map((minuta) => minuta.driverName)) },
-    { type: 'select', key: 'vehiclePlate', label: 'Placa', options: uniqueSortedOptions(minutas.map((minuta) => minuta.vehiclePlate)) },
-  ], [minutas]);
+  ], [
+    minutaCargoTypeOptions,
+    minutaDestinationOptions,
+    minutaDriverOptions,
+    minutaFreightTypeOptions,
+    minutaOriginOptions,
+    minutaRecipientOptions,
+    minutaReportOptions,
+    minutaSenderOptions,
+    minutaStatusOptions,
+    minutaVehicleOptions,
+  ]);
 
   function buildMinutaReportRows(filters) {
-    const query = normalizeReportText(filters.search);
-
     return sortedMinutas.filter((minuta) => {
       const periodValue = filters.periodField === 'createdAt' ? minuta.createdAt : minuta.issueDate;
 
-      return (!query || normalizeReportText([
-        minuta.id,
-        minuta.senderName,
-        minuta.recipientName,
-        minuta.linkedInvoice,
-        minuta.originCity,
-        minuta.destinationCity,
-        minuta.driverName,
-        minuta.vehiclePlate,
-        minuta.status,
-      ].join(' ')).includes(query))
-        && (!filters.status || minuta.status === filters.status)
-        && (!filters.freightType || minuta.freightType === filters.freightType)
-        && (!filters.cargoType || minuta.cargoType === filters.cargoType)
-        && (!filters.originCity || minuta.originCity === filters.originCity)
-        && (!filters.destinationCity || minuta.destinationCity === filters.destinationCity)
-        && (!filters.senderName || minuta.senderName === filters.senderName)
-        && (!filters.recipientName || minuta.recipientName === filters.recipientName)
-        && (!filters.driverName || minuta.driverName === filters.driverName)
-        && (!filters.vehiclePlate || minuta.vehiclePlate === filters.vehiclePlate)
+      return isReportOptionSelected(minuta.id, filters.minutaIds)
+        && isReportOptionSelected(minuta.status, filters.status)
+        && isReportOptionSelected(minuta.freightType, filters.freightType)
+        && isReportOptionSelected(minuta.cargoType, filters.cargoType)
+        && isReportOptionSelected(minuta.originCity, filters.originCity)
+        && isReportOptionSelected(minuta.destinationCity, filters.destinationCity)
+        && isReportOptionSelected(minuta.senderName, filters.senderName)
+        && isReportOptionSelected(minuta.recipientName, filters.recipientName)
+        && isReportOptionSelected(minuta.driverName, filters.driverName)
+        && isReportOptionSelected(minuta.vehiclePlate, filters.vehiclePlate)
         && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
     });
   }
@@ -421,17 +481,19 @@ export default function CreateMinutaPage({ initialSavedQuery = null, onSavedQuer
       ?.options.find((option) => option.value === filters.periodField);
 
     return [
-      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Minuta', reportSelectionLabel(filters.minutaIds, minutaReportOptions)],
+      ['Status', reportSelectionLabel(filters.status, minutaStatusOptions)],
+      ['Frete', reportSelectionLabel(filters.freightType, minutaFreightTypeOptions)],
+      ['Carga', reportSelectionLabel(filters.cargoType, minutaCargoTypeOptions)],
+      ['Origem', reportSelectionLabel(filters.originCity, minutaOriginOptions)],
+      ['Destino', reportSelectionLabel(filters.destinationCity, minutaDestinationOptions)],
+      ['Cliente/remetente', reportSelectionLabel(filters.senderName, minutaSenderOptions)],
+      ['Destinatario', reportSelectionLabel(filters.recipientName, minutaRecipientOptions)],
+      ['Motorista', reportSelectionLabel(filters.driverName, minutaDriverOptions)],
+      ['Placa', reportSelectionLabel(filters.vehiclePlate, minutaVehicleOptions)],
       ['Periodo por', periodOption?.label || 'Emissao'],
       ['Periodo de', reportFilterLabel(filters.periodStart)],
       ['Periodo ate', reportFilterLabel(filters.periodEnd)],
-      ['Status', reportFilterLabel(filters.status)],
-      ['Frete', reportFilterLabel(filters.freightType)],
-      ['Carga', reportFilterLabel(filters.cargoType)],
-      ['Origem', reportFilterLabel(filters.originCity)],
-      ['Destino', reportFilterLabel(filters.destinationCity)],
-      ['Motorista', reportFilterLabel(filters.driverName)],
-      ['Placa', reportFilterLabel(filters.vehiclePlate)],
       ['Resultado', `${rows.length} minuta(s)`],
     ];
   }

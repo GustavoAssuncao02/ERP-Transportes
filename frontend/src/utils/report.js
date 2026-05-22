@@ -163,3 +163,37 @@ export function optionValue(option) {
 export function optionLabel(option) {
   return typeof option === 'object' ? option.label : option;
 }
+
+export function reportOptionValue(option) {
+  return String(optionValue(option) ?? '');
+}
+
+export function normalizeReportSelection(value) {
+  return Array.isArray(value) ? value.map((item) => String(item)) : [];
+}
+
+export function isReportOptionSelected(value, selected) {
+  return normalizeReportSelection(selected).includes(String(value ?? ''));
+}
+
+export function reportSelectionLabel(selected, options = [], allLabel = 'Todos') {
+  const selectedValues = normalizeReportSelection(selected);
+  const normalizedOptions = options.map((option) => ({
+    value: reportOptionValue(option),
+    label: optionLabel(option),
+  }));
+
+  if (normalizedOptions.length && selectedValues.length === normalizedOptions.length) {
+    return allLabel;
+  }
+
+  if (!selectedValues.length) {
+    return 'Nenhum';
+  }
+
+  if (selectedValues.length === 1) {
+    return normalizedOptions.find((option) => option.value === selectedValues[0])?.label || selectedValues[0];
+  }
+
+  return `${selectedValues.length} selecionado(s)`;
+}

@@ -14,7 +14,7 @@ import {
 } from '../data/transportRegistry.js';
 import { getCollectionOrderDeletionBlockers } from '../data/deletionRules.js';
 import { deactivateCollectionOrder, deleteCollectionOrder, getRegisteredCollectionOrders, saveCollectionOrder } from '../data/operationRegistry.js';
-import { formatReportDate, formatReportDateTime, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
+import { formatReportDate, formatReportDateTime, isDateInRange, isReportOptionSelected, reportSelectionLabel, uniqueSortedOptions } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const collectionOrderStorageKey = 'collectionOrders';
@@ -41,16 +41,16 @@ const defaultCollectionOrders = [
 ];
 
 const orderStatuses = ['Solicitada', 'Agendada', 'Em coleta', 'Coletada', 'Cancelada'];
-const collectionOrderReportDefaultFilters = {
-  search: '',
+const collectionOrderReportBaseFilters = {
+  orderIds: [],
   periodField: 'requestDate',
   periodStart: '',
   periodEnd: '',
-  status: '',
-  senderName: '',
-  recipientName: '',
-  driverName: '',
-  vehiclePlate: '',
+  status: [],
+  senderName: [],
+  recipientName: [],
+  driverName: [],
+  vehiclePlate: [],
 };
 
 function collectionOrderNumber(orderId) {
@@ -82,6 +82,19 @@ const collectionOrderReportColumns = [
 
 function reportFilterLabel(value, allLabel = 'Todos') {
   return value || allLabel;
+}
+
+function collectionOrderReportOption(order) {
+  return {
+    value: order.id,
+    label: order.id,
+    meta: {
+      remetente: order.senderName || '-',
+      destinatario: order.recipientName || '-',
+      status: order.status || '-',
+    },
+    searchText: [order.id, order.senderName, order.recipientName, order.driverName, order.vehiclePlate, order.status].join(' '),
+  };
 }
 
 function readCollectionOrders() {
@@ -221,8 +234,49 @@ export default function CollectionOrderPage({ initialSavedQuery = null, onSavedQ
 
     return [];
   }, [drivers, lookupSearch, lookupType, ordersByClosestDate, parties, vehicles]);
+  const collectionOrderReportOptions = useMemo(
+    () => sortedOrders.map(collectionOrderReportOption),
+    [sortedOrders],
+  );
+  const collectionOrderStatusOptions = useMemo(() => uniqueSortedOptions(orders.map((order) => order.status)), [orders]);
+  const collectionOrderSenderOptions = useMemo(() => uniqueSortedOptions(orders.map((order) => order.senderName)), [orders]);
+  const collectionOrderRecipientOptions = useMemo(() => uniqueSortedOptions(orders.map((order) => order.recipientName)), [orders]);
+  const collectionOrderDriverOptions = useMemo(() => uniqueSortedOptions(orders.map((order) => order.driverName)), [orders]);
+  const collectionOrderVehicleOptions = useMemo(() => uniqueSortedOptions(orders.map((order) => order.vehiclePlate)), [orders]);
+  const collectionOrderReportDefaultFilters = useMemo(() => ({
+    ...collectionOrderReportBaseFilters,
+    orderIds: collectionOrderReportOptions.map((option) => option.value),
+    status: collectionOrderStatusOptions,
+    senderName: collectionOrderSenderOptions,
+    recipientName: collectionOrderRecipientOptions,
+    driverName: collectionOrderDriverOptions,
+    vehiclePlate: collectionOrderVehicleOptions,
+  }), [
+    collectionOrderDriverOptions,
+    collectionOrderRecipientOptions,
+    collectionOrderReportOptions,
+    collectionOrderSenderOptions,
+    collectionOrderStatusOptions,
+    collectionOrderVehicleOptions,
+  ]);
   const collectionOrderReportFields = useMemo(() => [
-    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Ordem, NF, carga, motorista ou placa' },
+    {
+      type: 'lookupMulti',
+      key: 'orderIds',
+      label: 'Ordem de Coleta',
+      options: collectionOrderReportOptions,
+      searchPlaceholder: 'Pesquisar ordem de coleta',
+      columns: [
+        { key: 'remetente', label: 'Remetente' },
+        { key: 'destinatario', label: 'Destinatario' },
+        { key: 'status', label: 'Status' },
+      ],
+    },
+    { type: 'lookupMulti', key: 'status', label: 'Status', options: collectionOrderStatusOptions.length ? collectionOrderStatusOptions : orderStatuses, searchPlaceholder: 'Pesquisar status' },
+    { type: 'lookupMulti', key: 'senderName', label: 'Remetente', options: collectionOrderSenderOptions, searchPlaceholder: 'Pesquisar remetente' },
+    { type: 'lookupMulti', key: 'recipientName', label: 'Destinatario', options: collectionOrderRecipientOptions, searchPlaceholder: 'Pesquisar destinatario' },
+    { type: 'lookupMulti', key: 'driverName', label: 'Motorista', options: collectionOrderDriverOptions, searchPlaceholder: 'Pesquisar motorista' },
+    { type: 'lookupMulti', key: 'vehiclePlate', label: 'Placa', options: collectionOrderVehicleOptions, searchPlaceholder: 'Pesquisar placa' },
     {
       type: 'dateRange',
       key: 'period',
@@ -236,16 +290,16 @@ export default function CollectionOrderPage({ initialSavedQuery = null, onSavedQ
         { value: 'createdAt', label: 'Cadastro' },
       ],
     },
-    { type: 'select', key: 'status', label: 'Status', options: orderStatuses },
-    { type: 'select', key: 'senderName', label: 'Remetente', options: uniqueSortedOptions(orders.map((order) => order.senderName)) },
-    { type: 'select', key: 'recipientName', label: 'Destinatario', options: uniqueSortedOptions(orders.map((order) => order.recipientName)) },
-    { type: 'select', key: 'driverName', label: 'Motorista', options: uniqueSortedOptions(orders.map((order) => order.driverName)) },
-    { type: 'select', key: 'vehiclePlate', label: 'Placa', options: uniqueSortedOptions(orders.map((order) => order.vehiclePlate)) },
-  ], [orders]);
+  ], [
+    collectionOrderDriverOptions,
+    collectionOrderRecipientOptions,
+    collectionOrderReportOptions,
+    collectionOrderSenderOptions,
+    collectionOrderStatusOptions,
+    collectionOrderVehicleOptions,
+  ]);
 
   function buildCollectionOrderReportRows(filters) {
-    const query = normalizeReportText(filters.search);
-
     return sortedOrders.filter((order) => {
       const periodValue = filters.periodField === 'collectionDateTime'
         ? order.collectionDateTime
@@ -253,21 +307,12 @@ export default function CollectionOrderPage({ initialSavedQuery = null, onSavedQ
           ? order.createdAt
           : order.requestDate;
 
-      return (!query || normalizeReportText([
-        order.id,
-        order.senderName,
-        order.recipientName,
-        order.cargoDescription,
-        order.invoiceKey,
-        order.driverName,
-        order.vehiclePlate,
-        order.status,
-      ].join(' ')).includes(query))
-        && (!filters.status || order.status === filters.status)
-        && (!filters.senderName || order.senderName === filters.senderName)
-        && (!filters.recipientName || order.recipientName === filters.recipientName)
-        && (!filters.driverName || order.driverName === filters.driverName)
-        && (!filters.vehiclePlate || order.vehiclePlate === filters.vehiclePlate)
+      return isReportOptionSelected(order.id, filters.orderIds)
+        && isReportOptionSelected(order.status, filters.status)
+        && isReportOptionSelected(order.senderName, filters.senderName)
+        && isReportOptionSelected(order.recipientName, filters.recipientName)
+        && isReportOptionSelected(order.driverName, filters.driverName)
+        && isReportOptionSelected(order.vehiclePlate, filters.vehiclePlate)
         && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
     });
   }
@@ -278,15 +323,15 @@ export default function CollectionOrderPage({ initialSavedQuery = null, onSavedQ
       ?.options.find((option) => option.value === filters.periodField);
 
     return [
-      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Ordem de Coleta', reportSelectionLabel(filters.orderIds, collectionOrderReportOptions)],
+      ['Status', reportSelectionLabel(filters.status, collectionOrderStatusOptions)],
+      ['Remetente', reportSelectionLabel(filters.senderName, collectionOrderSenderOptions)],
+      ['Destinatario', reportSelectionLabel(filters.recipientName, collectionOrderRecipientOptions)],
+      ['Motorista', reportSelectionLabel(filters.driverName, collectionOrderDriverOptions)],
+      ['Placa', reportSelectionLabel(filters.vehiclePlate, collectionOrderVehicleOptions)],
       ['Periodo por', periodOption?.label || 'Solicitacao'],
       ['Periodo de', reportFilterLabel(filters.periodStart)],
       ['Periodo ate', reportFilterLabel(filters.periodEnd)],
-      ['Status', reportFilterLabel(filters.status)],
-      ['Remetente', reportFilterLabel(filters.senderName)],
-      ['Destinatario', reportFilterLabel(filters.recipientName)],
-      ['Motorista', reportFilterLabel(filters.driverName)],
-      ['Placa', reportFilterLabel(filters.vehiclePlate)],
       ['Resultado', `${rows.length} ordem(ns)`],
     ];
   }

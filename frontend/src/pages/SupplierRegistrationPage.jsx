@@ -2,8 +2,10 @@ import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
 import DataTable from '../components/DataTable.jsx';
+import ReportPanel from '../components/ReportPanel.jsx';
 import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
+import { getRegisteredCollectionOrders, getRegisteredMinutas } from '../data/operationRegistry.js';
 import {
   deactivateSupplier,
   deleteSupplier,
@@ -14,8 +16,9 @@ import {
 import { onlyDigits } from '../data/transportRegistry.js';
 import { normalizeText } from '../data/financeData.js';
 import { getSupplierDeletionBlockers } from '../data/deletionRules.js';
-import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
+import { blankAddressFields, brazilianStateOptions, normalizeAddressFields } from '../utils/address.js';
 import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
+import { formatReportDate, isDateInRange, normalizeReportText } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const initialForm = {
@@ -27,6 +30,35 @@ const initialForm = {
   ...blankAddressFields(),
   active: true,
 };
+const supplierReportDefaultFilters = {
+  search: '',
+  active: '',
+  state: '',
+  documentType: '',
+  periodField: 'createdAt',
+  periodStart: '',
+  periodEnd: '',
+};
+
+const supplierReportFields = [
+  { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Nome, documento, contato ou operacao' },
+  { type: 'select', key: 'active', label: 'Status', options: [{ value: 'active', label: 'Ativo' }, { value: 'inactive', label: 'Inativo' }] },
+  { type: 'select', key: 'state', label: 'UF', options: brazilianStateOptions },
+  { type: 'select', key: 'documentType', label: 'Tipo de documento', options: ['CNPJ', 'CPF'] },
+  {
+    type: 'dateRange',
+    key: 'period',
+    label: 'Periodo',
+    fieldKey: 'periodField',
+    startKey: 'periodStart',
+    endKey: 'periodEnd',
+    options: [
+      { value: 'createdAt', label: 'Cadastro' },
+      { value: 'lastMinutaDate', label: 'Ultima minuta' },
+      { value: 'lastOrderDate', label: 'Ultima ordem de coleta' },
+    ],
+  },
+];
 
 const supplierSortColumns = [
   { key: 'name', label: 'Nome', type: 'text', getValue: (supplier) => supplier.name, render: (supplier) => <strong>{supplier.name}</strong> },
@@ -37,7 +69,54 @@ const supplierSortColumns = [
   { key: 'active', label: 'Ativo', type: 'text', getValue: (supplier) => (supplier.active ? 'Sim' : 'Nao'), render: (supplier) => (supplier.active ? 'Sim' : 'Nao') },
 ];
 
-export default function SupplierRegistrationPage() {
+const supplierReportColumns = [
+  { key: 'name', label: 'Fornecedor', pdfWidth: 26, getValue: (supplier) => supplier.name, render: (supplier) => <strong>{supplier.name}</strong> },
+  { key: 'cnpj', label: 'Documento', pdfWidth: 18, getValue: (supplier) => supplier.cnpj },
+  { key: 'contact', label: 'Contato', pdfWidth: 22, getValue: (supplier) => supplier.contact || '-' },
+  { key: 'email', label: 'E-mail', pdfWidth: 24, getValue: (supplier) => supplier.email || '-' },
+  { key: 'state', label: 'UF', pdfWidth: 4, getValue: (supplier) => supplier.state || '-' },
+  { key: 'active', label: 'Ativo', pdfWidth: 6, getValue: (supplier) => (supplier.active ? 'Sim' : 'Nao') },
+  { key: 'createdAt', label: 'Cadastro', pdfWidth: 10, getValue: (supplier) => formatReportDate(supplier.createdAt) },
+  { key: 'lastMinutaId', label: 'Ultima minuta', pdfWidth: 18, getValue: (supplier) => supplier.lastMinutaId || '-' },
+  { key: 'lastOrderId', label: 'Ultima ordem', pdfWidth: 18, getValue: (supplier) => supplier.lastOrderId || '-' },
+];
+
+function reportFilterLabel(value, allLabel = 'Todos') {
+  return value || allLabel;
+}
+
+function dateTimeMs(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function recordDate(record) {
+  return record.createdAt || record.issueDate || record.requestDate || record.collectionDateTime || record.updatedAt || '';
+}
+
+function sameSupplier(supplier, name, document = '') {
+  const supplierDocument = onlyDigits(supplier.cnpj);
+
+  return normalizeReportText(supplier.name) === normalizeReportText(name)
+    || (supplierDocument && onlyDigits(document) === supplierDocument);
+}
+
+function lastSupplierMinuta(supplier, minutas) {
+  return minutas
+    .filter((minuta) => (
+      sameSupplier(supplier, minuta.senderName, minuta.senderDocument)
+      || sameSupplier(supplier, minuta.recipientName, minuta.recipientDocument)
+    ))
+    .sort((left, right) => dateTimeMs(recordDate(right)) - dateTimeMs(recordDate(left)))[0] || null;
+}
+
+function lastSupplierOrder(supplier, orders) {
+  return orders
+    .filter((order) => sameSupplier(supplier, order.senderName) || sameSupplier(supplier, order.recipientName))
+    .sort((left, right) => dateTimeMs(recordDate(right)) - dateTimeMs(recordDate(left)))[0] || null;
+}
+
+export default function SupplierRegistrationPage({ initialSavedQuery = null, onSavedQueriesChange }) {
   const [suppliers, setSuppliers] = useState(getRegisteredSuppliers);
   const [form, setForm] = useState(initialForm);
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -72,6 +151,66 @@ export default function SupplierRegistrationPage() {
       normalizeText(`${supplier.name} ${supplier.cnpj} ${supplier.contact} ${supplier.email} ${supplier.address}`).includes(query)
     ));
   }, [lookupSearch, sortedSuppliers]);
+  const minutas = useMemo(() => getRegisteredMinutas(), []);
+  const collectionOrders = useMemo(() => getRegisteredCollectionOrders(), []);
+
+  function buildSupplierReportRows(filters) {
+    const query = normalizeReportText(filters.search);
+
+    return sortedSuppliers
+      .map((supplier) => {
+        const lastMinuta = lastSupplierMinuta(supplier, minutas);
+        const lastOrder = lastSupplierOrder(supplier, collectionOrders);
+
+        return {
+          ...supplier,
+          lastMinutaId: lastMinuta?.id || '',
+          lastMinutaDate: lastMinuta ? recordDate(lastMinuta) : '',
+          lastOrderId: lastOrder?.id || '',
+          lastOrderDate: lastOrder ? recordDate(lastOrder) : '',
+        };
+      })
+      .filter((supplier) => {
+        const periodValue = filters.periodField === 'lastMinutaDate'
+          ? supplier.lastMinutaDate
+          : filters.periodField === 'lastOrderDate'
+            ? supplier.lastOrderDate
+            : supplier.createdAt;
+        const documentType = onlyDigits(supplier.cnpj).length <= 11 ? 'CPF' : 'CNPJ';
+
+        return (!query || normalizeReportText([
+          supplier.name,
+          supplier.cnpj,
+          supplier.contact,
+          supplier.email,
+          supplier.address,
+          supplier.state,
+          supplier.lastMinutaId,
+          supplier.lastOrderId,
+        ].join(' ')).includes(query))
+          && (!filters.active || (filters.active === 'active' ? supplier.active : !supplier.active))
+          && (!filters.state || supplier.state === filters.state)
+          && (!filters.documentType || documentType === filters.documentType)
+          && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
+      });
+  }
+
+  function supplierReportMetadata(filters, rows) {
+    const periodOption = supplierReportFields
+      .find((field) => field.type === 'dateRange')
+      ?.options.find((option) => option.value === filters.periodField);
+
+    return [
+      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Status', filters.active === 'active' ? 'Ativo' : filters.active === 'inactive' ? 'Inativo' : 'Todos'],
+      ['UF', reportFilterLabel(filters.state)],
+      ['Documento', reportFilterLabel(filters.documentType)],
+      ['Periodo por', periodOption?.label || 'Cadastro'],
+      ['Periodo de', reportFilterLabel(filters.periodStart)],
+      ['Periodo ate', reportFilterLabel(filters.periodEnd)],
+      ['Resultado', `${rows.length} fornecedor(es)`],
+    ];
+  }
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -126,6 +265,7 @@ export default function SupplierRegistrationPage() {
         street: company.street || current.street,
         addressNumber: company.addressNumber || current.addressNumber,
         district: company.district || current.district,
+        state: company.state || current.state,
       }));
 
       setMessage(
@@ -265,6 +405,7 @@ export default function SupplierRegistrationPage() {
             onChange={updateField}
             onChangeMany={updateFields}
             onStatus={setMessage}
+            showState
           />
 
           <div className="field inline-check-field">
@@ -306,6 +447,25 @@ export default function SupplierRegistrationPage() {
         tableClassName="registry-table"
         minWidth={1080}
         emptyMessage="Nenhum fornecedor encontrado"
+      />
+
+      <ReportPanel
+        title="Relatorio de fornecedores"
+        titleId="supplier-report-title"
+        pageId="supplier-registration"
+        reportType="supplier-report"
+        module="Gestao"
+        icon="operation"
+        defaultFilters={supplierReportDefaultFilters}
+        fields={supplierReportFields}
+        columns={supplierReportColumns}
+        buildRows={buildSupplierReportRows}
+        filenamePrefix="relatorio-fornecedores"
+        initialSavedQuery={initialSavedQuery}
+        onSavedQueriesChange={onSavedQueriesChange}
+        getSummary={(rows) => `${rows.length} fornecedor(es)`}
+        getMetadata={supplierReportMetadata}
+        getRowKey={(supplier) => supplier.id || supplier.cnpj}
       />
 
       {lookupOpen && (

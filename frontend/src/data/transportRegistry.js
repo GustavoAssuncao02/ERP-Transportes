@@ -16,6 +16,7 @@ export const defaultVehicles = [
     owner: 'JTD Transportes LTDA',
     ownerCpf: '',
     status: 'Ativo',
+    createdAt: '2026-05-01T08:00:00.000Z',
   },
   {
     plate: 'JTD4A56',
@@ -26,6 +27,7 @@ export const defaultVehicles = [
     owner: 'JTD Logística Nordeste',
     ownerCpf: '',
     status: 'Ativo',
+    createdAt: '2026-05-02T08:00:00.000Z',
   },
   {
     plate: 'LOG8B91',
@@ -36,6 +38,7 @@ export const defaultVehicles = [
     owner: 'JTD Armazéns Salvador',
     ownerCpf: '',
     status: 'Ativo',
+    createdAt: '2026-05-03T08:00:00.000Z',
   },
 ];
 
@@ -47,6 +50,8 @@ export const defaultDrivers = [
     cnh: '04781234567',
     category: 'E',
     status: 'Ativo',
+    state: 'BA',
+    createdAt: '2026-05-01T08:00:00.000Z',
   },
   {
     cpf: '39053344705',
@@ -55,6 +60,8 @@ export const defaultDrivers = [
     cnh: '03459876543',
     category: 'E',
     status: 'Ativo',
+    state: 'BA',
+    createdAt: '2026-05-02T08:00:00.000Z',
   },
   {
     cpf: '11144477735',
@@ -63,6 +70,8 @@ export const defaultDrivers = [
     cnh: '05671239845',
     category: 'D',
     status: 'Ativo',
+    state: 'BA',
+    createdAt: '2026-05-03T08:00:00.000Z',
   },
 ];
 
@@ -130,6 +139,29 @@ function recordTransportAudit({ action, entityType, entityId, entityLabel, befor
   });
 }
 
+const vehicleByPlateCache = new WeakMap();
+const driverByCpfCache = new WeakMap();
+
+function getVehicleByPlateMap(vehicles) {
+  if (vehicleByPlateCache.has(vehicles)) {
+    return vehicleByPlateCache.get(vehicles);
+  }
+
+  const vehicleMap = new Map(vehicles.map((vehicle) => [normalizePlate(vehicle.plate), vehicle]));
+  vehicleByPlateCache.set(vehicles, vehicleMap);
+  return vehicleMap;
+}
+
+function getDriverByCpfMap(drivers) {
+  if (driverByCpfCache.has(drivers)) {
+    return driverByCpfCache.get(drivers);
+  }
+
+  const driverMap = new Map(drivers.map((driver) => [onlyDigits(driver.cpf), driver]));
+  driverByCpfCache.set(drivers, driverMap);
+  return driverMap;
+}
+
 export function getRegisteredVehicles() {
   return readStoredRecords(vehicleStorageKey, defaultVehicles);
 }
@@ -142,22 +174,28 @@ export function findVehicleByPlate(plate) {
   const normalizedPlate = normalizePlate(plate);
   if (!normalizedPlate) return null;
 
-  return getRegisteredVehicles().find((vehicle) => normalizePlate(vehicle.plate) === normalizedPlate) || null;
+  return getVehicleByPlateMap(getRegisteredVehicles()).get(normalizedPlate) || null;
 }
 
 export function findDriverByCpf(cpf) {
   const digits = onlyDigits(cpf);
   if (digits.length < 11) return null;
 
-  return getRegisteredDrivers().find((driver) => onlyDigits(driver.cpf) === digits) || null;
+  return getDriverByCpfMap(getRegisteredDrivers()).get(digits) || null;
 }
 
 export function saveVehicle(record) {
   const normalizedPlate = normalizePlate(record.plate);
-  const vehicles = getRegisteredVehicles();
-  const nextRecord = { ...record, plate: normalizedPlate };
+  const vehicles = [...getRegisteredVehicles()];
   const existingIndex = vehicles.findIndex((vehicle) => normalizePlate(vehicle.plate) === normalizedPlate);
   const previousRecord = existingIndex >= 0 ? vehicles[existingIndex] : null;
+  const now = new Date().toISOString();
+  const nextRecord = {
+    ...record,
+    plate: normalizedPlate,
+    createdAt: previousRecord?.createdAt || record.createdAt || now,
+    updatedAt: now,
+  };
 
   if (existingIndex >= 0) {
     vehicles[existingIndex] = nextRecord;
@@ -180,10 +218,16 @@ export function saveVehicle(record) {
 
 export function saveDriver(record) {
   const normalizedCpf = onlyDigits(record.cpf);
-  const drivers = getRegisteredDrivers();
-  const nextRecord = { ...record, cpf: normalizedCpf };
+  const drivers = [...getRegisteredDrivers()];
   const existingIndex = drivers.findIndex((driver) => onlyDigits(driver.cpf) === normalizedCpf);
   const previousRecord = existingIndex >= 0 ? drivers[existingIndex] : null;
+  const now = new Date().toISOString();
+  const nextRecord = {
+    ...record,
+    cpf: normalizedCpf,
+    createdAt: previousRecord?.createdAt || record.createdAt || now,
+    updatedAt: now,
+  };
 
   if (existingIndex >= 0) {
     drivers[existingIndex] = nextRecord;

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
+import ReportPanel from '../components/ReportPanel.jsx';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
@@ -14,8 +15,9 @@ import {
   saveInsurance,
 } from '../data/managementRegistry.js';
 import { onlyDigits } from '../data/transportRegistry.js';
-import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
+import { blankAddressFields, brazilianStateOptions, normalizeAddressFields } from '../utils/address.js';
 import { fetchCompanyByCnpj } from '../utils/companyLookup.js';
+import { formatReportDate, isDateInRange, normalizeReportText } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const initialForm = {
@@ -30,6 +32,31 @@ const initialForm = {
   active: true,
   defaultInsurance: false,
 };
+const insuranceReportDefaultFilters = {
+  search: '',
+  active: '',
+  defaultInsurance: '',
+  state: '',
+  periodField: 'createdAt',
+  periodStart: '',
+  periodEnd: '',
+};
+
+const insuranceReportFields = [
+  { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Seguradora, CNPJ, apolice ou contato' },
+  { type: 'select', key: 'active', label: 'Status', options: [{ value: 'active', label: 'Ativo' }, { value: 'inactive', label: 'Inativo' }] },
+  { type: 'select', key: 'defaultInsurance', label: 'Seguro padrao', options: [{ value: 'yes', label: 'Sim' }, { value: 'no', label: 'Nao' }] },
+  { type: 'select', key: 'state', label: 'UF', options: brazilianStateOptions },
+  {
+    type: 'dateRange',
+    key: 'period',
+    label: 'Periodo de cadastro',
+    fieldKey: 'periodField',
+    startKey: 'periodStart',
+    endKey: 'periodEnd',
+    options: [{ value: 'createdAt', label: 'Cadastro' }],
+  },
+];
 
 const insuranceSortColumns = [
   { key: 'companyName', label: 'Seguradora', type: 'text', getValue: (insurance) => insurance.companyName },
@@ -42,7 +69,23 @@ const insuranceSortColumns = [
   { key: 'defaultInsurance', label: 'Padrao', type: 'number', getValue: (insurance) => Number(insurance.defaultInsurance) },
 ];
 
-export default function InsuranceRegistrationPage() {
+const insuranceReportColumns = [
+  { key: 'companyName', label: 'Seguradora', pdfWidth: 26, getValue: (insurance) => insurance.companyName, render: (insurance) => <strong>{insurance.companyName}</strong> },
+  { key: 'cnpj', label: 'CNPJ', pdfWidth: 18, getValue: (insurance) => insurance.cnpj },
+  { key: 'policyNumber', label: 'Apolice', pdfWidth: 18, getValue: (insurance) => insurance.policyNumber },
+  { key: 'endorsementNumber', label: 'Averbacao', pdfWidth: 14, getValue: (insurance) => insurance.endorsementNumber || '-' },
+  { key: 'contact', label: 'Contato', pdfWidth: 20, getValue: (insurance) => insurance.contact || '-' },
+  { key: 'state', label: 'UF', pdfWidth: 4, getValue: (insurance) => insurance.state || '-' },
+  { key: 'active', label: 'Ativo', pdfWidth: 6, getValue: (insurance) => (insurance.active ? 'Sim' : 'Nao') },
+  { key: 'defaultInsurance', label: 'Padrao', pdfWidth: 6, getValue: (insurance) => (insurance.defaultInsurance ? 'Sim' : 'Nao') },
+  { key: 'createdAt', label: 'Cadastro', pdfWidth: 10, getValue: (insurance) => formatReportDate(insurance.createdAt) },
+];
+
+function reportFilterLabel(value, allLabel = 'Todos') {
+  return value || allLabel;
+}
+
+export default function InsuranceRegistrationPage({ initialSavedQuery = null, onSavedQueriesChange }) {
   const [insurances, setInsurances] = useState(getRegisteredInsurances);
   const [form, setForm] = useState(initialForm);
   const [lookupOpen, setLookupOpen] = useState(false);
@@ -73,6 +116,38 @@ export default function InsuranceRegistrationPage() {
       insurance.email,
     ].join(' ')).includes(query));
   }, [lookupSearch, sortedInsurances]);
+
+  function buildInsuranceReportRows(filters) {
+    const query = normalizeReportText(filters.search);
+
+    return sortedInsurances.filter((insurance) => (
+      (!query || normalizeReportText([
+        insurance.companyName,
+        insurance.cnpj,
+        insurance.policyNumber,
+        insurance.endorsementNumber,
+        insurance.contact,
+        insurance.email,
+        insurance.state,
+      ].join(' ')).includes(query))
+      && (!filters.active || (filters.active === 'active' ? insurance.active : !insurance.active))
+      && (!filters.defaultInsurance || (filters.defaultInsurance === 'yes' ? insurance.defaultInsurance : !insurance.defaultInsurance))
+      && (!filters.state || insurance.state === filters.state)
+      && isDateInRange(insurance.createdAt, filters.periodStart, filters.periodEnd)
+    ));
+  }
+
+  function insuranceReportMetadata(filters, rows) {
+    return [
+      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Status', filters.active === 'active' ? 'Ativo' : filters.active === 'inactive' ? 'Inativo' : 'Todos'],
+      ['Seguro padrao', filters.defaultInsurance === 'yes' ? 'Sim' : filters.defaultInsurance === 'no' ? 'Nao' : 'Todos'],
+      ['UF', reportFilterLabel(filters.state)],
+      ['Periodo de', reportFilterLabel(filters.periodStart)],
+      ['Periodo ate', reportFilterLabel(filters.periodEnd)],
+      ['Resultado', `${rows.length} seguro(s)`],
+    ];
+  }
 
   function updateField(field, value) {
     setForm((current) => ({
@@ -126,6 +201,7 @@ export default function InsuranceRegistrationPage() {
         street: company.street || current.street,
         addressNumber: company.addressNumber || current.addressNumber,
         district: company.district || current.district,
+        state: company.state || current.state,
       }));
 
       setMessage(
@@ -295,6 +371,7 @@ export default function InsuranceRegistrationPage() {
             onChange={updateField}
             onChangeMany={updateFields}
             onStatus={setMessage}
+            showState
           />
 
           <div className="field inline-check-field">
@@ -363,6 +440,25 @@ export default function InsuranceRegistrationPage() {
           </table>
         </div>
       </section>
+
+      <ReportPanel
+        title="Relatorio de seguros"
+        titleId="insurance-report-title"
+        pageId="insurance-registration"
+        reportType="insurance-report"
+        module="Gestao"
+        icon="operation"
+        defaultFilters={insuranceReportDefaultFilters}
+        fields={insuranceReportFields}
+        columns={insuranceReportColumns}
+        buildRows={buildInsuranceReportRows}
+        filenamePrefix="relatorio-seguros"
+        initialSavedQuery={initialSavedQuery}
+        onSavedQueriesChange={onSavedQueriesChange}
+        getSummary={(rows) => `${rows.length} seguro(s)`}
+        getMetadata={insuranceReportMetadata}
+        getRowKey={(insurance) => insurance.id}
+      />
 
       {lookupOpen && (
         <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="insurance-lookup-title">

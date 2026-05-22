@@ -1,6 +1,6 @@
 import { addressFieldSet, normalizeAddressFields } from '../utils/address.js';
 import { recordAuditEvent, auditActions } from '../services/auditLog.js';
-import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
+import { createReferenceCache, readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 
 export const cteStorageKey = 'transportCtes';
 export const collectionOrderStorageKey = 'collectionOrders';
@@ -11,6 +11,7 @@ const manifestSeedVersionKey = 'transportManifestSeedVersion';
 const manifestSeedVersion = 'fleet-map-demo-v2-third-party-transit';
 const pickupAddressFields = addressFieldSet('pickup', 'pickupAddress');
 const deliveryAddressFields = addressFieldSet('delivery', 'deliveryAddress');
+let manifestSeedChecked = false;
 
 export const defaultCtes = [
   {
@@ -23,6 +24,8 @@ export const defaultCtes = [
     cargoWeight: '12800',
     cargoValue: '184500',
     status: 'Aberto',
+    issueDateTime: '2026-05-18T08:00',
+    createdAt: '2026-05-18T08:00:00.000Z',
     vehiclePlate: 'ABC1D23',
     vehicleModel: 'Volvo FH 540',
     driverCpf: '52998224725',
@@ -38,6 +41,8 @@ export const defaultCtes = [
     cargoWeight: '9200',
     cargoValue: '112300',
     status: 'Aberto',
+    issueDateTime: '2026-05-18T09:00',
+    createdAt: '2026-05-18T09:00:00.000Z',
     vehiclePlate: 'ABC1D23',
     vehicleModel: 'Volvo FH 540',
     driverCpf: '52998224725',
@@ -53,6 +58,8 @@ export const defaultCtes = [
     cargoWeight: '15300',
     cargoValue: '206900',
     status: 'Aberto',
+    issueDateTime: '2026-05-18T10:00',
+    createdAt: '2026-05-18T10:00:00.000Z',
     vehiclePlate: 'JTD4A56',
     vehicleModel: 'Scania R 450',
     driverCpf: '39053344705',
@@ -68,6 +75,8 @@ export const defaultCtes = [
     cargoWeight: '11100',
     cargoValue: '158750',
     status: 'Aberto',
+    issueDateTime: '2026-05-18T11:00',
+    createdAt: '2026-05-18T11:00:00.000Z',
     vehiclePlate: 'LOG8B91',
     vehicleModel: 'Mercedes-Benz Actros 2651',
     driverCpf: '11144477735',
@@ -93,6 +102,7 @@ export const defaultCollectionOrders = [
     vehicleModel: 'Volvo FH 540',
     notes: 'Coleta com conferencia de volumes no carregamento.',
     status: 'Agendada',
+    createdAt: '2026-05-18T08:00:00.000Z',
   },
 ];
 
@@ -585,6 +595,14 @@ function writeRecords(key, records) {
   writeJsonStorage(key, records);
 }
 
+const normalizeCtes = createReferenceCache((records) => records.map((cte) => ({ status: 'Aberto', ...cte })));
+const normalizeMinutas = createReferenceCache((records) => records.map(normalizeMinutaAddressFields));
+const normalizeManifests = createReferenceCache((records) => records.map((manifest) => ({
+  manifestType: 'Manifesto de TrÃ¢nsito',
+  status: 'Emitido',
+  ...manifest,
+})));
+
 function recordOperationAudit({ action, entityType, entityId, entityLabel, before, after, summary }) {
   recordAuditEvent({
     module: 'Operacao',
@@ -599,8 +617,13 @@ function recordOperationAudit({ action, entityType, entityId, entityLabel, befor
 }
 
 function mergeSeedManifests(records) {
+  if (manifestSeedChecked) {
+    return records;
+  }
+
   try {
     if (localStorage.getItem(manifestSeedVersionKey) === manifestSeedVersion) {
+      manifestSeedChecked = true;
       return records;
     }
 
@@ -613,8 +636,10 @@ function mergeSeedManifests(records) {
     }
 
     localStorage.setItem(manifestSeedVersionKey, manifestSeedVersion);
+    manifestSeedChecked = true;
     return nextRecords;
   } catch {
+    manifestSeedChecked = true;
     return records;
   }
 }
@@ -623,22 +648,28 @@ function upsertRecord(key, fallback, record, audit = {}) {
   const records = readRecords(key, fallback);
   const existingIndex = records.findIndex((item) => item.id === record.id);
   const previousRecord = existingIndex >= 0 ? records[existingIndex] : null;
+  const now = new Date().toISOString();
+  const nextRecord = {
+    ...record,
+    createdAt: previousRecord?.createdAt || record.createdAt || now,
+    updatedAt: now,
+  };
   const nextRecords = [...records];
 
   if (existingIndex >= 0) {
-    nextRecords[existingIndex] = record;
+    nextRecords[existingIndex] = nextRecord;
   } else {
-    nextRecords.push(record);
+    nextRecords.push(nextRecord);
   }
 
   writeRecords(key, nextRecords);
   recordOperationAudit({
     action: previousRecord ? auditActions.update : auditActions.create,
     entityType: audit.entityType || 'registro operacional',
-    entityId: record.id,
-    entityLabel: audit.entityLabel?.(record) || record.number || record.id,
+    entityId: nextRecord.id,
+    entityLabel: audit.entityLabel?.(nextRecord) || nextRecord.number || nextRecord.id,
     before: previousRecord,
-    after: record,
+    after: nextRecord,
     summary: previousRecord ? audit.updateSummary : audit.createSummary,
   });
   return nextRecords;
@@ -679,7 +710,7 @@ function updateRecordStatus(key, fallback, id, status, audit = {}) {
 }
 
 export function getRegisteredCtes() {
-  return readRecords(cteStorageKey, defaultCtes).map((cte) => ({ status: 'Aberto', ...cte }));
+  return normalizeCtes(readRecords(cteStorageKey, defaultCtes));
 }
 
 export function saveCte(record) {
@@ -732,7 +763,7 @@ export function deactivateCollectionOrder(id) {
 }
 
 export function getRegisteredMinutas() {
-  return readRecords(minutaStorageKey, defaultMinutas).map(normalizeMinutaAddressFields);
+  return normalizeMinutas(readRecords(minutaStorageKey, defaultMinutas));
 }
 
 export function saveMinuta(record) {
@@ -758,8 +789,7 @@ export function deactivateMinuta(id) {
 }
 
 export function getRegisteredManifests() {
-  return mergeSeedManifests(readRecords(manifestStorageKey, defaultManifests))
-    .map((manifest) => ({ manifestType: 'Manifesto de Trânsito', status: 'Emitido', ...manifest }));
+  return normalizeManifests(mergeSeedManifests(readRecords(manifestStorageKey, defaultManifests)));
 }
 
 export function saveManifest(record) {

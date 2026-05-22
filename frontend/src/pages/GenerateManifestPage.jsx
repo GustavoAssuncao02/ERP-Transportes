@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, Trash2, X } from 'lucide-react';
+import ReportPanel from '../components/ReportPanel.jsx';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, currency, normalizeText } from '../data/financeData.js';
@@ -13,6 +14,8 @@ import {
   pendingManifestIdKey,
   saveManifest,
 } from '../data/operationRegistry.js';
+import { fetchCityOptions, initialCityOptions } from '../utils/cities.js';
+import { formatReportDateTime, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
 import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 const openCtes = [
@@ -74,6 +77,40 @@ const manifestTypeOptions = [
   'Manifesto de Controle',
   'Manifesto de Trânsito',
 ];
+
+const manifestReportDefaultFilters = {
+  search: '',
+  periodField: 'createdAt',
+  periodStart: '',
+  periodEnd: '',
+  status: '',
+  manifestType: '',
+  unit: '',
+  origin: '',
+  destination: '',
+  driverName: '',
+  truckPlate: '',
+  hasInsurance: '',
+};
+
+const manifestReportColumns = [
+  { key: 'id', label: 'Manifesto', pdfWidth: 18, getValue: (manifest) => manifest.id, render: (manifest) => <strong>{manifest.id}</strong> },
+  { key: 'manifestType', label: 'Tipo', pdfWidth: 22, getValue: (manifest) => manifest.manifestType || '-' },
+  { key: 'status', label: 'Status', pdfWidth: 10, getValue: (manifest) => manifest.status },
+  { key: 'startedAt', label: 'Inicio', pdfWidth: 16, getValue: (manifest) => formatReportDateTime(manifest.startedAt || manifest.createdAt) },
+  { key: 'closedAt', label: 'Fechamento', pdfWidth: 16, getValue: (manifest) => formatReportDateTime(manifest.closedAt) },
+  { key: 'origin', label: 'Origem', pdfWidth: 18, getValue: (manifest) => manifest.origin },
+  { key: 'destination', label: 'Destino', pdfWidth: 18, getValue: (manifest) => manifest.destination },
+  { key: 'driverName', label: 'Motorista', pdfWidth: 20, getValue: (manifest) => manifest.driverName },
+  { key: 'truckPlate', label: 'Placa', pdfWidth: 8, getValue: (manifest) => manifest.truckPlate },
+  { key: 'selectedCteIds', label: 'CT-es', pdfWidth: 6, getValue: (manifest) => manifest.selectedCteIds?.length || 0 },
+  { key: 'cargoWeight', label: 'Peso', pdfWidth: 10, getValue: (manifest) => formatWeight(manifest.cargoWeight) },
+  { key: 'cargoValue', label: 'Valor', pdfWidth: 12, getValue: (manifest) => currency(manifest.cargoValue) },
+];
+
+function reportFilterLabel(value, allLabel = 'Todos') {
+  return value || allLabel;
+}
 
 const defaultManifests = [
   {
@@ -196,12 +233,12 @@ function defaultManifestInsurance() {
   };
 }
 
-export default function GenerateManifestPage() {
+export default function GenerateManifestPage({ initialSavedQuery = null, onSavedQueriesChange }) {
   const [manifests, setManifests] = useState(getRegisteredManifests);
   const [ctes] = useState(getRegisteredCtes);
   const [unit, setUnit] = useState('001');
   const [manifestNumber, setManifestNumber] = useState(pendingManifestNumber);
-  const [cities, setCities] = useState(fallbackCities);
+  const [cities, setCities] = useState(initialCityOptions);
   const [cteSearch, setCteSearch] = useState('');
   const [selectedCteIds, setSelectedCteIds] = useState([]);
   const [manifestLookupOpen, setManifestLookupOpen] = useState(false);
@@ -229,23 +266,14 @@ export default function GenerateManifestPage() {
 
     async function loadCities() {
       try {
-        const response = await fetch(cityApiUrl);
-
-        if (!response.ok) {
-          throw new Error('Falha ao carregar cidades');
-        }
-
-        const data = await response.json();
-        const nextCities = [...new Set(data.map(cityLabel))]
-          .filter(Boolean)
-          .sort((left, right) => left.localeCompare(right, 'pt-BR'));
+        const nextCities = await fetchCityOptions();
 
         if (!ignore) {
           setCities(nextCities);
         }
       } catch {
         if (!ignore) {
-          setCities(fallbackCities);
+          setCities(initialCityOptions());
         }
       }
     }
@@ -294,6 +322,87 @@ export default function GenerateManifestPage() {
 
   const selectedWeight = selectedCtes.reduce((sum, cte) => sum + Number(cte.cargoWeight || 0), 0);
   const selectedValue = selectedCtes.reduce((sum, cte) => sum + Number(cte.cargoValue || 0), 0);
+  const manifestReportFields = useMemo(() => [
+    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Manifesto, rota, motorista, placa ou seguro' },
+    {
+      type: 'dateRange',
+      key: 'period',
+      label: 'Periodo',
+      fieldKey: 'periodField',
+      startKey: 'periodStart',
+      endKey: 'periodEnd',
+      options: [
+        { value: 'createdAt', label: 'Cadastro' },
+        { value: 'startedAt', label: 'Inicio do manifesto' },
+        { value: 'closedAt', label: 'Fechamento' },
+      ],
+    },
+    { type: 'select', key: 'status', label: 'Status', options: uniqueSortedOptions(manifests.map((manifest) => manifest.status)) },
+    { type: 'select', key: 'manifestType', label: 'Tipo de manifesto', options: manifestTypeOptions },
+    { type: 'select', key: 'unit', label: 'Unidade', options: businessUnits.map((businessUnit) => ({ value: businessUnit.value, label: businessUnit.label })) },
+    { type: 'select', key: 'origin', label: 'Origem', options: uniqueSortedOptions(manifests.map((manifest) => manifest.origin)) },
+    { type: 'select', key: 'destination', label: 'Destino', options: uniqueSortedOptions(manifests.map((manifest) => manifest.destination)) },
+    { type: 'select', key: 'driverName', label: 'Motorista', options: uniqueSortedOptions(manifests.map((manifest) => manifest.driverName)) },
+    { type: 'select', key: 'truckPlate', label: 'Placa', options: uniqueSortedOptions(manifests.map((manifest) => manifest.truckPlate)) },
+    { type: 'select', key: 'hasInsurance', label: 'Seguro', options: ['Sim', 'Nao'] },
+  ], [manifests]);
+
+  function buildManifestReportRows(filters) {
+    const query = normalizeReportText(filters.search);
+
+    return [...manifests]
+      .sort((left, right) => String(right.createdAt || right.startedAt || right.id).localeCompare(String(left.createdAt || left.startedAt || left.id)))
+      .filter((manifest) => {
+        const periodValue = filters.periodField === 'startedAt'
+          ? manifest.startedAt || manifest.createdAt
+          : filters.periodField === 'closedAt'
+            ? manifest.closedAt
+            : manifest.createdAt || manifest.startedAt;
+
+        return (!query || normalizeReportText([
+          manifest.id,
+          manifest.manifestType,
+          manifest.origin,
+          manifest.destination,
+          manifest.driverName,
+          manifest.truckPlate,
+          manifest.status,
+          manifest.insuranceCompany,
+          manifest.insurancePolicy,
+        ].join(' ')).includes(query))
+          && (!filters.status || manifest.status === filters.status)
+          && (!filters.manifestType || manifest.manifestType === filters.manifestType)
+          && (!filters.unit || manifest.unit === filters.unit)
+          && (!filters.origin || manifest.origin === filters.origin)
+          && (!filters.destination || manifest.destination === filters.destination)
+          && (!filters.driverName || manifest.driverName === filters.driverName)
+          && (!filters.truckPlate || manifest.truckPlate === filters.truckPlate)
+          && (!filters.hasInsurance || normalizeReportText(manifest.hasInsurance) === normalizeReportText(filters.hasInsurance))
+          && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
+      });
+  }
+
+  function manifestReportMetadata(filters, rows) {
+    const periodOption = manifestReportFields
+      .find((field) => field.type === 'dateRange')
+      ?.options.find((option) => option.value === filters.periodField);
+
+    return [
+      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Periodo por', periodOption?.label || 'Cadastro'],
+      ['Periodo de', reportFilterLabel(filters.periodStart)],
+      ['Periodo ate', reportFilterLabel(filters.periodEnd)],
+      ['Status', reportFilterLabel(filters.status)],
+      ['Tipo', reportFilterLabel(filters.manifestType)],
+      ['Unidade', reportFilterLabel(filters.unit)],
+      ['Origem', reportFilterLabel(filters.origin)],
+      ['Destino', reportFilterLabel(filters.destination)],
+      ['Motorista', reportFilterLabel(filters.driverName)],
+      ['Placa', reportFilterLabel(filters.truckPlate)],
+      ['Seguro', reportFilterLabel(filters.hasInsurance)],
+      ['Resultado', `${rows.length} manifesto(s)`],
+    ];
+  }
 
   function loadManifest(manifest) {
     setManifestNumber(manifest.id || '');
@@ -756,6 +865,25 @@ export default function GenerateManifestPage() {
           <span className="status-line" aria-live="polite">{status}</span>
         </div>
       </form>
+
+      <ReportPanel
+        title="Relatorio de manifestos"
+        titleId="manifest-report-title"
+        pageId="generate-manifest"
+        reportType="manifest-report"
+        module="Operacao"
+        icon="operation"
+        defaultFilters={manifestReportDefaultFilters}
+        fields={manifestReportFields}
+        columns={manifestReportColumns}
+        buildRows={buildManifestReportRows}
+        filenamePrefix="relatorio-manifestos"
+        initialSavedQuery={initialSavedQuery}
+        onSavedQueriesChange={onSavedQueriesChange}
+        getSummary={(rows) => `${rows.length} manifesto(s)`}
+        getMetadata={manifestReportMetadata}
+        getRowKey={(manifest) => manifest.id}
+      />
 
       {manifestLookupOpen && (
         <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="manifest-lookup-title">

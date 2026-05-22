@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
 import DataTable from '../components/DataTable.jsx';
+import ReportPanel from '../components/ReportPanel.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
+import { getRegisteredManifests } from '../data/operationRegistry.js';
 import {
   deactivateDriver,
   deleteDriver,
@@ -17,11 +19,40 @@ import {
 } from '../data/transportRegistry.js';
 import { getDriverDeletionBlockers } from '../data/deletionRules.js';
 import { getRegisteredSuppliers, saveSupplier } from '../data/managementRegistry.js';
-import { blankAddressFields, normalizeAddressFields } from '../utils/address.js';
+import { blankAddressFields, brazilianStateOptions, normalizeAddressFields } from '../utils/address.js';
+import { formatReportDate, formatReportDateTime, isDateInRange, normalizeReportText } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const licenseCategories = ['B', 'C', 'D', 'E'];
 const blankAddress = blankAddressFields();
+const driverReportDefaultFilters = {
+  search: '',
+  status: '',
+  category: '',
+  state: '',
+  periodField: 'createdAt',
+  periodStart: '',
+  periodEnd: '',
+};
+
+const driverReportFields = [
+  { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Nome, CPF, CNH, fornecedor ou placa' },
+  { type: 'select', key: 'status', label: 'Status', options: ['Ativo', 'Inativo'] },
+  { type: 'select', key: 'category', label: 'Categoria da CNH', options: licenseCategories },
+  { type: 'select', key: 'state', label: 'UF onde mora', options: brazilianStateOptions },
+  {
+    type: 'dateRange',
+    key: 'period',
+    label: 'Periodo',
+    fieldKey: 'periodField',
+    startKey: 'periodStart',
+    endKey: 'periodEnd',
+    options: [
+      { value: 'createdAt', label: 'Cadastro' },
+      { value: 'lastManifestDate', label: 'Ultimo manifesto' },
+    ],
+  },
+];
 
 const driverSortColumns = [
   { key: 'cpf', label: 'CPF', type: 'text', getValue: (driver) => formatCpf(driver.cpf), render: (driver) => <strong>{formatCpf(driver.cpf)}</strong> },
@@ -31,6 +62,43 @@ const driverSortColumns = [
   { key: 'cnh', label: 'CNH', type: 'text', getValue: (driver) => `${driver.cnh} ${driver.category}`, render: (driver) => `${driver.cnh} / ${driver.category}` },
   { key: 'status', label: 'Status', type: 'text', getValue: (driver) => driver.status, status: true },
 ];
+
+const driverReportColumns = [
+  { key: 'cpf', label: 'CPF', pdfWidth: 14, getValue: (driver) => formatCpf(driver.cpf), render: (driver) => <strong>{formatCpf(driver.cpf)}</strong> },
+  { key: 'name', label: 'Motorista', pdfWidth: 22, getValue: (driver) => driver.name },
+  { key: 'status', label: 'Status', pdfWidth: 9, getValue: (driver) => driver.status },
+  { key: 'category', label: 'CNH', pdfWidth: 5, getValue: (driver) => driver.category },
+  { key: 'state', label: 'UF', pdfWidth: 4, getValue: (driver) => driver.state || '-' },
+  { key: 'createdAt', label: 'Cadastro', pdfWidth: 10, getValue: (driver) => formatReportDate(driver.createdAt) },
+  { key: 'lastManifestId', label: 'Ultimo manifesto', pdfWidth: 18, getValue: (driver) => driver.lastManifestId || '-' },
+  { key: 'lastManifestDate', label: 'Data ultimo', pdfWidth: 16, getValue: (driver) => formatReportDateTime(driver.lastManifestDate) },
+  { key: 'lastManifestPlate', label: 'Placa', pdfWidth: 8, getValue: (driver) => driver.lastManifestPlate || '-' },
+];
+
+function reportFilterLabel(value, allLabel = 'Todos') {
+  return value || allLabel;
+}
+
+function dateTimeMs(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function manifestDriverDate(manifest) {
+  return manifest.startedAt || manifest.createdAt || manifest.updatedAt || manifest.closedAt || '';
+}
+
+function lastDriverManifest(driver, manifests) {
+  const driverCpf = onlyDigits(driver.cpf);
+  const driverName = normalizeReportText(driver.name);
+
+  return manifests
+    .filter((manifest) => (
+      (driverCpf && onlyDigits(manifest.driverCpf) === driverCpf)
+      || (driverName && normalizeReportText(manifest.driverName) === driverName)
+    ))
+    .sort((left, right) => dateTimeMs(manifestDriverDate(right)) - dateTimeMs(manifestDriverDate(left)))[0] || null;
+}
 
 function pendingCpf() {
   try {
@@ -60,7 +128,7 @@ function driverAddressFields(driver) {
   });
 }
 
-export default function DriverRegistrationPage() {
+export default function DriverRegistrationPage({ initialSavedQuery = null, onSavedQueriesChange }) {
   const [drivers, setDrivers] = useState(getRegisteredDrivers);
   const [cpf, setCpf] = useState(pendingCpf);
   const [name, setName] = useState('');
@@ -100,6 +168,60 @@ export default function DriverRegistrationPage() {
 
     return sortedDrivers.filter((driver) => normalizeText(`${driver.name} ${formatCpf(driver.cpf)} ${driver.cnh} ${driver.phone}`).includes(query));
   }, [lookupSearch, sortedDrivers]);
+  const manifests = useMemo(() => getRegisteredManifests(), []);
+
+  function buildDriverReportRows(filters) {
+    const query = normalizeReportText(filters.search);
+
+    return sortedDrivers
+      .map((driver) => {
+        const lastManifest = lastDriverManifest(driver, manifests);
+
+        return {
+          ...driver,
+          state: driver.state || '',
+          lastManifestId: lastManifest?.id || '',
+          lastManifestDate: lastManifest ? manifestDriverDate(lastManifest) : '',
+          lastManifestPlate: lastManifest?.truckPlate || '',
+        };
+      })
+      .filter((driver) => {
+        const periodValue = filters.periodField === 'lastManifestDate' ? driver.lastManifestDate : driver.createdAt;
+
+        return (!query || normalizeReportText([
+          driver.name,
+          formatCpf(driver.cpf),
+          driver.cnh,
+          driver.category,
+          driver.status,
+          driver.supplierCode,
+          driver.state,
+          driver.lastManifestId,
+          driver.lastManifestPlate,
+        ].join(' ')).includes(query))
+          && (!filters.status || driver.status === filters.status)
+          && (!filters.category || driver.category === filters.category)
+          && (!filters.state || driver.state === filters.state)
+          && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
+      });
+  }
+
+  function driverReportMetadata(filters, rows) {
+    const periodOption = driverReportFields
+      .find((field) => field.type === 'dateRange')
+      ?.options.find((option) => option.value === filters.periodField);
+
+    return [
+      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Status', reportFilterLabel(filters.status)],
+      ['Categoria', reportFilterLabel(filters.category)],
+      ['UF', reportFilterLabel(filters.state)],
+      ['Periodo por', periodOption?.label || 'Cadastro'],
+      ['Periodo de', reportFilterLabel(filters.periodStart)],
+      ['Periodo ate', reportFilterLabel(filters.periodEnd)],
+      ['Resultado', `${rows.length} motorista(s)`],
+    ];
+  }
 
   function loadDriver(driver) {
     const normalizedDriver = driverAddressFields(driver);
@@ -114,6 +236,7 @@ export default function DriverRegistrationPage() {
       street: normalizedDriver.street || '',
       addressNumber: normalizedDriver.addressNumber || '',
       district: normalizedDriver.district || '',
+      state: normalizedDriver.state || '',
       address: normalizedDriver.address || '',
     });
     setStatusValue(driver.status || 'Ativo');
@@ -149,6 +272,7 @@ export default function DriverRegistrationPage() {
           street: normalizedSupplier.street || '',
           addressNumber: normalizedSupplier.addressNumber || '',
           district: normalizedSupplier.district || '',
+          state: normalizedSupplier.state || '',
           address: normalizedSupplier.address || '',
         });
       }
@@ -199,6 +323,7 @@ export default function DriverRegistrationPage() {
       street: nextAddress.street || '',
       addressNumber: nextAddress.addressNumber || '',
       district: nextAddress.district || '',
+      state: nextAddress.state || '',
       address: nextAddress.address || '',
     });
     setMessage(`Motorista ${name} cadastrado e fornecedor ${linkedSupplier?.id || supplierCode} vinculado`);
@@ -347,6 +472,7 @@ export default function DriverRegistrationPage() {
             onChange={updateAddressField}
             onChangeMany={updateAddressFields}
             onStatus={setMessage}
+            showState
           />
 
           <label className="field">
@@ -387,6 +513,25 @@ export default function DriverRegistrationPage() {
         tableClassName="registry-table"
         minWidth={920}
         emptyMessage="Nenhum motorista encontrado"
+      />
+
+      <ReportPanel
+        title="Relatorio de motoristas"
+        titleId="driver-report-title"
+        pageId="driver-registration"
+        reportType="driver-report"
+        module="Gestao"
+        icon="operation"
+        defaultFilters={driverReportDefaultFilters}
+        fields={driverReportFields}
+        columns={driverReportColumns}
+        buildRows={buildDriverReportRows}
+        filenamePrefix="relatorio-motoristas"
+        initialSavedQuery={initialSavedQuery}
+        onSavedQueriesChange={onSavedQueriesChange}
+        getSummary={(rows) => `${rows.length} motorista(s)`}
+        getMetadata={driverReportMetadata}
+        getRowKey={(driver) => driver.cpf}
       />
 
       {lookupOpen && (

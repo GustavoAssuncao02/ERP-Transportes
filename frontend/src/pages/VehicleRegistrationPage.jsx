@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import ReportPanel from '../components/ReportPanel.jsx';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { businessUnits, normalizeText } from '../data/financeData.js';
+import { getRegisteredManifests } from '../data/operationRegistry.js';
 import {
   deactivateVehicle,
   deleteVehicle,
@@ -16,9 +18,21 @@ import {
   saveVehicle,
 } from '../data/transportRegistry.js';
 import { getVehicleDeletionBlockers } from '../data/deletionRules.js';
+import { formatReportDate, formatReportDateTime, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const vehicleTypes = ['Cavalo mecânico', 'Truck', 'Toco', 'Bitruck', 'Van', 'Carreta'];
+
+const vehicleReportDefaultFilters = {
+  search: '',
+  periodField: 'createdAt',
+  periodStart: '',
+  periodEnd: '',
+  owner: '',
+  type: '',
+  status: '',
+  unit: '',
+};
 
 function businessUnitOwnerLabel(unitCode) {
   const businessUnit = businessUnits.find((item) => item.value === unitCode);
@@ -29,6 +43,40 @@ function vehicleOwnerLabel(vehicle) {
   return vehicle.ownerType === 'driver'
     ? `Motorista - ${vehicle.owner || ''}`
     : `Empresa - ${vehicle.owner || businessUnitOwnerLabel(vehicle.unit)}`;
+}
+
+const vehicleReportColumns = [
+  { key: 'plate', label: 'Placa', pdfWidth: 8, getValue: (vehicle) => vehicle.plate, render: (vehicle) => <strong>{vehicle.plate}</strong> },
+  { key: 'model', label: 'Modelo', pdfWidth: 22, getValue: (vehicle) => vehicle.model },
+  { key: 'type', label: 'Tipo', pdfWidth: 16, getValue: (vehicle) => vehicle.type },
+  { key: 'owner', label: 'Proprietario', pdfWidth: 24, getValue: (vehicle) => vehicleOwnerLabel(vehicle) },
+  { key: 'unit', label: 'Unid.', pdfWidth: 6, getValue: (vehicle) => vehicle.unit },
+  { key: 'status', label: 'Status', pdfWidth: 9, getValue: (vehicle) => vehicle.status },
+  { key: 'createdAt', label: 'Cadastro', pdfWidth: 10, getValue: (vehicle) => formatReportDate(vehicle.createdAt) },
+  { key: 'lastManifestId', label: 'Ultimo manifesto', pdfWidth: 18, getValue: (vehicle) => vehicle.lastManifestId || '-' },
+  { key: 'lastManifestDate', label: 'Ultima utiliz.', pdfWidth: 16, getValue: (vehicle) => formatReportDateTime(vehicle.lastManifestDate) },
+  { key: 'lastManifestDriver', label: 'Motorista', pdfWidth: 20, getValue: (vehicle) => vehicle.lastManifestDriver || '-' },
+];
+
+function reportFilterLabel(value, allLabel = 'Todos') {
+  return value || allLabel;
+}
+
+function dateTimeMs(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+}
+
+function manifestVehicleDate(manifest) {
+  return manifest.startedAt || manifest.createdAt || manifest.updatedAt || manifest.closedAt || '';
+}
+
+function lastVehicleManifest(vehicle, manifests) {
+  const plate = normalizePlate(vehicle.plate);
+
+  return manifests
+    .filter((manifest) => normalizePlate(manifest.truckPlate) === plate)
+    .sort((left, right) => dateTimeMs(manifestVehicleDate(right)) - dateTimeMs(manifestVehicleDate(left)))[0] || null;
 }
 
 const vehicleSortColumns = [
@@ -48,7 +96,7 @@ function pendingPlate() {
   }
 }
 
-export default function VehicleRegistrationPage() {
+export default function VehicleRegistrationPage({ initialSavedQuery = null, onSavedQueriesChange }) {
   const [vehicles, setVehicles] = useState(getRegisteredVehicles);
   const [unit, setUnit] = useState('001');
   const [plate, setPlate] = useState(pendingPlate);
@@ -91,6 +139,84 @@ export default function VehicleRegistrationPage() {
       normalizeText(`${driver.name} ${formatCpf(driver.cpf)} ${driver.cnh}`).includes(query)
     ));
   }, [driverOptions, driverSearch]);
+  const manifests = useMemo(() => getRegisteredManifests(), []);
+  const vehicleOwnerOptions = useMemo(
+    () => uniqueSortedOptions(sortedVehicles.map((vehicle) => vehicleOwnerLabel(vehicle))),
+    [sortedVehicles],
+  );
+  const vehicleReportFields = useMemo(() => [
+    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Placa, modelo, proprietario ou motorista' },
+    {
+      type: 'dateRange',
+      key: 'period',
+      label: 'Periodo',
+      fieldKey: 'periodField',
+      startKey: 'periodStart',
+      endKey: 'periodEnd',
+      options: [
+        { value: 'createdAt', label: 'Cadastro' },
+        { value: 'lastManifestDate', label: 'Ultima utilizacao em manifesto' },
+      ],
+    },
+    { type: 'select', key: 'owner', label: 'Proprietario', options: vehicleOwnerOptions },
+    { type: 'select', key: 'type', label: 'Tipo de veiculo', options: vehicleTypes },
+    { type: 'select', key: 'status', label: 'Status', options: ['Ativo', 'Inativo'] },
+    { type: 'select', key: 'unit', label: 'Unidade', options: businessUnits.map((businessUnit) => ({ value: businessUnit.value, label: businessUnit.label })) },
+  ], [vehicleOwnerOptions]);
+
+  function buildVehicleReportRows(filters) {
+    const query = normalizeReportText(filters.search);
+
+    return sortedVehicles
+      .map((vehicle) => {
+        const lastManifest = lastVehicleManifest(vehicle, manifests);
+
+        return {
+          ...vehicle,
+          ownerLabel: vehicleOwnerLabel(vehicle),
+          lastManifestId: lastManifest?.id || '',
+          lastManifestDate: lastManifest ? manifestVehicleDate(lastManifest) : '',
+          lastManifestDriver: lastManifest?.driverName || '',
+        };
+      })
+      .filter((vehicle) => {
+        const periodValue = filters.periodField === 'lastManifestDate' ? vehicle.lastManifestDate : vehicle.createdAt;
+
+        return (!query || normalizeReportText([
+          vehicle.plate,
+          vehicle.model,
+          vehicle.type,
+          vehicle.ownerLabel,
+          vehicle.status,
+          vehicle.unit,
+          vehicle.lastManifestId,
+          vehicle.lastManifestDriver,
+        ].join(' ')).includes(query))
+          && (!filters.owner || vehicle.ownerLabel === filters.owner)
+          && (!filters.type || vehicle.type === filters.type)
+          && (!filters.status || vehicle.status === filters.status)
+          && (!filters.unit || vehicle.unit === filters.unit)
+          && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
+      });
+  }
+
+  function vehicleReportMetadata(filters, rows) {
+    const periodOption = vehicleReportFields
+      .find((field) => field.type === 'dateRange')
+      ?.options.find((option) => option.value === filters.periodField);
+
+    return [
+      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Periodo por', periodOption?.label || 'Cadastro'],
+      ['Periodo de', reportFilterLabel(filters.periodStart)],
+      ['Periodo ate', reportFilterLabel(filters.periodEnd)],
+      ['Proprietario', reportFilterLabel(filters.owner)],
+      ['Tipo', reportFilterLabel(filters.type)],
+      ['Status', reportFilterLabel(filters.status)],
+      ['Unidade', reportFilterLabel(filters.unit)],
+      ['Resultado', `${rows.length} veiculo(s)`],
+    ];
+  }
 
   function companyOwnerLabel(unitCode = unit) {
     return businessUnitOwnerLabel(unitCode);
@@ -408,6 +534,25 @@ export default function VehicleRegistrationPage() {
           </table>
         </div>
       </section>
+
+      <ReportPanel
+        title="Relatorio de veiculos"
+        titleId="vehicle-report-title"
+        pageId="vehicle-registration"
+        reportType="vehicle-report"
+        module="Gestao"
+        icon="operation"
+        defaultFilters={vehicleReportDefaultFilters}
+        fields={vehicleReportFields}
+        columns={vehicleReportColumns}
+        buildRows={buildVehicleReportRows}
+        filenamePrefix="relatorio-veiculos"
+        initialSavedQuery={initialSavedQuery}
+        onSavedQueriesChange={onSavedQueriesChange}
+        getSummary={(rows) => `${rows.length} veiculo(s)`}
+        getMetadata={vehicleReportMetadata}
+        getRowKey={(vehicle) => vehicle.plate}
+      />
 
       {vehicleLookupOpen && (
         <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="vehicle-lookup-title">

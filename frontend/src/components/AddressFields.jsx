@@ -1,5 +1,6 @@
 import {
   defaultAddressFields,
+  brazilianStateOptions,
   fetchAddressByZipCode,
   formatZipCode,
   zipCodeDigits,
@@ -13,6 +14,7 @@ export default function AddressFields({
   fields = defaultAddressFields,
   required = false,
   context = '',
+  showState = false,
 }) {
   const suffix = context ? ` ${context}` : '';
 
@@ -51,6 +53,7 @@ export default function AddressFields({
         [fields.zipCode]: address.zipCode,
         [fields.street]: address.street || values[fields.street] || '',
         [fields.district]: address.district || values[fields.district] || '',
+        [fields.state]: address.state || values[fields.state] || '',
       });
       onStatus?.(
         address.city && address.state
@@ -106,6 +109,22 @@ export default function AddressFields({
           required={required}
         />
       </label>
+
+      {showState && (
+        <label className="field">
+          <span>{`UF${suffix}`}</span>
+          <select
+            value={values[fields.state] || ''}
+            onChange={(event) => updateField(fields.state, event.target.value)}
+            required={required}
+          >
+            <option value="">Selecione</option>
+            {brazilianStateOptions.map((stateOption) => (
+              <option value={stateOption} key={stateOption}>{stateOption}</option>
+            ))}
+          </select>
+        </label>
+      )}
     </>
   );
 }

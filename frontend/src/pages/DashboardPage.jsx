@@ -251,7 +251,12 @@ export default function DashboardPage() {
     }
 
     if (activeTabId === 'generate-manifest') {
-      return <GenerateManifestPage />;
+      return (
+        <GenerateManifestPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'generate-manifest' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'fleet-management') {
@@ -265,19 +270,40 @@ export default function DashboardPage() {
     }
 
     if (activeTabId === 'issue-cte') {
-      return <IssueCtePage onNavigate={openPage} />;
+      return (
+        <IssueCtePage
+          onNavigate={openPage}
+          initialSavedQuery={activeQuickQuery?.pageId === 'issue-cte' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'collection-order') {
-      return <CollectionOrderPage />;
+      return (
+        <CollectionOrderPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'collection-order' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'create-minuta') {
-      return <CreateMinutaPage />;
+      return (
+        <CreateMinutaPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'create-minuta' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'vehicle-registration') {
-      return <VehicleRegistrationPage />;
+      return (
+        <VehicleRegistrationPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'vehicle-registration' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'warehouse-management') {
@@ -294,15 +320,30 @@ export default function DashboardPage() {
     }
 
     if (activeTabId === 'driver-registration') {
-      return <DriverRegistrationPage />;
+      return (
+        <DriverRegistrationPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'driver-registration' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'supplier-registration') {
-      return <SupplierRegistrationPage />;
+      return (
+        <SupplierRegistrationPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'supplier-registration' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'insurance-registration') {
-      return <InsuranceRegistrationPage />;
+      return (
+        <InsuranceRegistrationPage
+          initialSavedQuery={activeQuickQuery?.pageId === 'insurance-registration' ? activeQuickQuery : null}
+          onSavedQueriesChange={() => setQuickQueryCards(getQuickQueryCards())}
+        />
+      );
     }
 
     if (activeTabId === 'unit-registration') {

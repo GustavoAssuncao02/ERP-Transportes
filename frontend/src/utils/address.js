@@ -5,8 +5,15 @@ export const defaultAddressFields = {
   street: 'street',
   number: 'addressNumber',
   district: 'district',
+  state: 'state',
   formatted: 'address',
 };
+
+export const brazilianStateOptions = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG',
+  'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE',
+  'TO',
+];
 
 const zipCodeCacheKey = 'viacepZipCodeLookupCache';
 const zipCodeCacheTtlMs = 30 * 24 * 60 * 60 * 1000;
@@ -17,6 +24,7 @@ export function addressFieldSet(prefix, formatted) {
     street: `${prefix}Street`,
     number: `${prefix}Number`,
     district: `${prefix}District`,
+    state: `${prefix}State`,
     formatted,
   };
 }
@@ -27,6 +35,7 @@ export function blankAddressFields(fields = defaultAddressFields) {
     [fields.street]: '',
     [fields.number]: '',
     [fields.district]: '',
+    [fields.state]: '',
     [fields.formatted]: '',
   };
 }
@@ -53,12 +62,14 @@ function parseLegacyAddress(value) {
   const [streetPart = ''] = parts;
   const districtPart = parts.length === 2 ? parts[1] : '';
   const [street = streetPart, number = ''] = streetPart.split(',').map((part) => part.trim());
+  const stateMatch = rawValue.match(/\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/i);
 
   return {
     zipCode: zipCodeMatch ? formatZipCode(zipCodeMatch[0]) : '',
     street: street.trim(),
     addressNumber: number.trim(),
     district: districtPart.trim(),
+    state: stateMatch ? stateMatch[1].toUpperCase() : '',
     address: rawValue,
   };
 }
@@ -67,10 +78,11 @@ export function formatAddress(record, fields = defaultAddressFields) {
   const street = String(record?.[fields.street] || '').trim();
   const number = String(record?.[fields.number] || '').trim();
   const district = String(record?.[fields.district] || '').trim();
+  const state = String(record?.[fields.state] || '').trim().toUpperCase();
   const zipCode = formatZipCode(record?.[fields.zipCode] || '');
   const streetLine = [street, number].filter(Boolean).join(', ');
 
-  return [streetLine, district, zipCode ? `CEP ${zipCode}` : ''].filter(Boolean).join(' - ');
+  return [streetLine, district, state, zipCode ? `CEP ${zipCode}` : ''].filter(Boolean).join(' - ');
 }
 
 export function normalizeAddressFields(record = {}, fields = defaultAddressFields) {
@@ -80,6 +92,7 @@ export function normalizeAddressFields(record = {}, fields = defaultAddressField
     [fields.street]: String(record[fields.street] || legacy.street || '').trim(),
     [fields.number]: String(record[fields.number] || legacy.addressNumber || '').trim(),
     [fields.district]: String(record[fields.district] || legacy.district || '').trim(),
+    [fields.state]: String(record[fields.state] || legacy.state || '').trim().toUpperCase(),
   };
   const formattedAddress = formatAddress(normalized, fields);
 
@@ -96,6 +109,7 @@ export function copyAddressFields(source = {}, targetFields, sourceFields = defa
     [targetFields.street]: source[sourceFields.street] || '',
     [targetFields.number]: source[sourceFields.number] || '',
     [targetFields.district]: source[sourceFields.district] || '',
+    [targetFields.state]: source[sourceFields.state] || '',
     [targetFields.formatted]: formatAddress(source, sourceFields),
   };
 }

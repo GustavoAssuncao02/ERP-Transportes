@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
+import ReportPanel from '../components/ReportPanel.jsx';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, todayValue } from '../data/financeData.js';
@@ -12,7 +13,8 @@ import {
   onlyDigits,
 } from '../data/transportRegistry.js';
 import { getCollectionOrderDeletionBlockers } from '../data/deletionRules.js';
-import { deactivateCollectionOrder, deleteCollectionOrder, saveCollectionOrder } from '../data/operationRegistry.js';
+import { deactivateCollectionOrder, deleteCollectionOrder, getRegisteredCollectionOrders, saveCollectionOrder } from '../data/operationRegistry.js';
+import { formatReportDate, formatReportDateTime, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const collectionOrderStorageKey = 'collectionOrders';
@@ -39,6 +41,17 @@ const defaultCollectionOrders = [
 ];
 
 const orderStatuses = ['Solicitada', 'Agendada', 'Em coleta', 'Coletada', 'Cancelada'];
+const collectionOrderReportDefaultFilters = {
+  search: '',
+  periodField: 'requestDate',
+  periodStart: '',
+  periodEnd: '',
+  status: '',
+  senderName: '',
+  recipientName: '',
+  driverName: '',
+  vehiclePlate: '',
+};
 
 function collectionOrderNumber(orderId) {
   const numericParts = String(orderId || '').match(/\d+/g);
@@ -54,6 +67,22 @@ const collectionOrderSortColumns = [
   { key: 'vehiclePlate', label: 'Veículo', type: 'text', getValue: (order) => `${order.vehiclePlate} ${order.vehicleModel}` },
   { key: 'status', label: 'Status', type: 'text', getValue: (order) => order.status },
 ];
+
+const collectionOrderReportColumns = [
+  { key: 'id', label: 'Ordem', pdfWidth: 18, getValue: (order) => order.id, render: (order) => <strong>{order.id}</strong> },
+  { key: 'requestDate', label: 'Solicitacao', pdfWidth: 10, getValue: (order) => formatReportDate(order.requestDate) },
+  { key: 'collectionDateTime', label: 'Coleta', pdfWidth: 16, getValue: (order) => formatReportDateTime(order.collectionDateTime) },
+  { key: 'senderName', label: 'Remetente', pdfWidth: 24, getValue: (order) => order.senderName },
+  { key: 'recipientName', label: 'Destinatario', pdfWidth: 24, getValue: (order) => order.recipientName },
+  { key: 'driverName', label: 'Motorista', pdfWidth: 20, getValue: (order) => order.driverName || '-' },
+  { key: 'vehiclePlate', label: 'Placa', pdfWidth: 8, getValue: (order) => order.vehiclePlate || '-' },
+  { key: 'status', label: 'Status', pdfWidth: 10, getValue: (order) => order.status },
+  { key: 'merchandiseValue', label: 'Valor', pdfWidth: 12, getValue: (order) => currency(order.merchandiseValue) },
+];
+
+function reportFilterLabel(value, allLabel = 'Todos') {
+  return value || allLabel;
+}
 
 function readCollectionOrders() {
   try {
@@ -124,8 +153,8 @@ function blankOrder() {
   };
 }
 
-export default function CollectionOrderPage() {
-  const [orders, setOrders] = useState(readCollectionOrders);
+export default function CollectionOrderPage({ initialSavedQuery = null, onSavedQueriesChange }) {
+  const [orders, setOrders] = useState(getRegisteredCollectionOrders);
   const [form, setForm] = useState(blankOrder);
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
@@ -192,6 +221,75 @@ export default function CollectionOrderPage() {
 
     return [];
   }, [drivers, lookupSearch, lookupType, ordersByClosestDate, parties, vehicles]);
+  const collectionOrderReportFields = useMemo(() => [
+    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Ordem, NF, carga, motorista ou placa' },
+    {
+      type: 'dateRange',
+      key: 'period',
+      label: 'Periodo',
+      fieldKey: 'periodField',
+      startKey: 'periodStart',
+      endKey: 'periodEnd',
+      options: [
+        { value: 'requestDate', label: 'Solicitacao' },
+        { value: 'collectionDateTime', label: 'Data da coleta' },
+        { value: 'createdAt', label: 'Cadastro' },
+      ],
+    },
+    { type: 'select', key: 'status', label: 'Status', options: orderStatuses },
+    { type: 'select', key: 'senderName', label: 'Remetente', options: uniqueSortedOptions(orders.map((order) => order.senderName)) },
+    { type: 'select', key: 'recipientName', label: 'Destinatario', options: uniqueSortedOptions(orders.map((order) => order.recipientName)) },
+    { type: 'select', key: 'driverName', label: 'Motorista', options: uniqueSortedOptions(orders.map((order) => order.driverName)) },
+    { type: 'select', key: 'vehiclePlate', label: 'Placa', options: uniqueSortedOptions(orders.map((order) => order.vehiclePlate)) },
+  ], [orders]);
+
+  function buildCollectionOrderReportRows(filters) {
+    const query = normalizeReportText(filters.search);
+
+    return sortedOrders.filter((order) => {
+      const periodValue = filters.periodField === 'collectionDateTime'
+        ? order.collectionDateTime
+        : filters.periodField === 'createdAt'
+          ? order.createdAt
+          : order.requestDate;
+
+      return (!query || normalizeReportText([
+        order.id,
+        order.senderName,
+        order.recipientName,
+        order.cargoDescription,
+        order.invoiceKey,
+        order.driverName,
+        order.vehiclePlate,
+        order.status,
+      ].join(' ')).includes(query))
+        && (!filters.status || order.status === filters.status)
+        && (!filters.senderName || order.senderName === filters.senderName)
+        && (!filters.recipientName || order.recipientName === filters.recipientName)
+        && (!filters.driverName || order.driverName === filters.driverName)
+        && (!filters.vehiclePlate || order.vehiclePlate === filters.vehiclePlate)
+        && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
+    });
+  }
+
+  function collectionOrderReportMetadata(filters, rows) {
+    const periodOption = collectionOrderReportFields
+      .find((field) => field.type === 'dateRange')
+      ?.options.find((option) => option.value === filters.periodField);
+
+    return [
+      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Periodo por', periodOption?.label || 'Solicitacao'],
+      ['Periodo de', reportFilterLabel(filters.periodStart)],
+      ['Periodo ate', reportFilterLabel(filters.periodEnd)],
+      ['Status', reportFilterLabel(filters.status)],
+      ['Remetente', reportFilterLabel(filters.senderName)],
+      ['Destinatario', reportFilterLabel(filters.recipientName)],
+      ['Motorista', reportFilterLabel(filters.driverName)],
+      ['Placa', reportFilterLabel(filters.vehiclePlate)],
+      ['Resultado', `${rows.length} ordem(ns)`],
+    ];
+  }
 
   const lookupTitles = {
     order: 'Pesquisar ordem de coleta',
@@ -525,6 +623,25 @@ export default function CollectionOrderPage() {
           </table>
         </div>
       </section>
+
+      <ReportPanel
+        title="Relatorio de ordens de coleta"
+        titleId="collection-order-report-title"
+        pageId="collection-order"
+        reportType="collection-order-report"
+        module="Operacao"
+        icon="operation"
+        defaultFilters={collectionOrderReportDefaultFilters}
+        fields={collectionOrderReportFields}
+        columns={collectionOrderReportColumns}
+        buildRows={buildCollectionOrderReportRows}
+        filenamePrefix="relatorio-ordens-coleta"
+        initialSavedQuery={initialSavedQuery}
+        onSavedQueriesChange={onSavedQueriesChange}
+        getSummary={(rows) => `${rows.length} ordem(ns)`}
+        getMetadata={collectionOrderReportMetadata}
+        getRowKey={(order) => order.id}
+      />
 
       {lookupType && (
         <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="collection-order-lookup-title">

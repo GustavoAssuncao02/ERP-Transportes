@@ -72,6 +72,24 @@ export function clearJsonStorageCache(key) {
   jsonStorageCache.clear();
 }
 
+export function createReferenceCache(transform) {
+  const cache = new WeakMap();
+
+  return (value) => {
+    if (!value || (typeof value !== 'object' && typeof value !== 'function')) {
+      return transform(value);
+    }
+
+    if (cache.has(value)) {
+      return cache.get(value);
+    }
+
+    const transformedValue = transform(value);
+    cache.set(value, transformedValue);
+    return transformedValue;
+  };
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
     if (event.key) {

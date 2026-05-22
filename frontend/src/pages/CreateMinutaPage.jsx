@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
+import ReportPanel from '../components/ReportPanel.jsx';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, todayValue } from '../data/financeData.js';
@@ -13,7 +14,7 @@ import {
   onlyDigits,
 } from '../data/transportRegistry.js';
 import { getMinutaDeletionBlockers } from '../data/deletionRules.js';
-import { deactivateMinuta, deleteMinuta, saveMinuta } from '../data/operationRegistry.js';
+import { deactivateMinuta, deleteMinuta, getRegisteredMinutas, saveMinuta } from '../data/operationRegistry.js';
 import {
   addressFieldSet,
   blankAddressFields,
@@ -21,24 +22,12 @@ import {
   defaultAddressFields,
   normalizeAddressFields,
 } from '../utils/address.js';
+import { fetchCityOptions, initialCityOptions } from '../utils/cities.js';
+import { formatReportDate, isDateInRange, normalizeReportText, uniqueSortedOptions } from '../utils/report.js';
 import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
-const minutaStorageKey = 'transportMinutas';
-const cityApiUrl = 'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome';
-const cityCacheKey = 'ibgeCityOptionsCache';
-const cityCacheTtlMs = 15 * 24 * 60 * 60 * 1000;
 const pickupAddressFields = addressFieldSet('pickup', 'pickupAddress');
 const deliveryAddressFields = addressFieldSet('delivery', 'deliveryAddress');
-
-const fallbackCities = [
-  'Aracaju - SE',
-  'Camacari - BA',
-  'Feira de Santana - BA',
-  'Lauro de Freitas - BA',
-  'Maceio - AL',
-  'Recife - PE',
-  'Salvador - BA',
-];
 
 const cargoTypes = [
   'Carga geral',
@@ -65,6 +54,21 @@ const minutaStatuses = [
   'Entregue',
   'Cancelada',
 ];
+const minutaReportDefaultFilters = {
+  search: '',
+  periodField: 'issueDate',
+  periodStart: '',
+  periodEnd: '',
+  status: '',
+  freightType: '',
+  cargoType: '',
+  originCity: '',
+  destinationCity: '',
+  senderName: '',
+  recipientName: '',
+  driverName: '',
+  vehiclePlate: '',
+};
 
 const minutaSortColumns = [
   { key: 'id', label: 'Minuta', type: 'number', defaultDirection: 'asc', getValue: (minuta) => identifierNumberValue(minuta.id) },
@@ -76,6 +80,24 @@ const minutaSortColumns = [
   { key: 'freightValue', label: 'Frete', type: 'number', defaultDirection: 'asc', getValue: (minuta) => minuta.freightValue },
   { key: 'status', label: 'Status', type: 'text', getValue: (minuta) => minuta.status },
 ];
+
+const minutaReportColumns = [
+  { key: 'id', label: 'Minuta', pdfWidth: 18, getValue: (minuta) => minuta.id, render: (minuta) => <strong>{minuta.id}</strong> },
+  { key: 'issueDate', label: 'Emissao', pdfWidth: 10, getValue: (minuta) => formatReportDate(minuta.issueDate) },
+  { key: 'senderName', label: 'Cliente/remetente', pdfWidth: 24, getValue: (minuta) => minuta.senderName },
+  { key: 'recipientName', label: 'Destinatario', pdfWidth: 24, getValue: (minuta) => minuta.recipientName },
+  { key: 'originCity', label: 'Origem', pdfWidth: 18, getValue: (minuta) => minuta.originCity },
+  { key: 'destinationCity', label: 'Destino', pdfWidth: 18, getValue: (minuta) => minuta.destinationCity },
+  { key: 'driverName', label: 'Motorista', pdfWidth: 20, getValue: (minuta) => minuta.driverName || '-' },
+  { key: 'vehiclePlate', label: 'Placa', pdfWidth: 8, getValue: (minuta) => minuta.vehiclePlate || '-' },
+  { key: 'freightType', label: 'Frete', pdfWidth: 8, getValue: (minuta) => minuta.freightType },
+  { key: 'status', label: 'Status', pdfWidth: 12, getValue: (minuta) => minuta.status },
+  { key: 'freightValue', label: 'Valor frete', pdfWidth: 12, getValue: (minuta) => currency(minuta.freightValue) },
+];
+
+function reportFilterLabel(value, allLabel = 'Todos') {
+  return value || allLabel;
+}
 
 const defaultMinutas = [
   {
@@ -233,10 +255,10 @@ function copySupplierAddressTo(targetFields, supplier) {
   return copyAddressFields(supplier, targetFields, defaultAddressFields);
 }
 
-export default function CreateMinutaPage() {
-  const [minutas, setMinutas] = useState(readMinutas);
+export default function CreateMinutaPage({ initialSavedQuery = null, onSavedQueriesChange }) {
+  const [minutas, setMinutas] = useState(getRegisteredMinutas);
   const [form, setForm] = useState(blankMinuta);
-  const [cities, setCities] = useState(() => readCachedCities()?.options || fallbackCities);
+  const [cities, setCities] = useState(initialCityOptions);
   const [lookupType, setLookupType] = useState(null);
   const [lookupSearch, setLookupSearch] = useState('');
   const [minutaSort, setMinutaSort] = useState({ key: 'id', direction: 'asc' });
@@ -244,34 +266,16 @@ export default function CreateMinutaPage() {
 
   useEffect(() => {
     let ignore = false;
-    const cache = readCachedCities();
-
-    if (!shouldRefreshCities(cache)) {
-      return () => {
-        ignore = true;
-      };
-    }
-
     async function loadCities() {
       try {
-        const response = await fetch(cityApiUrl);
-
-        if (!response.ok) {
-          throw new Error('Falha ao carregar cidades');
-        }
-
-        const data = await response.json();
-        const nextCities = [...new Set(data.map(cityLabel))]
-          .filter(Boolean)
-          .sort((left, right) => left.localeCompare(right, 'pt-BR'));
+        const nextCities = await fetchCityOptions();
 
         if (!ignore) {
           setCities(nextCities);
-          writeCachedCities(nextCities);
         }
       } catch {
-        if (!ignore && !cache?.options?.length) {
-          setCities(fallbackCities);
+        if (!ignore) {
+          setCities(initialCityOptions());
         }
       }
     }
@@ -356,6 +360,81 @@ export default function CreateMinutaPage() {
         : 'Pesquisar por nome, CNPJ ou status';
   const originOptions = form.originCity && !cities.includes(form.originCity) ? [form.originCity, ...cities] : cities;
   const destinationOptions = form.destinationCity && !cities.includes(form.destinationCity) ? [form.destinationCity, ...cities] : cities;
+  const minutaReportFields = useMemo(() => [
+    { type: 'text', key: 'search', label: 'Pesquisar', placeholder: 'Minuta, NF, cliente, rota, motorista ou placa' },
+    {
+      type: 'dateRange',
+      key: 'period',
+      label: 'Periodo',
+      fieldKey: 'periodField',
+      startKey: 'periodStart',
+      endKey: 'periodEnd',
+      options: [
+        { value: 'issueDate', label: 'Emissao' },
+        { value: 'createdAt', label: 'Cadastro' },
+      ],
+    },
+    { type: 'select', key: 'status', label: 'Status', options: minutaStatuses },
+    { type: 'select', key: 'freightType', label: 'Tipo de frete', options: freightTypes },
+    { type: 'select', key: 'cargoType', label: 'Tipo da carga', options: cargoTypes },
+    { type: 'select', key: 'originCity', label: 'Origem', options: uniqueSortedOptions(minutas.map((minuta) => minuta.originCity)) },
+    { type: 'select', key: 'destinationCity', label: 'Destino', options: uniqueSortedOptions(minutas.map((minuta) => minuta.destinationCity)) },
+    { type: 'select', key: 'senderName', label: 'Cliente/remetente', options: uniqueSortedOptions(minutas.map((minuta) => minuta.senderName)) },
+    { type: 'select', key: 'recipientName', label: 'Destinatario', options: uniqueSortedOptions(minutas.map((minuta) => minuta.recipientName)) },
+    { type: 'select', key: 'driverName', label: 'Motorista', options: uniqueSortedOptions(minutas.map((minuta) => minuta.driverName)) },
+    { type: 'select', key: 'vehiclePlate', label: 'Placa', options: uniqueSortedOptions(minutas.map((minuta) => minuta.vehiclePlate)) },
+  ], [minutas]);
+
+  function buildMinutaReportRows(filters) {
+    const query = normalizeReportText(filters.search);
+
+    return sortedMinutas.filter((minuta) => {
+      const periodValue = filters.periodField === 'createdAt' ? minuta.createdAt : minuta.issueDate;
+
+      return (!query || normalizeReportText([
+        minuta.id,
+        minuta.senderName,
+        minuta.recipientName,
+        minuta.linkedInvoice,
+        minuta.originCity,
+        minuta.destinationCity,
+        minuta.driverName,
+        minuta.vehiclePlate,
+        minuta.status,
+      ].join(' ')).includes(query))
+        && (!filters.status || minuta.status === filters.status)
+        && (!filters.freightType || minuta.freightType === filters.freightType)
+        && (!filters.cargoType || minuta.cargoType === filters.cargoType)
+        && (!filters.originCity || minuta.originCity === filters.originCity)
+        && (!filters.destinationCity || minuta.destinationCity === filters.destinationCity)
+        && (!filters.senderName || minuta.senderName === filters.senderName)
+        && (!filters.recipientName || minuta.recipientName === filters.recipientName)
+        && (!filters.driverName || minuta.driverName === filters.driverName)
+        && (!filters.vehiclePlate || minuta.vehiclePlate === filters.vehiclePlate)
+        && isDateInRange(periodValue, filters.periodStart, filters.periodEnd);
+    });
+  }
+
+  function minutaReportMetadata(filters, rows) {
+    const periodOption = minutaReportFields
+      .find((field) => field.type === 'dateRange')
+      ?.options.find((option) => option.value === filters.periodField);
+
+    return [
+      ['Pesquisa', reportFilterLabel(filters.search)],
+      ['Periodo por', periodOption?.label || 'Emissao'],
+      ['Periodo de', reportFilterLabel(filters.periodStart)],
+      ['Periodo ate', reportFilterLabel(filters.periodEnd)],
+      ['Status', reportFilterLabel(filters.status)],
+      ['Frete', reportFilterLabel(filters.freightType)],
+      ['Carga', reportFilterLabel(filters.cargoType)],
+      ['Origem', reportFilterLabel(filters.originCity)],
+      ['Destino', reportFilterLabel(filters.destinationCity)],
+      ['Motorista', reportFilterLabel(filters.driverName)],
+      ['Placa', reportFilterLabel(filters.vehiclePlate)],
+      ['Resultado', `${rows.length} minuta(s)`],
+    ];
+  }
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
@@ -749,6 +828,25 @@ export default function CreateMinutaPage() {
           </table>
         </div>
       </section>
+
+      <ReportPanel
+        title="Relatorio de minutas"
+        titleId="minuta-report-title"
+        pageId="create-minuta"
+        reportType="minuta-report"
+        module="Operacao"
+        icon="operation"
+        defaultFilters={minutaReportDefaultFilters}
+        fields={minutaReportFields}
+        columns={minutaReportColumns}
+        buildRows={buildMinutaReportRows}
+        filenamePrefix="relatorio-minutas"
+        initialSavedQuery={initialSavedQuery}
+        onSavedQueriesChange={onSavedQueriesChange}
+        getSummary={(rows) => `${rows.length} minuta(s)`}
+        getMetadata={minutaReportMetadata}
+        getRowKey={(minuta) => minuta.id}
+      />
 
       {lookupType && (
         <div className="lookup-modal" role="dialog" aria-modal="true" aria-labelledby="minuta-lookup-title">

@@ -2,7 +2,7 @@ import { businessUnits, suppliers } from './financeData.js';
 import { onlyDigits } from './transportRegistry.js';
 import { normalizeAddressFields } from '../utils/address.js';
 import { recordAuditEvent, auditActions } from '../services/auditLog.js';
-import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
+import { createReferenceCache, readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 
 export const unitStorageKey = 'managementUnits';
 export const supplierStorageKey = 'managementSuppliers';
@@ -29,8 +29,10 @@ export const defaultSuppliers = suppliers.map((supplier) => normalizeAddressFiel
   street: supplier.street || '',
   addressNumber: supplier.addressNumber || '',
   district: supplier.district || '',
+  state: supplier.state || 'BA',
   address: supplier.address || '',
   active: true,
+  createdAt: '2026-05-01T08:00:00.000Z',
 }));
 
 const supplierEnrichmentFields = [
@@ -83,8 +85,15 @@ export const defaultInsurances = [
     policyNumber: 'AP-2026-00184',
     endorsementNumber: '',
     contact: '',
+    email: 'apolices@seguradoraatlantica.com.br',
+    zipCode: '40015-160',
+    street: 'Av. Estados Unidos',
+    addressNumber: '397',
+    district: 'Comercio',
+    state: 'BA',
     active: true,
     defaultInsurance: true,
+    createdAt: '2026-05-01T08:00:00.000Z',
   },
 ];
 
@@ -141,6 +150,18 @@ function writeRecords(key, records) {
   writeJsonStorage(key, records);
 }
 
+const normalizeUnits = createReferenceCache((records) => records.map((unit) => normalizeAddressFields(unit)));
+const normalizeSuppliers = createReferenceCache((records) => records.map((supplier) => fillMissingSupplierDetails(supplier)));
+const normalizeInsurances = createReferenceCache((records) => records.map((insurance) => normalizeAddressFields(insurance)));
+const normalizeBanks = createReferenceCache((records) => records.map((bank, index) => ({
+  id: bank.id || `BCO-${String(index + 1).padStart(3, '0')}`,
+  unit: bank.unit || '001',
+  name: bank.name || '',
+  agency: bank.agency || '',
+  account: bank.account || '',
+  active: bank.active !== false,
+})));
+
 function recordManagementAudit({ action, entityType, entityId, entityLabel, before, after, summary }) {
   recordAuditEvent({
     module: 'Gestao',
@@ -155,37 +176,32 @@ function recordManagementAudit({ action, entityType, entityId, entityLabel, befo
 }
 
 export function getRegisteredUnits() {
-  return readRecords(unitStorageKey, defaultUnits).map((unit) => normalizeAddressFields(unit));
+  return normalizeUnits(readRecords(unitStorageKey, defaultUnits));
 }
 
 export function getRegisteredSuppliers() {
-  return readRecords(supplierStorageKey, defaultSuppliers).map((supplier) => fillMissingSupplierDetails(supplier));
+  return normalizeSuppliers(readRecords(supplierStorageKey, defaultSuppliers));
 }
 
 export function getRegisteredInsurances() {
-  return readRecords(insuranceStorageKey, defaultInsurances).map((insurance) => normalizeAddressFields(insurance));
+  return normalizeInsurances(readRecords(insuranceStorageKey, defaultInsurances));
 }
 
 export function getRegisteredBanks() {
-  return readRecords(bankStorageKey, defaultBanks).map((bank, index) => ({
-    id: bank.id || `BCO-${String(index + 1).padStart(3, '0')}`,
-    unit: bank.unit || '001',
-    name: bank.name || '',
-    agency: bank.agency || '',
-    account: bank.account || '',
-    active: bank.active !== false,
-  }));
+  return normalizeBanks(readRecords(bankStorageKey, defaultBanks));
 }
 
 export function getDefaultInsurance() {
-  return getRegisteredInsurances().find((insurance) => insurance.active && insurance.defaultInsurance)
-    || getRegisteredInsurances().find((insurance) => insurance.active)
+  const insurances = getRegisteredInsurances();
+
+  return insurances.find((insurance) => insurance.active && insurance.defaultInsurance)
+    || insurances.find((insurance) => insurance.active)
     || null;
 }
 
 export function saveUnit(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
-  const units = getRegisteredUnits();
+  const units = [...getRegisteredUnits()];
   const existingIndex = units.findIndex((unit) => onlyDigits(unit.cnpj) === cnpjDigits);
   const previousRecord = existingIndex >= 0 ? units[existingIndex] : null;
   const nextRecord = normalizeAddressFields({
@@ -215,13 +231,16 @@ export function saveUnit(record) {
 
 export function saveSupplier(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
-  const suppliersList = getRegisteredSuppliers();
+  const suppliersList = [...getRegisteredSuppliers()];
   const existingIndex = suppliersList.findIndex((supplier) => onlyDigits(supplier.cnpj) === cnpjDigits);
   const previousRecord = existingIndex >= 0 ? suppliersList[existingIndex] : null;
+  const now = new Date().toISOString();
   const nextRecord = normalizeAddressFields({
     ...record,
     id: record.id || String(1000 + suppliersList.length + 1),
     cnpj: formatCpfCnpj(record.cnpj),
+    createdAt: previousRecord?.createdAt || record.createdAt || now,
+    updatedAt: now,
   });
 
   if (existingIndex >= 0) {
@@ -245,7 +264,7 @@ export function saveSupplier(record) {
 
 export function saveInsurance(record) {
   const cnpjDigits = onlyDigits(record.cnpj);
-  const insurances = getRegisteredInsurances();
+  const insurances = [...getRegisteredInsurances()];
   const existingIndex = insurances.findIndex((insurance) => (
     insurance.id === record.id
     || (
@@ -255,12 +274,15 @@ export function saveInsurance(record) {
     )
   ));
   const previousRecord = existingIndex >= 0 ? insurances[existingIndex] : null;
+  const now = new Date().toISOString();
   const nextRecord = normalizeAddressFields({
     ...record,
     id: record.id || `INS-${String(insurances.length + 1).padStart(3, '0')}`,
     cnpj: formatCnpj(record.cnpj),
     active: record.active !== false,
     defaultInsurance: Boolean(record.defaultInsurance),
+    createdAt: previousRecord?.createdAt || record.createdAt || now,
+    updatedAt: now,
   });
   const nextInsurances = insurances.map((insurance, index) => {
     if (existingIndex >= 0 && index === existingIndex) {
@@ -295,7 +317,7 @@ export function saveInsurance(record) {
 }
 
 export function saveBank(record) {
-  const banks = getRegisteredBanks();
+  const banks = [...getRegisteredBanks()];
   const existingIndex = banks.findIndex((bank) => bank.id === record.id);
   const previousRecord = existingIndex >= 0 ? banks[existingIndex] : null;
   const nextRecord = {

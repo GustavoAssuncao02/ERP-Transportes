@@ -1,5 +1,6 @@
-const CACHE_NAME = 'vexo-erp-static-v1';
+const CACHE_NAME = 'vexo-erp-static-v2';
 const ASSET_PATH_PREFIX = '/assets/';
+const NAVIGATION_NETWORK_TIMEOUT_MS = 1800;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting());
@@ -60,15 +61,28 @@ async function cacheFirst(request) {
 
 async function networkFirstNavigation(request) {
   const cache = await caches.open(CACHE_NAME);
-
-  try {
-    const response = await fetch(request);
-
+  const fetchPromise = fetch(request).then((response) => {
     if (response.ok) {
       cache.put('/', response.clone());
     }
 
     return response;
+  });
+  fetchPromise.catch(() => {});
+  const cachedFallbackPromise = new Promise((resolve) => {
+    setTimeout(async () => {
+      resolve((await cache.match('/')) || null);
+    }, NAVIGATION_NETWORK_TIMEOUT_MS);
+  });
+
+  try {
+    const response = await Promise.race([fetchPromise, cachedFallbackPromise]);
+
+    if (response) {
+      return response;
+    }
+
+    return await fetchPromise;
   } catch {
     return (await cache.match('/')) || Response.error();
   }

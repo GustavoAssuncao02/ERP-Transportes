@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Power, RotateCcw, Save, Search, ShieldCheck, Trash2, UserPlus } from 'lucide-react';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
-import TriStateCheckbox, { checkboxStates } from '../components/TriStateCheckbox.jsx';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { navigationItems } from '../data/siteData.js';
 import { normalizeText } from '../data/financeData.js';
@@ -643,7 +643,7 @@ export default function UserManagementPage() {
 
           <label className={`user-access-node-check${stats.partiallySelected ? ' user-access-node-check--partial' : ''}`}>
             <TriStateCheckbox
-              state={stats.partiallySelected ? checkboxStates.excluded : stats.allSelected ? checkboxStates.checked : checkboxStates.unchecked}
+              checked={stats.allSelected}
               disabled={disabled}
               onChange={() => toggleAccessGroup(node.pageIds)}
             />

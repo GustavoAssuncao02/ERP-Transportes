@@ -664,28 +664,6 @@ input.tri-state-checkbox[data-state='checked']::after {
   transform: rotate(45deg);
 }
 
-input.tri-state-checkbox[data-state='excluded'] {
-  border-color: #b3261e;
-  background: #fff7f6;
-}
-
-input.tri-state-checkbox[data-state='excluded']::before,
-input.tri-state-checkbox[data-state='excluded']::after {
-  width: 10px;
-  height: 2px;
-  border-radius: 999px;
-  background: currentColor;
-  opacity: 1;
-}
-
-input.tri-state-checkbox[data-state='excluded']::before {
-  transform: rotate(45deg);
-}
-
-input.tri-state-checkbox[data-state='excluded']::after {
-  transform: rotate(-45deg);
-}
-
 input.tri-state-checkbox:focus-visible {
   outline: 2px solid rgba(26, 122, 114, 0.35);
   outline-offset: 2px;

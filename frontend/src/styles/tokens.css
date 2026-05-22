@@ -14,8 +14,8 @@
   --border: #cccccc;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   --userbar-height: 34px;
-  --navbar-height: 48px;
-  --tab-height: 45px;
+  --navbar-height: 42px;
+  --tab-height: 38px;
   --card-radius: 8px;
   --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }

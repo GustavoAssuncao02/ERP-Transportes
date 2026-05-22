@@ -1,8 +1,8 @@
 <svg viewBox="71 59 158 182" role="img" xmlns="http://www.w3.org/2000/svg">
   <title>Icone Vexo</title>
   <g transform="translate(150, 150)">
-    <polygon points="0,-90 77.9,-45 77.9,45 0,90 -77.9,45 -77.9,-45" fill="#0F4C5C" opacity="0.13" />
-    <polygon points="0,-70 60.6,-35 60.6,35 0,70 -60.6,35 -60.6,-35" fill="#0F4C5C" />
+    <polygon points="0,-90 77.9,-45 77.9,45 0,90 -77.9,45 -77.9,-45" fill="#176A78" opacity="0.13" />
+    <polygon points="0,-70 60.6,-35 60.6,35 0,70 -60.6,35 -60.6,-35" fill="#176A78" />
     <rect x="-30" y="-26" width="15" height="43" rx="3.5" fill="#ffffff" />
     <rect x="-7.5" y="0" width="15" height="30" rx="3.5" fill="#FF8A00" />
     <rect x="15" y="-26" width="15" height="43" rx="3.5" fill="#ffffff" />

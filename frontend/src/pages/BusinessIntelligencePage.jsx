@@ -3,14 +3,14 @@ import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import { LineChart, PieChart } from '../components/FinanceCharts.jsx';
 import {
-  accountingTypeNames,
   chargeTypes,
   currency,
-  documentNumbers,
-  financeLaunches,
+  getFinanceAccountingTypeNames,
+  getFinanceDocumentNumbers,
+  getFinanceLaunches,
+  getFinanceSupplierNames,
   normalizeText,
   paymentBanks,
-  supplierNames,
   todayValue,
 } from '../data/financeData.js';
 import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
@@ -26,6 +26,10 @@ const searchTypes = [
 
 const statusOptions = ['Aberto', 'Baixado'];
 const bankOptions = ['Sem banco', ...paymentBanks];
+const financeLaunches = getFinanceLaunches();
+const supplierNames = getFinanceSupplierNames(financeLaunches);
+const accountingTypeNames = getFinanceAccountingTypeNames(financeLaunches);
+const documentNumbers = getFinanceDocumentNumbers(financeLaunches);
 
 function bankLabel(launch) {
   return launch.paymentBank || 'Sem banco';

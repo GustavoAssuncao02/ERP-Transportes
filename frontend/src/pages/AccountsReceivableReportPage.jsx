@@ -6,6 +6,7 @@ import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { currency, normalizeText, paymentBanks, todayValue, toNumber } from '../data/financeData.js';
 import { readReceivables } from '../data/accountsReceivableRegistry.js';
 import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
+import { createReportPdfContent } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
@@ -560,7 +561,28 @@ export default function AccountsReceivableReportPage({ initialSavedQuery = null,
   }
 
   function generatePdf() {
-    downloadBlob(createPdfContent(reportPdfLines()), reportFilename('pdf'), 'application/pdf');
+    const totals = totalsForReport();
+    const pdfColumns = [
+      { key: 'id', label: 'Titulo', pdfWidth: 16, getValue: (receivable) => receivable.id },
+      { key: 'customerName', label: 'Cliente', pdfWidth: 18, getValue: (receivable) => receivable.customerName },
+      { key: 'document', label: 'Documento', pdfWidth: 16, getValue: (receivable) => documentLabel(receivable) },
+      { key: 'paymentForecastDate', label: 'Vencimento', pdfWidth: 11, getValue: (receivable) => receivable.paymentForecastDate || '' },
+      { key: 'status', label: 'Sit', pdfWidth: 9, getValue: (receivable) => receivableStatus(receivable) },
+      { key: 'bank', label: 'Banco', pdfWidth: 12, getValue: (receivable) => receiptBankLabel(receivable) },
+      { key: 'originalValue', label: 'Original', pdfWidth: 12, type: 'number', getValue: (receivable) => currency(receivable.originalValue) },
+      { key: 'paidValue', label: 'Recebido', pdfWidth: 12, type: 'number', getValue: (receivable) => currency(receivable.paidValue) },
+      { key: 'openBalance', label: 'Saldo', pdfWidth: 12, type: 'number', getValue: (receivable) => currency(receivable.openBalance) },
+    ];
+
+    downloadBlob(createReportPdfContent({
+      title: 'Relatorio de Contas a Receber',
+      generatedAt: todayValue(),
+      metadata: reportMetadata(),
+      columns: pdfColumns,
+      rows: sortedFilteredReceivables,
+      summary: `Total original: ${currency(totals.original)} | Recebido: ${currency(totals.paid)} | Saldo: ${currency(totals.open)}`,
+      emptyMessage: 'Nenhum titulo encontrado para os filtros aplicados.',
+    }), reportFilename('pdf'), 'application/pdf');
     setGenerateMenuOpen(false);
     setMessage('Relatorio em PDF gerado');
   }

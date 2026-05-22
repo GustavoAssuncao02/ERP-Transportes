@@ -14,6 +14,7 @@ import {
   todayValue,
 } from '../data/financeData.js';
 import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
+import { createReportPdfContent } from '../utils/report.js';
 import { sortTableRows } from '../utils/tableSort.js';
 
 const searchTypes = [
@@ -486,7 +487,35 @@ export default function AccountsPayableReportPage({ initialSavedQuery = null, on
   }
 
   function generatePdf() {
-    downloadBlob(createPdfContent(reportPdfLines()), reportFilename('pdf'), 'application/pdf');
+    const totals = filteredLaunches.reduce((acc, launch) => ({
+      amount: acc.amount + launch.amount,
+      interest: acc.interest + (launch.interestAmount || 0),
+      discount: acc.discount + (launch.discountAmount || 0),
+      final: acc.final + (launch.finalAmount || 0),
+    }), { amount: 0, interest: 0, discount: 0, final: 0 });
+    const pdfColumns = [
+      { key: 'id', label: 'Lancamento', pdfWidth: 16, getValue: (launch) => launch.id },
+      { key: 'unit', label: 'Unid', pdfWidth: 5, getValue: (launch) => launch.unit },
+      { key: 'supplier', label: 'Fornecedor', pdfWidth: 18, getValue: (launch) => launch.supplier },
+      { key: 'document', label: 'Documento', pdfWidth: 10, getValue: (launch) => launch.document },
+      { key: 'bank', label: 'Banco', pdfWidth: 12, getValue: (launch) => bankLabel(launch) },
+      { key: 'dueDate', label: 'Vencimento', pdfWidth: 11, getValue: (launch) => launch.dueDate },
+      { key: 'status', label: 'Sit', pdfWidth: 8, getValue: (launch) => launch.status },
+      { key: 'amount', label: 'Valor', pdfWidth: 12, type: 'number', getValue: (launch) => currency(launch.amount) },
+      { key: 'interest', label: 'Juros', pdfWidth: 10, type: 'number', getValue: (launch) => currency(launch.interestAmount || 0) },
+      { key: 'discount', label: 'Desconto', pdfWidth: 10, type: 'number', getValue: (launch) => currency(launch.discountAmount || 0) },
+      { key: 'final', label: 'Valor final', pdfWidth: 12, type: 'number', getValue: (launch) => currency(launch.finalAmount || 0) },
+    ];
+
+    downloadBlob(createReportPdfContent({
+      title: 'Relatorio de Contas a Pagar',
+      generatedAt: todayValue(),
+      metadata: reportMetadata(),
+      columns: pdfColumns,
+      rows: sortedFilteredLaunches,
+      summary: `Total titulos: ${currency(totals.amount)} | Juros: ${currency(totals.interest)} | Desconto: ${currency(totals.discount)} | Valor final: ${currency(totals.final)}`,
+      emptyMessage: 'Nenhum lancamento encontrado para os filtros aplicados.',
+    }), reportFilename('pdf'), 'application/pdf');
     setGenerateMenuOpen(false);
     setMessage('Relatório em PDF gerado');
   }

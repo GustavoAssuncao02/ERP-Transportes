@@ -772,8 +772,8 @@ input.tri-state-checkbox:disabled {
   position: relative;
   z-index: 1;
   display: flex;
-  width: min(760px, 100%);
-  max-height: min(680px, calc(100vh - 48px));
+  width: min(760px, calc(100vw - 48px));
+  height: min(556px, calc(100vh - 48px));
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -870,6 +870,8 @@ input.tri-state-checkbox:disabled {
 }
 
 .lookup-table-wrap {
+  flex: 1;
+  min-height: 0;
   overflow: auto;
 }
 

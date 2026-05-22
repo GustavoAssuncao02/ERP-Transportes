@@ -17,6 +17,7 @@ import {
   warehouseWalls,
 } from '../data/warehouseRegistry.js';
 import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
+import { createReportPdfContent } from '../utils/report.js';
 
 const warehouseExitStatus = 'Concluído';
 
@@ -1738,41 +1739,26 @@ export default function WarehouseManagementPage({ initialSavedQuery = null, onSa
   }
 
   function generateWarehouseReportPdf() {
-    const lines = [
-      'Relatorio de Galpao',
-      `Gerado em ${todayValue()}`,
-      '',
+    const pdfColumns = [
+      { key: 'sectorId', label: 'Setor', pdfWidth: 6, getValue: (item) => item.sectorId },
+      { key: 'depot', label: 'Deposito', pdfWidth: 14, getValue: (item) => reportDepotLabel(item.sectorId) },
+      { key: 'invoice', label: 'NF', pdfWidth: 10, getValue: (item) => item.invoice },
+      { key: 'customer', label: 'Fornecedor', pdfWidth: 18, getValue: (item) => item.customer },
+      { key: 'description', label: 'Produto', pdfWidth: 24, getValue: (item) => item.description },
+      { key: 'quantity', label: 'Qtd', pdfWidth: 6, type: 'number', getValue: (item) => item.quantity },
+      { key: 'weight', label: 'Peso kg', pdfWidth: 8, type: 'number', getValue: (item) => weightFormatter.format(item.weight) },
+      { key: 'status', label: 'Status', pdfWidth: 16, getValue: (item) => item.status },
     ];
 
-    warehouseReportMetadata().forEach(([label, value]) => {
-      lines.push(`${label}: ${value}`);
-    });
-
-    lines.push('');
-    lines.push('Setor Deposito       NF        Fornecedor       Produto              Qtd Peso kg Status');
-    lines.push('----------------------------------------------------------------------------------------');
-
-    if (!sortedWarehouseReportItems.length) {
-      lines.push('Nenhum item encontrado para os filtros aplicados.');
-    }
-
-    sortedWarehouseReportItems.forEach((item) => {
-      lines.push([
-        fitPdfText(item.sectorId, 5),
-        fitPdfText(reportDepotLabel(item.sectorId), 14),
-        fitPdfText(item.invoice, 9),
-        fitPdfText(item.customer, 16),
-        fitPdfText(item.description, 20),
-        fitPdfText(item.quantity, 3),
-        fitPdfText(weightFormatter.format(item.weight), 7),
-        fitPdfText(item.status, 14),
-      ].join(' '));
-    });
-
-    lines.push('----------------------------------------------------------------------------------------');
-    lines.push(`Total: ${warehouseReportStats.itemCount} item(s) | Quantidade: ${warehouseReportStats.quantity} | Peso: ${weightFormatter.format(warehouseReportStats.weight)} kg`);
-
-    downloadBlob(createPdfContent(lines), reportFilename('pdf'), 'application/pdf');
+    downloadBlob(createReportPdfContent({
+      title: 'Relatorio de Galpao',
+      generatedAt: todayValue(),
+      metadata: warehouseReportMetadata(),
+      columns: pdfColumns,
+      rows: sortedWarehouseReportItems,
+      summary: `Total: ${warehouseReportStats.itemCount} item(s) | Quantidade: ${warehouseReportStats.quantity} | Peso: ${weightFormatter.format(warehouseReportStats.weight)} kg`,
+      emptyMessage: 'Nenhum item encontrado para os filtros aplicados.',
+    }), reportFilename('pdf'), 'application/pdf');
     setWarehouseReportGenerateMenuOpen(false);
     setWarehouseReportMessage('Relatorio em PDF gerado');
   }

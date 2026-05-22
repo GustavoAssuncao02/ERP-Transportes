@@ -3,9 +3,8 @@ import { ChevronDown, ChevronRight, FileText, Save, Search, X } from 'lucide-rea
 import TriStateCheckbox from './TriStateCheckbox.jsx';
 import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
 import {
-  createPdfContent,
+  createReportPdfContent,
   downloadBlob,
-  fitPdfText,
   htmlEscape,
   normalizeReportSelection,
   normalizeReportText,
@@ -463,29 +462,20 @@ export default function ReportPanel({
   }
 
   function generatePdf() {
-    const widths = columns.map((column) => column.pdfWidth || 14);
-    const lines = [
+    const pdfColumns = columns.map((column) => ({
+      ...column,
+      pdfValue: (row) => columnValue(column, row),
+    }));
+
+    downloadBlob(createReportPdfContent({
       title,
-      `Gerado em ${todayValue()}`,
-      '',
-      ...metadata.map(([label, value]) => `${label}: ${value}`),
-      '',
-      columns.map((column, index) => fitPdfText(column.label, widths[index])).join(' '),
-      columns.map((column, index) => '-'.repeat(widths[index])).join(' '),
-    ];
-
-    if (!rows.length) {
-      lines.push(emptyMessage);
-    }
-
-    rows.forEach((row) => {
-      lines.push(columns.map((column, index) => fitPdfText(columnValue(column, row), widths[index])).join(' '));
-    });
-
-    lines.push(columns.map((column, index) => '-'.repeat(widths[index])).join(' '));
-    lines.push(summary);
-
-    downloadBlob(createPdfContent(lines), reportFilename(filenamePrefix, 'pdf'), 'application/pdf');
+      generatedAt: todayValue(),
+      metadata,
+      columns: pdfColumns,
+      rows,
+      summary,
+      emptyMessage,
+    }), reportFilename(filenamePrefix, 'pdf'), 'application/pdf');
     setMenuOpen(false);
     setMessage('Relatorio em PDF gerado');
   }

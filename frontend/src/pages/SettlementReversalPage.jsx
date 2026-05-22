@@ -6,7 +6,7 @@ import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   businessUnits,
   currency,
-  financeLaunches,
+  getFinanceLaunches,
   normalizeText,
   paymentBanks,
 } from '../data/financeData.js';
@@ -21,6 +21,7 @@ const searchTypes = [
   { label: 'Data de Previsao de Pagamento', field: 'paymentForecastDate' },
 ];
 
+const financeLaunches = getFinanceLaunches();
 const settledLaunches = financeLaunches.filter((launch) => launch.status === 'Baixado');
 const settledSuppliers = [...new Set(settledLaunches.map((launch) => launch.supplier))];
 const settledTypes = [...new Set(settledLaunches.map((launch) => launch.type))];

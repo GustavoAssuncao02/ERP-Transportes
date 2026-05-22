@@ -1,10 +1,15 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { PageLoadingFallback } from './components/LoadingStates.jsx';
+import { seedSystemTestData } from './data/testDataSeeder.js';
 
 const DashboardPage = lazy(() => import('./pages/DashboardPage.jsx'));
 const LoginPage = lazy(() => import('./pages/LoginPage.jsx'));
 
 export default function App() {
+  useEffect(() => {
+    seedSystemTestData();
+  }, []);
+
   useEffect(() => {
     function isFocusable(element) {
       if (!element || element.disabled) return false;

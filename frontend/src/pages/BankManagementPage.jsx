@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Building2, Plus, Trash2 } from 'lucide-react';
 import DataTable from '../components/DataTable.jsx';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import { deleteBank, getRegisteredBanks, getRegisteredUnits, saveBank } from '../data/managementRegistry.js';
@@ -250,8 +251,7 @@ export default function BankManagementPage() {
             </label>
 
             <label className="field inline-check-field bank-active-field">
-              <input
-                type="checkbox"
+              <TriStateCheckbox
                 aria-label="Ativo"
                 checked={form.active}
                 onChange={(event) => updateField('active', event.target.checked)}

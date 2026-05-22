@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Save } from 'lucide-react';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   accountingTypes,
@@ -189,7 +190,7 @@ function MultiCheckFilter({ title, options, selected, onChange, searchable = fal
           onClick={() => setIsOpen((current) => !current)}
         />
         <label onClick={(event) => event.stopPropagation()}>
-          <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+          <TriStateCheckbox checked={allSelected} onChange={toggleAll} />
           Todos
         </label>
       </div>
@@ -209,8 +210,7 @@ function MultiCheckFilter({ title, options, selected, onChange, searchable = fal
         <div className={searchable ? 'report-check-list report-check-list--scroll' : 'report-check-list'}>
           {visibleOptions.map((option) => (
             <label className="report-check-row" key={option}>
-              <input
-                type="checkbox"
+              <TriStateCheckbox
                 checked={selected.includes(option)}
                 onChange={() => toggleOption(option)}
               />

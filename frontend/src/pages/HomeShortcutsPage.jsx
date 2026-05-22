@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { RotateCcw, Save, Search } from 'lucide-react';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import {
@@ -93,8 +94,7 @@ export default function HomeShortcutsPage({ selectedShortcutIds, onSave }) {
                   return (
                     <tr key={option.pageId}>
                       <td>
-                        <input
-                          type="checkbox"
+                        <TriStateCheckbox
                           checked={checked}
                           aria-label={`Usar ${option.label} como atalho`}
                           onChange={() => toggleShortcut(option.pageId)}

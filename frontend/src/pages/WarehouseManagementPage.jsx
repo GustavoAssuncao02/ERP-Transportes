@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Box, ChevronDown, ChevronRight, PackagePlus, Plus, Save, Search, Warehouse, X } from 'lucide-react';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   blueprintSectors,
@@ -691,8 +692,7 @@ function WarehouseReportMultiSelect({ label, options, selected, onChange, placeh
           <section>
             {visibleOptions.map((option) => (
               <label key={option}>
-                <input
-                  type="checkbox"
+                <TriStateCheckbox
                   checked={selected.includes(option)}
                   onChange={() => toggleOption(option)}
                 />
@@ -2621,8 +2621,7 @@ export default function WarehouseManagementPage({ initialSavedQuery = null, onSa
                   <div className="warehouse-report-check-list">
                     {warehouseReportDepotOptions.map((depot) => (
                       <label key={depot.id}>
-                        <input
-                          type="checkbox"
+                        <TriStateCheckbox
                           checked={warehouseReportDepots.includes(depot.id)}
                           onChange={(event) => {
                             setWarehouseReportDepots((currentDepots) => (
@@ -2657,8 +2656,7 @@ export default function WarehouseManagementPage({ initialSavedQuery = null, onSa
                   <div className="warehouse-report-check-list warehouse-report-check-list--scroll">
                     {warehouseReportStatusOptions.map((statusOption) => (
                       <label key={statusOption}>
-                        <input
-                          type="checkbox"
+                        <TriStateCheckbox
                           checked={warehouseReportStatuses.includes(statusOption)}
                           onChange={(event) => {
                             setWarehouseReportStatuses((currentStatuses) => (

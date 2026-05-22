@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, X } from 'lucide-react';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { paymentBanks } from '../data/financeData.js';
 
@@ -152,8 +153,7 @@ function MultiSelectorBox({ title, enabled, onEnabledChange, options, selected, 
             {visibleOptions.map((option) => (
               <tr key={option} className={!enabled || selected.includes(option) ? 'active' : ''}>
                 <td>
-                  <input
-                    type="checkbox"
+                  <TriStateCheckbox
                     disabled={!enabled}
                     checked={!enabled || selected.includes(option)}
                     onChange={() => toggleOption(option)}

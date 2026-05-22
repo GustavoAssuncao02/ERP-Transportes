@@ -1,6 +1,7 @@
 import { recordAuditEvent, auditActions } from '../services/auditLog.js';
 import { readJsonStorage, writeJsonStorage } from '../utils/storage.js';
 import {
+  accountingTypes,
   businessUnits,
   currency,
   deleteFinanceLaunch,
@@ -242,11 +243,28 @@ function groupExpensePieData(movements) {
 }
 
 function normalizeAdjustment(adjustment, index) {
+  const accountingTypeCode = String(adjustment.accountingTypeCode || '').trim();
+  const accountingTypeName = String(adjustment.accountingType || adjustment.type || '').trim();
+  const accountingType = accountingTypes.find((type) => (
+    type.code === accountingTypeCode
+    || normalizeText(type.name) === normalizeText(accountingTypeName)
+  ));
+
   return {
     id: adjustment.id || `ADJ-${index + 1}`,
     name: String(adjustment.name || '').trim(),
     amount: normalizeAmount(toNumber(adjustment.amount)),
+    accountingTypeCode: accountingType?.code || accountingTypeCode,
+    accountingType: accountingType?.name || accountingTypeName,
   };
+}
+
+function adjustmentAccountingTypeLabel(adjustment) {
+  const code = String(adjustment?.accountingTypeCode || '').trim();
+  const name = String(adjustment?.accountingType || '').trim();
+
+  if (code && name) return `${code} - ${name}`;
+  return name || code || '-';
 }
 
 export function buildDriverSettlementReport({
@@ -369,11 +387,15 @@ export function buildDriverSettlementReport({
 }
 
 function pdfText(value) {
+  return plainPdfText(value)
+    .replace(/[\\()]/g, '\\$&');
+}
+
+function plainPdfText(value) {
   return String(value)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^\x20-\x7E]/g, ' ')
-    .replace(/[\\()]/g, '\\$&');
+    .replace(/[^\x20-\x7E]/g, ' ');
 }
 
 function fitPdfText(value, length) {
@@ -413,6 +435,162 @@ function createPdfContent(lines) {
     objects[pageObject] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Courier >> >> >> /Contents ${contentObject} 0 R >>`;
     pageRefs.push(`${pageObject} 0 R`);
   }
+
+  objects[2] = `<< /Type /Pages /Kids [${pageRefs.join(' ')}] /Count ${pageRefs.length} >>`;
+
+  let pdf = '%PDF-1.4\n';
+  const offsets = [0];
+
+  for (let index = 1; index < objects.length; index += 1) {
+    offsets[index] = pdf.length;
+    pdf += `${index} 0 obj\n${objects[index]}\nendobj\n`;
+  }
+
+  const xrefOffset = pdf.length;
+  pdf += `xref\n0 ${objects.length}\n`;
+  pdf += '0000000000 65535 f \n';
+
+  for (let index = 1; index < objects.length; index += 1) {
+    pdf += `${String(offsets[index]).padStart(10, '0')} 00000 n \n`;
+  }
+
+  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return pdf;
+}
+
+const settlementPdfPage = {
+  width: 595,
+  height: 842,
+  margin: 24,
+};
+
+const settlementPdfColors = {
+  black: [0, 0, 0],
+  red: [0.88, 0, 0],
+  softGray: [0.96, 0.96, 0.96],
+  white: [1, 1, 1],
+};
+
+function pdfColor(color, operator) {
+  return `${color.map((value) => Number(value).toFixed(3)).join(' ')} ${operator}`;
+}
+
+function pdfY(top, height = 0) {
+  return settlementPdfPage.height - top - height;
+}
+
+function approxPdfTextWidth(text, size) {
+  return plainPdfText(text).length * size * 0.53;
+}
+
+function fitPdfWidth(value, width, size) {
+  const text = plainPdfText(value).trim();
+  const maxChars = Math.max(1, Math.floor(width / (size * 0.53)));
+
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, Math.max(0, maxChars - 1))}~`;
+}
+
+function pushPdfText(ops, value, x, top, {
+  align = 'left',
+  color = settlementPdfColors.black,
+  font = 'F1',
+  size = 7,
+  width = 0,
+} = {}) {
+  const text = width ? fitPdfWidth(value, width, size) : plainPdfText(value).trim();
+  const textWidth = approxPdfTextWidth(text, size);
+  const textX = align === 'right'
+    ? x + width - textWidth
+    : align === 'center'
+      ? x + ((width - textWidth) / 2)
+      : x;
+
+  ops.push(
+    'q',
+    pdfColor(color, 'rg'),
+    `BT /${font} ${size} Tf ${Number(textX).toFixed(2)} ${Number(pdfY(top) - size).toFixed(2)} Td (${pdfText(text)}) Tj ET`,
+    'Q',
+  );
+}
+
+function pushPdfRect(ops, x, top, width, height, {
+  fill = null,
+  lineWidth = 0.5,
+  stroke = true,
+} = {}) {
+  if (fill) {
+    ops.push(
+      'q',
+      pdfColor(fill, 'rg'),
+      `${Number(x).toFixed(2)} ${Number(pdfY(top, height)).toFixed(2)} ${Number(width).toFixed(2)} ${Number(height).toFixed(2)} re f`,
+      'Q',
+    );
+  }
+
+  if (stroke) {
+    ops.push(
+      'q',
+      `${lineWidth} w`,
+      pdfColor(settlementPdfColors.black, 'RG'),
+      `${Number(x).toFixed(2)} ${Number(pdfY(top, height)).toFixed(2)} ${Number(width).toFixed(2)} ${Number(height).toFixed(2)} re S`,
+      'Q',
+    );
+  }
+}
+
+function pushPdfCell(ops, value, x, top, width, height, {
+  align = 'left',
+  color = settlementPdfColors.black,
+  fill = null,
+  font = 'F1',
+  lineWidth = 0.5,
+  padding = 3,
+  size = 7,
+} = {}) {
+  pushPdfRect(ops, x, top, width, height, { fill, lineWidth });
+  pushPdfText(ops, value, x + padding, top + ((height - size) / 2) - 1, {
+    align,
+    color,
+    font,
+    size,
+    width: width - (padding * 2),
+  });
+}
+
+function pushPdfLabelValue(ops, label, value, x, top, labelWidth, valueWidth, height = 13, {
+  align = 'right',
+  valueColor = settlementPdfColors.black,
+} = {}) {
+  pushPdfText(ops, label, x, top + 3, {
+    font: 'F2',
+    size: 7,
+    width: labelWidth - 4,
+  });
+  pushPdfCell(ops, value, x + labelWidth, top, valueWidth, height, {
+    align,
+    color: valueColor,
+    font: 'F1',
+    size: 7,
+  });
+}
+
+function createPdfFromStreams(streams) {
+  const objects = [];
+  const pageRefs = [];
+  let objectNumber = 3;
+
+  objects[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+
+  streams.forEach((stream) => {
+    const contentObject = objectNumber;
+    const pageObject = objectNumber + 1;
+
+    objectNumber += 2;
+    objects[contentObject] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
+    objects[pageObject] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${settlementPdfPage.width} ${settlementPdfPage.height}] /Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> /F2 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >> >> >> /Contents ${contentObject} 0 R >>`;
+    pageRefs.push(`${pageObject} 0 R`);
+  });
 
   objects[2] = `<< /Type /Pages /Kids [${pageRefs.join(' ')}] /Count ${pageRefs.length} >>`;
 
@@ -492,15 +670,19 @@ export function reportPdfLines(report) {
 
   lines.push('');
   lines.push('Ajustes avulsos');
-  lines.push('Nome                                      Valor');
-  lines.push('------------------------------------------------');
+  lines.push('Nome                               Tipo contabil             Valor');
+  lines.push('--------------------------------------------------------------------');
 
   if (!report.adjustments.length) {
     lines.push('Nenhum ajuste avulso informado.');
   }
 
   report.adjustments.forEach((adjustment) => {
-    lines.push(`${fitPdfText(adjustment.name, 40)} ${fitPdfText(currency(adjustment.amount), 12)}`);
+    lines.push([
+      fitPdfText(adjustment.name, 32),
+      fitPdfText(adjustmentAccountingTypeLabel(adjustment), 24),
+      fitPdfText(currency(adjustment.amount), 12),
+    ].join(' '));
   });
 
   lines.push('');
@@ -510,8 +692,203 @@ export function reportPdfLines(report) {
   return lines;
 }
 
+function pdfDate(value) {
+  if (!value) return '-';
+
+  const date = parseDateTime(value);
+  if (!date) return String(value);
+
+  return date.toLocaleDateString('pt-BR');
+}
+
+function pdfDateTime(value) {
+  if (!value) return '-';
+
+  const date = parseDateTime(value);
+  if (!date) return String(value);
+
+  return date.toLocaleString('pt-BR');
+}
+
+function signedPdfCurrency(value) {
+  const amount = Number(value || 0);
+  const signal = amount > 0 ? '+' : '';
+
+  return `${signal}${currency(amount)}`;
+}
+
+function balanceRecipientLabel(balance) {
+  const amount = Number(balance || 0);
+
+  if (amount > 0) return 'EMPRESA A RECEBER';
+  if (amount < 0) return 'MOTORISTA A RECEBER';
+
+  return 'SALDO QUITADO';
+}
+
+function firstValue(values, fallback = '-') {
+  return values.find((value) => String(value || '').trim()) || fallback;
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))];
+}
+
+function driverSettlementPdfRows(report) {
+  const financialRows = report.financialMovements.map((launch) => ({
+    date: pdfDate(launch.eventDate),
+    document: launch.document || launch.id,
+    description: launch.type || 'Movimentacao financeira',
+    received: launch.considered ? currency(Math.abs(launch.amount)) : '-',
+    daily: '-',
+    notes: launch.considered ? launch.id : `${launch.id} - Nao incluido`,
+  }));
+  const adjustmentRows = report.adjustments.map((adjustment) => ({
+    date: '-',
+    document: adjustment.name,
+    description: adjustmentAccountingTypeLabel(adjustment) === '-' ? 'Ajuste avulso' : adjustmentAccountingTypeLabel(adjustment),
+    received: signedPdfCurrency(adjustment.amount),
+    daily: '-',
+    notes: 'Ajuste',
+  }));
+  const dailyRows = report.manifests.map((manifest) => {
+    const route = [manifest.origin, manifest.destination].filter(Boolean).join(' > ');
+
+    return {
+      date: pdfDate(manifest.startDateTime),
+      document: manifest.id,
+      description: `Diaria ${manifest.truckPlate || ''}`.trim(),
+      received: '-',
+      daily: `${manifest.days} x ${currency(manifest.dailyRate)} = ${currency(manifest.dailyTotal)}`,
+      notes: route || pdfDate(manifest.endDateTime),
+    };
+  });
+
+  return [...financialRows, ...adjustmentRows, ...dailyRows];
+}
+
+function pushSettlementHeader(ops, report, pageIndex, pageCount) {
+  const manifests = report.manifests || [];
+  const startValue = firstValue([manifests[0]?.startDateTime, report.periodStart], '');
+  const endValue = firstValue([manifests[manifests.length - 1]?.endDateTime, report.periodEnd], '');
+  const plates = uniqueValues(manifests.map((manifest) => manifest.truckPlate)).join('/');
+  const kmDistance = report.kmDistance || 0;
+
+  pushPdfCell(ops, pdfDateTime(report.generatedAt), 24, 22, 92, 13, { align: 'center', size: 7 });
+  pushPdfCell(ops, pdfDateTime(report.periodStart || report.generatedAt), 116, 22, 92, 13, { align: 'center', size: 7 });
+  pushPdfText(ops, 'PRESTACAO DE CONTAS', 24, 43, { font: 'F2', size: 8, width: 120 });
+  pushPdfText(ops, 'MOTORISTA:', 228, 31, { font: 'F2', size: 9, width: 65 });
+  pushPdfText(ops, report.driver.name || '-', 295, 33, { size: 7, width: 124 });
+  pushPdfText(ops, 'PLACA:', 430, 31, { font: 'F2', size: 8, width: 42 });
+  pushPdfText(ops, plates || '-', 476, 33, { size: 7, width: 88 });
+
+  pushPdfLabelValue(ops, 'DATA SAIDA', pdfDate(startValue), 24, 62, 86, 84, 13, { valueColor: settlementPdfColors.red });
+  pushPdfLabelValue(ops, 'DATA CHEGADA', pdfDate(endValue), 24, 77, 86, 84, 13, { valueColor: settlementPdfColors.red });
+  pushPdfLabelValue(ops, 'QTD. DIAS', report.totals.totalDays || 0, 24, 92, 86, 84, 13);
+
+  pushPdfLabelValue(ops, 'CPF:', report.driver.cpf || '-', 228, 47, 54, 136, 13, { align: 'center' });
+  pushPdfLabelValue(ops, 'KM INICIAL', report.kmStart || '-', 228, 62, 78, 76, 13, { valueColor: settlementPdfColors.red });
+  pushPdfLabelValue(ops, 'KM FINAL', report.kmEnd || '-', 228, 77, 78, 76, 13, { valueColor: settlementPdfColors.red });
+  pushPdfLabelValue(ops, 'KM TOTAL:', kmDistance || '-', 228, 92, 78, 76, 13);
+  pushPdfLabelValue(ops, 'Media', report.averageKmPerDay.toLocaleString('pt-BR'), 228, 107, 78, 76, 13);
+
+  pushPdfLabelValue(ops, 'AUXILIO', '', 430, 47, 56, 84, 13);
+  pushPdfLabelValue(ops, 'FOLGA', '', 430, 62, 56, 84, 13);
+  pushPdfLabelValue(ops, 'DIARIAS', report.totals.totalDays || 0, 430, 77, 56, 84, 13, { valueColor: settlementPdfColors.red });
+  pushPdfLabelValue(ops, 'VALOR DIARIA', currency(report.dailyRate), 430, 92, 56, 84, 13);
+
+  pushPdfText(ops, `Pagina ${pageIndex + 1}/${pageCount}`, 518, 22, { align: 'right', size: 7, width: 52 });
+}
+
+function pushSettlementTable(ops, rows) {
+  const tableX = 24;
+  const tableTop = 128;
+  const rowHeight = 14;
+  const headerHeight = 24;
+  const columns = [
+    { key: 'date', label: 'DATA', width: 48, align: 'center' },
+    { key: 'document', label: 'LANCAMENTO', width: 82 },
+    { key: 'description', label: 'TIPO / DESCRICAO', width: 128 },
+    { key: 'received', label: 'RECEBIDO / AJUSTE', width: 82, align: 'right' },
+    { key: 'daily', label: 'DIARIA', width: 92, align: 'right' },
+    { key: 'notes', label: 'OBSERVACAO', width: 115 },
+  ];
+  let left = tableX;
+
+  columns.forEach((column) => {
+    pushPdfCell(ops, column.label, left, tableTop, column.width, headerHeight, {
+      align: 'center',
+      color: settlementPdfColors.red,
+      fill: settlementPdfColors.white,
+      font: 'F2',
+      size: 6.4,
+    });
+    left += column.width;
+  });
+
+  for (let rowIndex = 0; rowIndex < 24; rowIndex += 1) {
+    const row = rows[rowIndex] || {};
+    let columnLeft = tableX;
+
+    columns.forEach((column) => {
+      pushPdfCell(ops, row[column.key] || '', columnLeft, tableTop + headerHeight + (rowIndex * rowHeight), column.width, rowHeight, {
+        align: column.align || 'left',
+        font: 'F1',
+        size: 6.2,
+      });
+      columnLeft += column.width;
+    });
+  }
+}
+
+function pushSettlementFooter(ops, report, isLastPage) {
+  const top = 500;
+
+  if (!isLastPage) {
+    pushPdfText(ops, 'Continua na proxima pagina', 24, top + 12, { font: 'F2', size: 8, width: 200 });
+    return;
+  }
+
+  pushPdfLabelValue(ops, 'TOTAL RECEBIDO', currency(report.totals.totalReceived), 24, top, 100, 95, 14);
+  pushPdfLabelValue(ops, 'TOTAL DIARIAS', currency(report.totals.totalDailyAmount), 224, top, 92, 95, 14);
+  pushPdfLabelValue(ops, 'SALDO', currency(report.totals.balance), 420, top, 48, 90, 14);
+
+  pushPdfText(ops, 'DESPESAS', 224, top + 31, {
+    align: 'center',
+    color: settlementPdfColors.red,
+    font: 'F2',
+    size: 7,
+    width: 92,
+  });
+  pushPdfCell(ops, currency(report.totals.totalReceived), 316, top + 26, 95, 14, { align: 'right' });
+  pushPdfLabelValue(ops, balanceRecipientLabel(report.totals.balance), currency(Math.abs(report.totals.balance)), 392, top + 58, 100, 66, 14);
+
+}
+
+function createDriverSettlementStyledPdf(report) {
+  const rows = driverSettlementPdfRows(report);
+  const rowsPerPage = 24;
+  const pages = [];
+
+  for (let index = 0; index < Math.max(rows.length, 1); index += rowsPerPage) {
+    pages.push(rows.slice(index, index + rowsPerPage));
+  }
+
+  const streams = pages.map((pageRows, pageIndex) => {
+    const ops = ['0.5 w'];
+
+    pushSettlementHeader(ops, report, pageIndex, pages.length);
+    pushSettlementTable(ops, pageRows);
+    pushSettlementFooter(ops, report, pageIndex === pages.length - 1);
+
+    return ops.join('\n');
+  });
+
+  return createPdfFromStreams(streams);
+}
+
 export function createDriverSettlementPdf(report) {
-  return createPdfContent(reportPdfLines(report));
+  return createDriverSettlementStyledPdf(report);
 }
 
 export function downloadDriverSettlementPdf(report) {

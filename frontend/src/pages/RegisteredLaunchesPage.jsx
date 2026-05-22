@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import {
   businessUnits,
   currency,
@@ -86,7 +87,7 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
             />
           )}
           <label>
-            <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+            <TriStateCheckbox checked={allSelected} onChange={toggleAll} />
             Todos
           </label>
         </div>
@@ -94,8 +95,7 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
           <div className="multi-check-list">
             {visibleOptions.map((option) => (
               <label className="multi-check-row" key={option}>
-                <input
-                  type="checkbox"
+                <TriStateCheckbox
                   checked={selected.includes(option)}
                   onChange={() => toggleOption(option)}
                 />

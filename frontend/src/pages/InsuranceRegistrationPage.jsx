@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { Search, Trash2, X } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
 import { getInsuranceDeletionBlockers } from '../data/deletionRules.js';
@@ -297,8 +298,7 @@ export default function InsuranceRegistrationPage() {
           />
 
           <div className="field inline-check-field">
-            <input
-              type="checkbox"
+            <TriStateCheckbox
               aria-label="Ativo"
               checked={form.active}
               onChange={(event) => updateField('active', event.target.checked)}
@@ -307,8 +307,7 @@ export default function InsuranceRegistrationPage() {
           </div>
 
           <div className="field inline-check-field">
-            <input
-              type="checkbox"
+            <TriStateCheckbox
               aria-label="Seguro padrao"
               checked={form.defaultInsurance}
               onChange={(event) => updateField('defaultInsurance', event.target.checked)}

@@ -621,6 +621,84 @@
   accent-color: var(--primary);
 }
 
+input.tri-state-checkbox {
+  position: relative;
+  display: inline-grid;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
+  min-height: 16px;
+  flex: 0 0 auto;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  appearance: none;
+  background: #ffffff;
+  color: #b3261e;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+input.tri-state-checkbox::before,
+input.tri-state-checkbox::after {
+  content: '';
+  position: absolute;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+input.tri-state-checkbox[data-state='checked'] {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+input.tri-state-checkbox[data-state='checked']::after {
+  width: 5px;
+  height: 9px;
+  margin-top: -2px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  opacity: 1;
+  transform: rotate(45deg);
+}
+
+input.tri-state-checkbox[data-state='excluded'] {
+  border-color: #b3261e;
+  background: #fff7f6;
+}
+
+input.tri-state-checkbox[data-state='excluded']::before,
+input.tri-state-checkbox[data-state='excluded']::after {
+  width: 10px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 1;
+}
+
+input.tri-state-checkbox[data-state='excluded']::before {
+  transform: rotate(45deg);
+}
+
+input.tri-state-checkbox[data-state='excluded']::after {
+  transform: rotate(-45deg);
+}
+
+input.tri-state-checkbox:focus-visible {
+  outline: 2px solid rgba(26, 122, 114, 0.35);
+  outline-offset: 2px;
+}
+
+input.tri-state-checkbox:disabled {
+  border-color: var(--border);
+  background: #f5f5f5;
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
 .locked-record-notice {
   margin-bottom: 14px;
   padding: 10px 12px;
@@ -6391,7 +6469,7 @@
 
 .accountability-one-off-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 1.4fr) minmax(160px, 0.8fr) auto;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(190px, 1fr) minmax(140px, 0.7fr) auto;
   gap: 12px;
   align-items: end;
   padding: 14px;

@@ -29,11 +29,21 @@ function parseCorsOrigins(value) {
   return value.split(',').map((origin) => origin.trim()).filter(Boolean);
 }
 
+function resolveOptionalPath(value) {
+  if (!value) return '';
+  return path.isAbsolute(value) ? value : path.resolve(backendRoot, value);
+}
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? 'development',
   host: process.env.HOST ?? '0.0.0.0',
   port: parseNumber(process.env.PORT, 3001),
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN),
+  https: {
+    enabled: parseBoolean(process.env.HTTPS_ENABLED, false),
+    keyPath: resolveOptionalPath(process.env.HTTPS_KEY_PATH),
+    certPath: resolveOptionalPath(process.env.HTTPS_CERT_PATH),
+  },
   db: {
     enabled: parseBoolean(process.env.DB_ENABLED, false),
     host: process.env.DB_HOST ?? 'localhost',

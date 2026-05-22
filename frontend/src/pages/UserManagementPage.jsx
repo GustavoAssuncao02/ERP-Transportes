@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Power, RotateCcw, Save, Search, ShieldCheck, Trash2, UserPlus } from 'lucide-react';
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import TriStateCheckbox, { checkboxStates } from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { navigationItems } from '../data/siteData.js';
 import { normalizeText } from '../data/financeData.js';
@@ -609,8 +610,7 @@ export default function UserManagementPage() {
     if (!hasChildren) {
       return (
         <label className="user-access-leaf" style={{ '--access-level': level }} key={node.id}>
-          <input
-            type="checkbox"
+          <TriStateCheckbox
             checked={form.accessPageIds.includes(node.pageId)}
             disabled={disabled}
             aria-label={`Liberar acesso a ${node.label}`}
@@ -642,11 +642,9 @@ export default function UserManagementPage() {
           </button>
 
           <label className={`user-access-node-check${stats.partiallySelected ? ' user-access-node-check--partial' : ''}`}>
-            <input
-              type="checkbox"
-              checked={stats.allSelected}
+            <TriStateCheckbox
+              state={stats.partiallySelected ? checkboxStates.excluded : stats.allSelected ? checkboxStates.checked : checkboxStates.unchecked}
               disabled={disabled}
-              aria-checked={stats.partiallySelected ? 'mixed' : stats.allSelected}
               onChange={() => toggleAccessGroup(node.pageIds)}
             />
             <div>
@@ -839,8 +837,7 @@ export default function UserManagementPage() {
               </label>
 
               <label className="field inline-check-field field--span-2">
-                <input
-                  type="checkbox"
+                <TriStateCheckbox
                   checked={Boolean(form.mustChangePassword)}
                   disabled={!currentUserIsAdmin || isNewUser}
                   onChange={(event) => updateFormField('mustChangePassword', event.target.checked)}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import AddressFields from '../components/AddressFields.jsx';
 import DataTable from '../components/DataTable.jsx';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   deactivateUnit,
@@ -367,8 +368,7 @@ export default function UnitRegistrationPage() {
           />
 
           <div className="field inline-check-field">
-            <input
-              type="checkbox"
+            <TriStateCheckbox
               aria-label="Ativo"
               checked={form.active}
               onChange={(event) => updateField('active', event.target.checked)}

@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { FileText, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { PieChart } from '../components/FinanceCharts.jsx';
+import SortableTableHeader from '../components/SortableTableHeader.jsx';
+import TriStateCheckbox from '../components/TriStateCheckbox.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import {
   closeDriverSettlement,
@@ -11,8 +13,9 @@ import {
   buildDriverSettlementReport,
   reopenDriverSettlement,
 } from '../data/driverSettlementRegistry.js';
-import { currency, todayValue, toNumber } from '../data/financeData.js';
+import { accountingTypes, currency, todayValue, toNumber } from '../data/financeData.js';
 import { formatCpf, getRegisteredDrivers, onlyDigits } from '../data/transportRegistry.js';
+import { identifierNumberValue, sortTableRows } from '../utils/tableSort.js';
 
 function nextAdjustmentId() {
   return `ADJ-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -34,6 +37,41 @@ function signedCurrency(value) {
   return `${signal}${currency(amount)}`;
 }
 
+function balanceRecipientLabel(value) {
+  const amount = Number(value || 0);
+
+  if (amount > 0) return 'Empresa a Receber';
+  if (amount < 0) return 'Motorista a Receber';
+
+  return 'Saldo quitado';
+}
+
+function adjustmentAccountingTypeLabel(adjustment) {
+  const code = String(adjustment?.accountingTypeCode || '').trim();
+  const name = String(adjustment?.accountingType || '').trim();
+
+  if (code && name) return `${code} - ${name}`;
+  return name || code || '';
+}
+
+const openPayableSortColumns = [
+  { key: 'id', label: 'Lancamento', type: 'number', getValue: (launch) => identifierNumberValue(launch.id) },
+  { key: 'type', label: 'Tipo', type: 'text', getValue: (launch) => launch.type },
+  { key: 'document', label: 'Documento', type: 'text', getValue: (launch) => launch.document },
+  { key: 'dueDate', label: 'Vencimento', type: 'date', defaultDirection: 'asc', getValue: (launch) => launch.dueDate },
+  { key: 'amount', label: 'Valor', type: 'number', getValue: (launch) => launch.amount },
+];
+
+const settlementHistorySortColumns = [
+  { key: 'id', label: 'Prestacao', type: 'number', getValue: (settlement) => identifierNumberValue(settlement.id) },
+  { key: 'driverName', label: 'Motorista', type: 'text', getValue: (settlement) => settlement.driverName },
+  { key: 'closedAt', label: 'Fechamento', type: 'date', getValue: (settlement) => settlement.closedAt || settlement.updatedAt },
+  { key: 'balance', label: 'Saldo', type: 'number', getValue: (settlement) => settlement.report?.totals?.balance || 0 },
+  { key: 'debtor', label: 'Devedor', type: 'text', getValue: (settlement) => settlement.report?.debtor || '' },
+  { key: 'status', label: 'Status', type: 'text', getValue: (settlement) => settlement.status || 'Fechada' },
+  { key: 'actions', label: '', sortable: false },
+];
+
 function settlementStatusClass(status) {
   return String(status || '').toLowerCase() === 'reaberta'
     ? 'launch-status-pill launch-status-pill--warning'
@@ -48,11 +86,14 @@ export default function DriverAccountabilityPage() {
   const [kmEnd, setKmEnd] = useState('');
   const [dueDate, setDueDate] = useState(todayValue());
   const [adjustmentName, setAdjustmentName] = useState('');
+  const [adjustmentAccountingTypeCode, setAdjustmentAccountingTypeCode] = useState('');
   const [adjustmentAmount, setAdjustmentAmount] = useState('');
   const [adjustments, setAdjustments] = useState([]);
   const [excludedFinancialMovementIds, setExcludedFinancialMovementIds] = useState([]);
   const [editingSettlementId, setEditingSettlementId] = useState('');
   const [settlements, setSettlements] = useState(getDriverSettlements);
+  const [openPayableSort, setOpenPayableSort] = useState({ key: 'dueDate', direction: 'asc' });
+  const [settlementHistorySort, setSettlementHistorySort] = useState({ key: 'closedAt', direction: 'desc' });
   const [message, setMessage] = useAutoClearMessage();
 
   const selectedDriver = useMemo(
@@ -77,6 +118,24 @@ export default function DriverAccountabilityPage() {
     () => settlements.filter((settlement) => !selectedDriver || onlyDigits(settlement.driverCpf) === onlyDigits(selectedDriver.cpf)),
     [selectedDriver, settlements],
   );
+  const sortedOpenPayableLaunches = useMemo(
+    () => sortTableRows(
+      report?.openPayableLaunches || [],
+      openPayableSortColumns,
+      openPayableSort,
+      (left, right) => identifierNumberValue(left.id) - identifierNumberValue(right.id),
+    ),
+    [openPayableSort, report],
+  );
+  const sortedDriverSettlements = useMemo(
+    () => sortTableRows(
+      driverSettlements,
+      settlementHistorySortColumns,
+      settlementHistorySort,
+      (left, right) => identifierNumberValue(left.id) - identifierNumberValue(right.id),
+    ),
+    [driverSettlements, settlementHistorySort],
+  );
   const supplierCode = selectedDriver ? getDriverSupplierCode(selectedDriver) : '';
   const canClose = Boolean(selectedDriver && dueDate);
 
@@ -90,6 +149,7 @@ export default function DriverAccountabilityPage() {
   function addAdjustment() {
     const name = adjustmentName.trim();
     const amount = toNumber(adjustmentAmount);
+    const accountingType = accountingTypes.find((type) => type.code === adjustmentAccountingTypeCode) || null;
 
     if (!name) {
       setMessage('Informe o nome do ajuste avulso');
@@ -107,9 +167,12 @@ export default function DriverAccountabilityPage() {
         id: nextAdjustmentId(),
         name,
         amount,
+        accountingTypeCode: accountingType?.code || '',
+        accountingType: accountingType?.name || '',
       },
     ]);
     setAdjustmentName('');
+    setAdjustmentAccountingTypeCode('');
     setAdjustmentAmount('');
     setMessage('Ajuste avulso adicionado');
   }
@@ -172,6 +235,9 @@ export default function DriverAccountabilityPage() {
     setKmStart(settlement.kmStart || '');
     setKmEnd(settlement.kmEnd || '');
     setDueDate(settlement.dueDate || todayValue());
+    setAdjustmentName('');
+    setAdjustmentAccountingTypeCode('');
+    setAdjustmentAmount('');
     setAdjustments(Array.isArray(settlement.adjustments) ? settlement.adjustments : []);
     setExcludedFinancialMovementIds(Array.isArray(settlement.excludedFinancialMovementIds) ? settlement.excludedFinancialMovementIds : []);
     setMessage(`Prestacao ${settlement.id} reaberta para correcao`);
@@ -193,6 +259,7 @@ export default function DriverAccountabilityPage() {
     setKmEnd('');
     setDueDate(todayValue());
     setAdjustmentName('');
+    setAdjustmentAccountingTypeCode('');
     setAdjustmentAmount('');
     setAdjustments([]);
     setExcludedFinancialMovementIds([]);
@@ -281,7 +348,7 @@ export default function DriverAccountabilityPage() {
               <section className="bi-metric">
                 <span>Saldo do motorista</span>
                 <strong>{currency(report.totals.balance)}</strong>
-                <em>Total recebido - total de diarias</em>
+                <em>{balanceRecipientLabel(report.totals.balance)}</em>
               </section>
 
               <section className="bi-metric">
@@ -382,8 +449,7 @@ export default function DriverAccountabilityPage() {
                     {report.financialMovements.map((launch) => (
                       <tr className={launch.considered ? '' : 'accountability-row--muted'} key={launch.id}>
                         <td>
-                          <input
-                            type="checkbox"
+                          <TriStateCheckbox
                             checked={launch.considered}
                             aria-label={`Considerar movimentacao ${launch.id}`}
                             onChange={() => toggleFinancialMovement(launch.id)}
@@ -426,6 +492,21 @@ export default function DriverAccountabilityPage() {
                   </label>
 
                   <label className="field">
+                    <span>Tipo</span>
+                    <select
+                      value={adjustmentAccountingTypeCode}
+                      onChange={(event) => setAdjustmentAccountingTypeCode(event.target.value)}
+                    >
+                      <option value="">Sem Tipo</option>
+                      {accountingTypes.map((type) => (
+                        <option value={type.code} key={type.code}>
+                          {type.code} - {type.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label className="field">
                     <span>Valor</span>
                     <input
                       type="number"
@@ -447,7 +528,7 @@ export default function DriverAccountabilityPage() {
                     <div className="selected-launch-row selected-launch-row--one-off" key={adjustment.id}>
                       <div>
                         <strong>{adjustment.name}</strong>
-                        <span>Ajuste avulso da prestacao</span>
+                        <span>{adjustmentAccountingTypeLabel(adjustment) || 'Ajuste avulso da prestacao'}</span>
                       </div>
                       <div className="settlement-value-stack">
                         <strong>{signedCurrency(adjustment.amount)}</strong>
@@ -487,15 +568,15 @@ export default function DriverAccountabilityPage() {
                   <table className="registered-launches-table accountability-table">
                     <thead>
                       <tr>
-                        <th>Lancamento</th>
-                        <th>Tipo</th>
-                        <th>Documento</th>
-                        <th>Vencimento</th>
-                        <th>Valor</th>
+                        <SortableTableHeader
+                          columns={openPayableSortColumns}
+                          sort={openPayableSort}
+                          onSortChange={setOpenPayableSort}
+                        />
                       </tr>
                     </thead>
                     <tbody>
-                      {report.openPayableLaunches.map((launch) => (
+                      {sortedOpenPayableLaunches.map((launch) => (
                         <tr key={launch.id}>
                           <td><strong>{launch.id}</strong></td>
                           <td>{launch.type}</td>
@@ -544,17 +625,15 @@ export default function DriverAccountabilityPage() {
           <table className="registered-launches-table accountability-table">
             <thead>
               <tr>
-                <th>Prestacao</th>
-                <th>Motorista</th>
-                <th>Fechamento</th>
-                <th>Saldo</th>
-                <th>Devedor</th>
-                <th>Status</th>
-                <th></th>
+                <SortableTableHeader
+                  columns={settlementHistorySortColumns}
+                  sort={settlementHistorySort}
+                  onSortChange={setSettlementHistorySort}
+                />
               </tr>
             </thead>
             <tbody>
-              {driverSettlements.map((settlement) => (
+              {sortedDriverSettlements.map((settlement) => (
                 <tr key={settlement.id}>
                   <td><strong>{settlement.id}</strong></td>
                   <td>{settlement.driverName}</td>

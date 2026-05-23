@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, LogOut } from 'lucide-react';
+import { ChevronDown, ChevronRight, LogOut, Menu, X } from 'lucide-react';
 import vexoIconUrl from '../assets/brand/vexo-icon-only.svg';
 import { navigationItems } from '../data/siteData.js';
 
 export default function Navbar({ onNavigate }) {
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [activeSubmenuId, setActiveSubmenuId] = useState(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   function handleMenuClick(item) {
     if (!item.children) {
       setActiveMenuId(null);
       setActiveSubmenuId(null);
+      setIsMobileMenuOpen(false);
       return;
     }
 
@@ -21,7 +23,19 @@ export default function Navbar({ onNavigate }) {
   function navigateTo(item) {
     setActiveMenuId(null);
     setActiveSubmenuId(null);
+    setIsMobileMenuOpen(false);
     onNavigate?.(item);
+  }
+
+  function toggleMobileMenu() {
+    setIsMobileMenuOpen((current) => {
+      if (current) {
+        setActiveMenuId(null);
+        setActiveSubmenuId(null);
+      }
+
+      return !current;
+    });
   }
 
   function renderDropdownItem(item) {
@@ -80,8 +94,23 @@ export default function Navbar({ onNavigate }) {
   }
 
   return (
-    <nav className="navbar" aria-label="Menu principal">
+    <nav className={`navbar${isMobileMenuOpen ? ' navbar--mobile-open' : ''}`} aria-label="Menu principal">
       <img className="nav-logo" src={vexoIconUrl} alt="Vexo" />
+
+      <button
+        type="button"
+        className="nav-mobile-toggle"
+        aria-label={isMobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+        aria-expanded={isMobileMenuOpen}
+        onClick={toggleMobileMenu}
+      >
+        {isMobileMenuOpen ? (
+          <X size={19} strokeWidth={2.4} aria-hidden="true" />
+        ) : (
+          <Menu size={19} strokeWidth={2.4} aria-hidden="true" />
+        )}
+        <span>Menu</span>
+      </button>
 
       <div className="nav-items">
         {navigationItems.map((item) => (

@@ -7165,6 +7165,23 @@ input.tri-state-checkbox:disabled {
     min-width: 560px;
   }
 
+  .warehouse-sort-button {
+    min-height: 28px;
+    padding: 0 8px;
+  }
+
+  .report-filter-title-button {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+  }
+
+  .fleet-plate-button {
+    display: inline-flex;
+    min-height: 28px;
+    align-items: center;
+  }
+
   .chart-panel {
     min-height: 280px;
     padding: 12px;

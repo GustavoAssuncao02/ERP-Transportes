@@ -22,6 +22,7 @@ import {
 } from './managementRegistry.js';
 import {
   collectionOrderStorageKey,
+  controlManifestType,
   cteStorageKey,
   defaultCollectionOrders,
   defaultCtes,
@@ -29,6 +30,7 @@ import {
   defaultMinutas,
   manifestStorageKey,
   minutaStorageKey,
+  transitManifestType,
 } from './operationRegistry.js';
 import {
   defaultDrivers,
@@ -445,7 +447,7 @@ function buildManifests(drivers, vehicles, insurances, ctes, minutas) {
     return {
       id: `MDFE-TEST-${pad(index + 1, 5)}`,
       unit: itemAt(businessUnits, index).value,
-      manifestType: index % 4 === 0 ? 'Manifesto de Carga Lotacao' : 'Manifesto de Transito',
+      manifestType: index % 4 === 0 ? controlManifestType : transitManifestType,
       selectedCteIds,
       minutaId: minutas[index % minutas.length].id,
       origin: itemAt(cityOptions, index),

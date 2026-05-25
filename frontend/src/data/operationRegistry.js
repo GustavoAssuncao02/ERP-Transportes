@@ -7,6 +7,8 @@ export const collectionOrderStorageKey = 'collectionOrders';
 export const minutaStorageKey = 'transportMinutas';
 export const manifestStorageKey = 'transportManifests';
 export const pendingManifestIdKey = 'pendingManifestId';
+export const controlManifestType = 'Manifesto de Controle';
+export const transitManifestType = 'Manifesto de Trânsito';
 const manifestSeedVersionKey = 'transportManifestSeedVersion';
 const manifestSeedVersion = 'fleet-map-demo-v2-third-party-transit';
 const pickupAddressFields = addressFieldSet('pickup', 'pickupAddress');
@@ -595,13 +597,37 @@ function writeRecords(key, records) {
   writeJsonStorage(key, records);
 }
 
+function normalizedTextKey(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+export function normalizeManifestType(value) {
+  const key = normalizedTextKey(value);
+
+  if (key.includes('controle') || key.includes('lotacao') || key.includes('carga')) {
+    return controlManifestType;
+  }
+
+  return transitManifestType;
+}
+
 const normalizeCtes = createReferenceCache((records) => records.map((cte) => ({ status: 'Aberto', ...cte })));
 const normalizeMinutas = createReferenceCache((records) => records.map(normalizeMinutaAddressFields));
-const normalizeManifests = createReferenceCache((records) => records.map((manifest) => ({
-  manifestType: 'Manifesto de TrÃ¢nsito',
-  status: 'Emitido',
-  ...manifest,
-})));
+const normalizeManifests = createReferenceCache((records) => records.map((manifest) => {
+  const normalizedManifest = {
+    status: 'Emitido',
+    ...manifest,
+  };
+
+  return {
+    ...normalizedManifest,
+    manifestType: normalizeManifestType(normalizedManifest.manifestType),
+  };
+}));
 
 function recordOperationAudit({ action, entityType, entityId, entityLabel, before, after, summary }) {
   recordAuditEvent({
@@ -793,7 +819,11 @@ export function getRegisteredManifests() {
 }
 
 export function saveManifest(record) {
-  return upsertRecord(manifestStorageKey, defaultManifests, { manifestType: 'Manifesto de Trânsito', status: 'Emitido', ...record }, {
+  return upsertRecord(manifestStorageKey, defaultManifests, {
+    status: 'Emitido',
+    ...record,
+    manifestType: normalizeManifestType(record.manifestType),
+  }, {
     entityType: 'manifesto',
     createSummary: 'Manifesto emitido',
     updateSummary: 'Manifesto atualizado',

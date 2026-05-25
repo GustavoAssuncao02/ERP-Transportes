@@ -1027,6 +1027,26 @@ input.tri-state-checkbox:disabled {
   max-width: 1280px;
 }
 
+.registered-launches-page .registered-launches-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
+}
+
+.accounts-payable-schedule-page .schedule-main-column > .registered-launches-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
+}
+
+.accounts-payable-deletion-page .schedule-layout > .registered-launches-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
+}
+
+.settlement-reversal-page .schedule-layout > .registered-launches-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
+}
+
 .registered-launches-actions {
   justify-content: flex-end;
 }
@@ -2870,6 +2890,8 @@ input.tri-state-checkbox:disabled {
 
 .manifest-cte-layout > .registered-launches-panel .registered-launches-table-wrap,
 .manifest-cte-layout > .selection-panel .selected-list-box {
+  height: 520px;
+  max-height: 520px;
   flex: 1;
 }
 
@@ -3045,16 +3067,26 @@ input.tri-state-checkbox:disabled {
 }
 
 .fleet-layout {
+  --fleet-list-height: 520px;
   display: grid;
   max-width: 1280px;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.36fr);
   gap: 16px;
-  align-items: start;
+  align-items: stretch;
 }
 
 .fleet-layout > .registered-launches-panel,
 .fleet-layout > .selection-panel {
+  display: flex;
+  min-height: calc(var(--fleet-list-height) + 48px);
+  flex-direction: column;
   margin-top: 0;
+}
+
+.fleet-table-panel .registered-launches-table-wrap {
+  height: var(--fleet-list-height);
+  max-height: var(--fleet-list-height);
+  flex: 1;
 }
 
 .fleet-table {
@@ -3124,11 +3156,13 @@ input.tri-state-checkbox:disabled {
 }
 
 .fleet-transit-panel {
-  min-height: 360px;
+  min-height: calc(var(--fleet-list-height) + 48px);
 }
 
 .fleet-transit-list {
-  max-height: 520px;
+  height: var(--fleet-list-height);
+  max-height: var(--fleet-list-height);
+  flex: 1;
 }
 
 .fleet-transit-row {
@@ -4405,6 +4439,26 @@ input.tri-state-checkbox:disabled {
 
 .registry-list-panel {
   max-width: 1280px;
+}
+
+.vehicle-registration-page .registry-list-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
+}
+
+.collection-order-page .registry-list-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
+}
+
+.create-minuta-page .registry-list-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
+}
+
+.accounts-receivable-page .registry-list-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
 }
 
 .registry-table {
@@ -6533,6 +6587,11 @@ input.tri-state-checkbox:disabled {
   margin-top: 18px;
 }
 
+.accountability-history-panel .registered-launches-table-wrap {
+  height: 520px;
+  max-height: 520px;
+}
+
 .accountability-reopen-button {
   min-height: 32px;
   padding: 0 10px;
@@ -6754,6 +6813,61 @@ input.tri-state-checkbox:disabled {
 
   .fleet-map-filters {
     grid-template-columns: 1fr;
+  }
+
+  .fleet-layout {
+    --fleet-list-height: 360px;
+  }
+
+  .vehicle-registration-page .registry-list-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .collection-order-page .registry-list-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .create-minuta-page .registry-list-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .accounts-receivable-page .registry-list-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .manifest-cte-layout > .registered-launches-panel .registered-launches-table-wrap,
+  .manifest-cte-layout > .selection-panel .selected-list-box {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .accountability-history-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .registered-launches-page .registered-launches-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .accounts-payable-schedule-page .schedule-main-column > .registered-launches-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .accounts-payable-deletion-page .schedule-layout > .registered-launches-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
+  }
+
+  .settlement-reversal-page .schedule-layout > .registered-launches-panel .registered-launches-table-wrap {
+    height: 360px;
+    max-height: 360px;
   }
 
   .pie-chart-layout {
@@ -7384,6 +7498,18 @@ input.tri-state-checkbox:disabled {
 
   .selected-list-box,
   .launch-list,
+  .vehicle-registration-page .registry-list-panel .registered-launches-table-wrap,
+  .collection-order-page .registry-list-panel .registered-launches-table-wrap,
+  .create-minuta-page .registry-list-panel .registered-launches-table-wrap,
+  .accounts-receivable-page .registry-list-panel .registered-launches-table-wrap,
+  .manifest-cte-layout > .registered-launches-panel .registered-launches-table-wrap,
+  .manifest-cte-layout > .selection-panel .selected-list-box,
+  .accountability-history-panel .registered-launches-table-wrap,
+  .registered-launches-page .registered-launches-panel .registered-launches-table-wrap,
+  .accounts-payable-schedule-page .schedule-main-column > .registered-launches-panel .registered-launches-table-wrap,
+  .accounts-payable-deletion-page .schedule-layout > .registered-launches-panel .registered-launches-table-wrap,
+  .settlement-reversal-page .schedule-layout > .registered-launches-panel .registered-launches-table-wrap,
+  .fleet-table-panel .registered-launches-table-wrap,
   .fleet-transit-list,
   .warehouse-invoice-list,
   .warehouse-custom-limits > div,

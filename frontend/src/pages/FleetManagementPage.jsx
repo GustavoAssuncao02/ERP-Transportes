@@ -5,7 +5,13 @@ import { FileText, MapPinned, Route, Save, Search, Truck, UserRound } from 'luci
 import SortableTableHeader from '../components/SortableTableHeader.jsx';
 import useAutoClearMessage from '../hooks/useAutoClearMessage.js';
 import { normalizeText } from '../data/financeData.js';
-import { getRegisteredManifests, pendingManifestIdKey } from '../data/operationRegistry.js';
+import {
+  controlManifestType,
+  getRegisteredManifests,
+  normalizeManifestType,
+  pendingManifestIdKey,
+  transitManifestType,
+} from '../data/operationRegistry.js';
 import { maxQuickQueryNameLength, saveQuickQuery } from '../data/quickQueries.js';
 import {
   formatCpf,
@@ -32,8 +38,8 @@ const mapStatusFilters = [
 
 const manifestTypeFilters = [
   { value: 'all', label: 'Todos os tipos' },
-  { value: 'Manifesto de Controle', label: 'Manifesto de Controle' },
-  { value: 'Manifesto de Trânsito', label: 'Manifesto de Trânsito' },
+  { value: controlManifestType, label: controlManifestType },
+  { value: transitManifestType, label: transitManifestType },
 ];
 
 const driverTypeFilters = [
@@ -547,7 +553,7 @@ export default function FleetManagementPage({ onNavigate, initialSavedQuery = nu
   const [plateFilter, setPlateFilter] = useState('');
   const [mapDateFilter, setMapDateFilter] = useState('');
   const [mapStatusFilter, setMapStatusFilter] = useState('active');
-  const [manifestTypeFilter, setManifestTypeFilter] = useState('Manifesto de Trânsito');
+  const [manifestTypeFilter, setManifestTypeFilter] = useState(transitManifestType);
   const [selectedManifestId, setSelectedManifestId] = useState('');
   const [activeHeatRegionKey, setActiveHeatRegionKey] = useState('');
   const [routeQuickQueryName, setRouteQuickQueryName] = useState('');
@@ -689,8 +695,8 @@ export default function FleetManagementPage({ onNavigate, initialSavedQuery = nu
         const statusMatches = mapStatusFilter === 'all'
           || (mapStatusFilter === 'active' && currentTransit)
           || (mapStatusFilter === 'canceled' && canceled);
-        const manifestType = manifest.manifestType || 'Manifesto de Trânsito';
-        const typeMatches = manifestTypeFilter === 'all' || manifestType === manifestTypeFilter;
+        const manifestType = normalizeManifestType(manifest.manifestType);
+        const typeMatches = manifestTypeFilter === 'all' || manifestType === normalizeManifestType(manifestTypeFilter);
         const originMatches = !originFilter || manifest.origin === originFilter;
         const destinationMatches = !destinationFilter || manifest.destination === destinationFilter;
         const driverMatches = !driverFilter || manifestDriverKey(manifest) === driverFilter;

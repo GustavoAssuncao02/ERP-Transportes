@@ -7,12 +7,14 @@ import { businessUnits, currency, normalizeText } from '../data/financeData.js';
 import { getManifestDeletionBlockers } from '../data/deletionRules.js';
 import { getDefaultInsurance } from '../data/managementRegistry.js';
 import {
+  controlManifestType,
   deactivateManifest,
   deleteManifest,
   getRegisteredCtes,
   getRegisteredManifests,
   pendingManifestIdKey,
   saveManifest,
+  transitManifestType,
 } from '../data/operationRegistry.js';
 import { fetchCityOptions, initialCityOptions } from '../utils/cities.js';
 import { formatReportDateTime, isDateInRange, isReportOptionSelected, reportSelectionLabel, uniqueSortedOptions } from '../utils/report.js';
@@ -74,8 +76,8 @@ const manifestCteSortColumns = [
 const manifestStorageKey = 'transportManifests';
 
 const manifestTypeOptions = [
-  'Manifesto de Controle',
-  'Manifesto de Trânsito',
+  controlManifestType,
+  transitManifestType,
 ];
 
 const manifestReportBaseFilters = {
@@ -141,7 +143,7 @@ const defaultManifests = [
     hasInsurance: 'Sim',
     insuranceCompany: 'Seguradora Atlântica',
     insurancePolicy: 'AP-2026-00184',
-    manifestType: 'Manifesto de Trânsito',
+    manifestType: transitManifestType,
     createdAt: '2026-05-18T08:30',
   },
 ];
@@ -268,7 +270,7 @@ export default function GenerateManifestPage({ initialSavedQuery = null, onSaved
   const [hasInsurance, setHasInsurance] = useState(() => defaultManifestInsurance().hasInsurance);
   const [insuranceCompany, setInsuranceCompany] = useState(() => defaultManifestInsurance().insuranceCompany);
   const [insurancePolicy, setInsurancePolicy] = useState(() => defaultManifestInsurance().insurancePolicy);
-  const [manifestType, setManifestType] = useState('Manifesto de Trânsito');
+  const [manifestType, setManifestType] = useState(transitManifestType);
   const [manifestStatus, setManifestStatus] = useState('Emitido');
   const [startedAt, setStartedAt] = useState(() => dateTimeInputValue());
   const [closedAt, setClosedAt] = useState('');
@@ -470,7 +472,7 @@ export default function GenerateManifestPage({ initialSavedQuery = null, onSaved
     setHasInsurance(manifest.hasInsurance || 'Não');
     setInsuranceCompany(manifest.insuranceCompany || '');
     setInsurancePolicy(manifest.insurancePolicy || '');
-    setManifestType(manifest.manifestType || 'Manifesto de Trânsito');
+    setManifestType(manifest.manifestType || transitManifestType);
     setManifestStatus(manifest.status || 'Emitido');
     setStartedAt(dateTimeInputValue(manifest.startedAt || manifest.createdAt || new Date()));
     setClosedAt(manifest.closedAt ? dateTimeInputValue(manifest.closedAt) : '');
@@ -605,7 +607,7 @@ export default function GenerateManifestPage({ initialSavedQuery = null, onSaved
     setHasInsurance(insurance.hasInsurance);
     setInsuranceCompany(insurance.insuranceCompany);
     setInsurancePolicy(insurance.insurancePolicy);
-    setManifestType('Manifesto de Trânsito');
+    setManifestType(transitManifestType);
     setManifestStatus('Emitido');
     setStartedAt(dateTimeInputValue());
     setClosedAt('');
@@ -975,7 +977,7 @@ export default function GenerateManifestPage({ initialSavedQuery = null, onSaved
                   {manifestLookupItems.map((manifest) => (
                     <tr key={manifest.id} onClick={() => selectManifest(manifest)}>
                       <td>{manifest.id}</td>
-                      <td>{manifest.manifestType || 'Manifesto de Trânsito'}</td>
+                      <td>{manifest.manifestType || transitManifestType}</td>
                       <td>{manifest.createdAt ? new Date(manifest.createdAt).toLocaleString('pt-BR') : ''}</td>
                       <td>{manifest.origin}</td>
                       <td>{manifest.destination}</td>

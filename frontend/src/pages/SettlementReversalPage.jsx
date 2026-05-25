@@ -50,8 +50,12 @@ function totalAmount(launches) {
 
 function MultiCheckField({ label, options, selected, onChange, placeholder }) {
   const [query, setQuery] = useState('');
+  const [expanded, setExpanded] = useState(false);
   const allSelected = selected.length === options.length;
   const visibleOptions = options.filter((option) => normalizeText(option).includes(normalizeText(query)));
+  const selectedSummary = allSelected
+    ? 'Todos selecionados'
+    : `${selected.length} selecionado(s)`;
 
   function toggleAll() {
     onChange(allSelected ? [] : options);
@@ -67,22 +71,35 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
   }
 
   return (
-    <div className="field field--span-4 multi-check-field">
+    <div
+      className={`field multi-check-field${expanded ? ' multi-check-field--expanded' : ' multi-check-field--collapsed'}`}
+      onClick={() => setExpanded(true)}
+      onFocusCapture={() => setExpanded(true)}
+    >
       <span>{label}</span>
-      <div className="multi-check-box">
+      <div className="multi-check-box" aria-expanded={expanded}>
         <div className="multi-check-toolbar">
-          <input
-            type="search"
-            placeholder={placeholder}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          <label>
-            <TriStateCheckbox checked={allSelected} onChange={toggleAll} />
-            Todos
-          </label>
+          {expanded ? (
+            <input
+              type="search"
+              placeholder={placeholder}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          ) : (
+            <button type="button" className="multi-check-summary-button">
+              {selectedSummary}
+            </button>
+          )}
+          {expanded && (
+            <label>
+              <TriStateCheckbox checked={allSelected} onChange={toggleAll} />
+              Todos
+            </label>
+          )}
         </div>
-        <div className="multi-check-list">
+        {expanded && (
+          <div className="multi-check-list">
           {visibleOptions.map((option) => (
             <label className="multi-check-row" key={option}>
               <TriStateCheckbox
@@ -93,7 +110,8 @@ function MultiCheckField({ label, options, selected, onChange, placeholder }) {
             </label>
           ))}
           {!visibleOptions.length && <div className="multi-check-empty">Nenhuma opção encontrada</div>}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
